@@ -340,6 +340,37 @@ p, label {
     color: #ff69b4;
 }
 
+.broadcast-banner,
+.featured-broadcast,
+.discount-broadcast {
+    margin-bottom: 20px;
+    padding: 16px 18px;
+    border: 2px solid #00ff88;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(255, 105, 180, 0.08));
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.18);
+}
+
+.broadcast-banner h3,
+.featured-broadcast h3,
+.discount-broadcast h3 {
+    margin-bottom: 8px;
+}
+
+.discount-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.discount-pill {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 105, 180, 0.14);
+    border: 1px solid #ff69b4;
+    color: #fff;
+}
+
 .empty-products-message {
     grid-column: 1 / -1;
     text-align: center;
@@ -595,6 +626,10 @@ input[type="checkbox"] {
     display: none !important;
 }
 
+.app-hidden {
+    display: none !important;
+}
+
 .order-success h2 {
     color: #00ff88;
     font-size: 20px;
@@ -845,6 +880,55 @@ input[type="checkbox"] {
     gap: 10px;
 }
 
+.admin-simple-form {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-toggle-list {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.admin-toggle-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.admin-grid-equal {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.card-size-compact {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.card-size-compact .product-card {
+    padding: 16px;
+}
+
+.card-size-showcase {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.card-size-showcase .product-card {
+    padding: 28px;
+}
+
 .admin-status {
     margin-top: 15px;
     color: #00ff88;
@@ -1000,6 +1084,7 @@ input[type="checkbox"] {
         align-items: stretch;
     }
 
+    .admin-grid-equal,
     .admin-shell,
     .admin-grid {
         grid-template-columns: 1fr;

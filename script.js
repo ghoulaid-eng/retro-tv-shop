@@ -1,9 +1,20 @@
-// Initialize click sound
 const clickSound = document.getElementById('clickSound');
-
-// Create a better click sound using Web Audio API
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const audioContext = AudioContextClass ? new AudioContextClass() : null;
+const channelSelector = document.getElementById('channelSelector');
+const channels = document.querySelectorAll('.channel');
+const customOrderForm = document.getElementById('customOrderForm');
+const orderSuccess = document.getElementById('orderSuccess');
+const powerBtn = document.getElementById('powerBtn');
+const volumeBtn = document.getElementById('volumeBtn');
+const staticOverlay = document.getElementById('staticOverlay');
+const additionalSetCountGroup = document.getElementById('additionalSetCountGroup');
+const additionalSetRadios = document.querySelectorAll('input[name="additionalSets"]');
+
+let isPoweredOn = true;
+let volumeLevel = 100;
+let touchStartX = 0;
+let touchEndX = 0;
 
 function playClickSound() {
     if (!audioContext) {
@@ -17,17 +28,14 @@ function playClickSound() {
 
         osc.connect(gain);
         gain.connect(audioContext.destination);
-
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
         osc.start(now);
         osc.stop(now + 0.1);
-    } catch (e) {
-        console.log('Audio context error:', e);
+    } catch (error) {
+        console.log('Audio context error:', error);
     }
 }
 
@@ -50,10 +58,10 @@ function bindProductCardEffects(container = document) {
             return;
         }
 
-        card.addEventListener('mousemove', (e) => {
+        card.addEventListener('mousemove', event => {
             const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
             card.style.backgroundPosition = `${x}px ${y}px`;
         });
         card.dataset.cardEffectsBound = 'true';
@@ -121,71 +129,253 @@ function renderShopProducts(products) {
     bindProductCardEffects(shopGrid);
 }
 
-async function initializeProducts() {
-    if (!window.ProductStore) {
+function renderAnnouncement(targetId, title, message, enabled) {
+    const target = document.getElementById(targetId);
+    if (!target) {
         return;
     }
 
-    try {
-        const products = await window.ProductStore.getProducts();
-        renderShopProducts(products);
-        window.ProductStore.subscribe(renderShopProducts);
-    } catch (error) {
-        console.error('Unable to load products:', error);
-        renderShopProducts([]);
+    if (!enabled || (!title && !message)) {
+        target.replaceChildren();
+        target.classList.add('hidden');
+        return;
+    }
+
+    target.classList.remove('hidden');
+    target.replaceChildren();
+
+    if (title) {
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        target.appendChild(heading);
+    }
+
+    if (message) {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = message;
+        target.appendChild(paragraph);
     }
 }
 
-// Channel Switching Functionality
-const channelSelector = document.getElementById('channelSelector');
-const channels = document.querySelectorAll('.channel');
+function renderDiscounts(discounts, enabled) {
+    const discountsContainer = document.getElementById('shopDiscounts');
+    if (!discountsContainer) {
+        return;
+    }
+
+    discountsContainer.replaceChildren();
+
+    if (!enabled || !discounts.length) {
+        discountsContainer.classList.add('hidden');
+        return;
+    }
+
+    discountsContainer.classList.remove('hidden');
+
+    const title = document.createElement('h3');
+    title.textContent = 'Active Discounts';
+    discountsContainer.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'discount-list';
+
+    discounts.forEach(discount => {
+        const item = document.createElement('div');
+        item.className = 'discount-pill';
+        item.textContent = discount.description
+            ? `${discount.code} — ${discount.description}`
+            : discount.code;
+        list.appendChild(item);
+    });
+
+    discountsContainer.appendChild(list);
+}
+
+function renderFeaturedBroadcast(marketing, enabled) {
+    const target = document.getElementById('shopFeaturedCard');
+    if (!target) {
+        return;
+    }
+
+    if (!enabled || (!marketing.featuredTitle && !marketing.featuredMessage)) {
+        target.replaceChildren();
+        target.classList.add('hidden');
+        return;
+    }
+
+    target.classList.remove('hidden');
+    target.replaceChildren();
+
+    const title = document.createElement('h3');
+    title.textContent = marketing.featuredTitle;
+    target.appendChild(title);
+
+    const text = document.createElement('p');
+    text.textContent = marketing.featuredMessage;
+    target.appendChild(text);
+}
+
+function applySettings(settings) {
+    document.title = settings.shopName;
+
+    const homeHeadline = document.getElementById('homeHeadline');
+    if (homeHeadline) {
+        homeHeadline.textContent = settings.homeHeadline;
+        homeHeadline.setAttribute('data-text', settings.homeHeadline);
+    }
+
+    const homeTagline = document.getElementById('homeTagline');
+    if (homeTagline) {
+        homeTagline.textContent = settings.homeTagline;
+    }
+
+    const shopTitle = document.getElementById('shopChannelTitle');
+    if (shopTitle) {
+        shopTitle.textContent = settings.shopName.toUpperCase();
+    }
+
+    const shopNote = document.getElementById('shopNote');
+    if (shopNote) {
+        shopNote.textContent = settings.shopNote;
+    }
+}
+
+function applyAppCenter(appCenter) {
+    const customOrderOption = channelSelector?.querySelector('option[value="custom-order"]');
+    const customOrderSection = document.getElementById('custom-order');
+
+    if (customOrderOption) {
+        customOrderOption.hidden = !appCenter.customOrdersEnabled;
+    }
+
+    if (customOrderSection) {
+        customOrderSection.classList.toggle('app-hidden', !appCenter.customOrdersEnabled);
+    }
+
+    if (!appCenter.customOrdersEnabled && channelSelector?.value === 'custom-order') {
+        channelSelector.value = 'home';
+        channelSelector.dispatchEvent(new Event('change'));
+    }
+}
+
+function applyDesigner(designer) {
+    const shopGrid = document.getElementById('shopGrid');
+    if (shopGrid) {
+        shopGrid.classList.remove('card-size-compact', 'card-size-cozy', 'card-size-showcase');
+        shopGrid.classList.add(`card-size-${designer.productCardSize}`);
+    }
+
+    if (staticOverlay) {
+        staticOverlay.classList.toggle('hidden', !designer.staticEffect);
+    }
+}
+
+function updateAdditionalSetVisibility() {
+    if (!additionalSetCountGroup) {
+        return;
+    }
+
+    const shouldShow = [...additionalSetRadios].some(radio => radio.checked && radio.value === 'yes');
+    additionalSetCountGroup.style.display = shouldShow ? 'block' : 'none';
+}
+
+async function initializeShopData() {
+    const [products, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+        window.ShopData.getProducts(),
+        window.ShopData.getDiscounts(),
+        window.ShopData.getMarketing(),
+        window.ShopData.getSettings(),
+        window.ShopData.getAppCenter(),
+        window.ShopData.getDesigner()
+    ]);
+
+    renderShopProducts(products);
+    applySettings(settings);
+    applyAppCenter(appCenter);
+    applyDesigner(designer);
+    renderAnnouncement('homeAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
+    renderAnnouncement('shopAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
+    renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
+    renderDiscounts(discounts, appCenter.discountsEnabled);
+
+    window.ShopData.subscribe('products', renderShopProducts);
+    window.ShopData.subscribe('settings', applySettings);
+    window.ShopData.subscribe('designer', applyDesigner);
+    window.ShopData.subscribe('discounts', nextDiscounts => {
+        window.ShopData.getAppCenter().then(currentAppCenter => {
+            renderDiscounts(nextDiscounts, currentAppCenter.discountsEnabled);
+        });
+    });
+    window.ShopData.subscribe('marketing', nextMarketing => {
+        window.ShopData.getAppCenter().then(currentAppCenter => {
+            renderAnnouncement('homeAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
+            renderAnnouncement('shopAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
+            renderFeaturedBroadcast(nextMarketing, currentAppCenter.marketingEnabled);
+        });
+    });
+    window.ShopData.subscribe('appCenter', nextAppCenter => {
+        applyAppCenter(nextAppCenter);
+        window.ShopData.getMarketing().then(currentMarketing => {
+            renderAnnouncement('homeAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
+            renderAnnouncement('shopAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
+            renderFeaturedBroadcast(currentMarketing, nextAppCenter.marketingEnabled);
+        });
+        window.ShopData.getDiscounts().then(currentDiscounts => {
+            renderDiscounts(currentDiscounts, nextAppCenter.discountsEnabled);
+        });
+    });
+}
 
 if (channelSelector && channels.length) {
-    channelSelector.addEventListener('change', (e) => {
-        const selectedChannel = e.target.value;
+    channelSelector.addEventListener('change', event => {
+        const selectedChannel = event.target.value;
 
         channels.forEach(channel => {
             channel.classList.remove('active');
         });
 
         const targetChannel = document.getElementById(selectedChannel);
-        if (targetChannel) {
+        if (targetChannel && !targetChannel.classList.contains('app-hidden')) {
             targetChannel.classList.add('active');
+        } else {
+            document.getElementById('home')?.classList.add('active');
+            channelSelector.value = 'home';
         }
 
         playClickSound();
     });
 }
 
-// Form Submission
-const customOrderForm = document.getElementById('customOrderForm');
-const orderSuccess = document.getElementById('orderSuccess');
-
 if (customOrderForm) {
-    customOrderForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    customOrderForm.addEventListener('submit', async event => {
+        event.preventDefault();
 
         const formData = new FormData(customOrderForm);
-        const data = Object.fromEntries(formData);
+        const rawData = Object.fromEntries(formData);
+        const order = window.ShopData.normalizeOrders([{
+            ...rawData,
+            scents: formData.getAll('scent'),
+            glitter: formData.get('glitter') === 'yes',
+            glow: formData.get('glow') === 'yes',
+            status: 'Pending'
+        }])[0];
 
-        console.log('Custom Order Submitted:', data);
+        const existingOrders = await window.ShopData.getOrders();
+        window.ShopData.saveOrders([order, ...existingOrders]);
 
         customOrderForm.style.display = 'none';
         orderSuccess.classList.remove('hidden');
-
+        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${order.fullName || 'ghoul'}! Your custom order has been saved for the Sip of Ghoulaid shop.`;
         playClickSound();
 
         setTimeout(() => {
             customOrderForm.reset();
+            updateAdditionalSetVisibility();
             customOrderForm.style.display = 'block';
             orderSuccess.classList.add('hidden');
         }, 3000);
     });
 }
-
-// Power Button Functionality
-const powerBtn = document.getElementById('powerBtn');
-let isPoweredOn = true;
 
 if (powerBtn) {
     powerBtn.addEventListener('click', () => {
@@ -212,10 +402,6 @@ if (powerBtn) {
     });
 }
 
-// Volume Button Functionality
-const volumeBtn = document.getElementById('volumeBtn');
-let volumeLevel = 100;
-
 if (volumeBtn) {
     volumeBtn.addEventListener('click', () => {
         volumeLevel = (volumeLevel + 25) % 125;
@@ -240,67 +426,52 @@ if (volumeBtn) {
     });
 }
 
-// Smooth Scrolling for content area
-const contentArea = document.querySelector('.content-area');
-if (contentArea) {
-    contentArea.addEventListener('wheel', () => {
-        // Smooth scroll behavior
-    }, { passive: true });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-    if (channels.length) {
-        channels.forEach(channel => {
-            channel.classList.remove('active');
-        });
-    }
+    channels.forEach(channel => {
+        channel.classList.remove('active');
+    });
 
-    const homeChannel = document.getElementById('home');
-    if (homeChannel) {
-        homeChannel.classList.add('active');
-    }
-
+    document.getElementById('home')?.classList.add('active');
     if (channelSelector) {
         channelSelector.value = 'home';
     }
 
     bindClickSound();
     bindProductCardEffects();
-    await initializeProducts();
+    additionalSetRadios.forEach(radio => {
+        radio.addEventListener('change', updateAdditionalSetVisibility);
+    });
+    updateAdditionalSetVisibility();
+    await initializeShopData();
 });
 
-// Add keyboard navigation
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', event => {
     if (!channelSelector || !channels.length) {
         return;
     }
 
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        const options = Array.from(channelSelector.options);
-        const currentIndex = channelSelector.selectedIndex;
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        const options = Array.from(channelSelector.options).filter(option => !option.hidden);
+        const currentIndex = options.findIndex(option => option.value === channelSelector.value);
 
-        if (e.key === 'ArrowUp' && currentIndex > 0) {
-            channelSelector.selectedIndex = currentIndex - 1;
-        } else if (e.key === 'ArrowDown' && currentIndex < options.length - 1) {
-            channelSelector.selectedIndex = currentIndex + 1;
+        if (event.key === 'ArrowUp' && currentIndex > 0) {
+            channelSelector.value = options[currentIndex - 1].value;
+        } else if (event.key === 'ArrowDown' && currentIndex < options.length - 1) {
+            channelSelector.value = options[currentIndex + 1].value;
         }
 
         channelSelector.dispatchEvent(new Event('change'));
     }
 });
 
-// Mobile touch support for better interaction
-let touchStartX = 0;
-let touchEndX = 0;
-
 const contentScreenContent = document.querySelector('.screen-wrapper');
 if (contentScreenContent) {
-    contentScreenContent.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
+    contentScreenContent.addEventListener('touchstart', event => {
+        touchStartX = event.changedTouches[0].screenX;
     }, false);
 
-    contentScreenContent.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
+    contentScreenContent.addEventListener('touchend', event => {
+        touchEndX = event.changedTouches[0].screenX;
         handleSwipe();
     }, false);
 }
@@ -310,22 +481,21 @@ function handleSwipe() {
         return;
     }
 
+    const visibleOptions = Array.from(channelSelector.options).filter(option => !option.hidden);
+    const currentIndex = visibleOptions.findIndex(option => option.value === channelSelector.value);
     const swipeThreshold = 50;
     const diff = touchStartX - touchEndX;
 
     if (Math.abs(diff) > swipeThreshold) {
-        const options = Array.from(channelSelector.options);
-        const currentIndex = channelSelector.selectedIndex;
-
-        if (diff > 0 && currentIndex < options.length - 1) {
-            channelSelector.selectedIndex = currentIndex + 1;
+        if (diff > 0 && currentIndex < visibleOptions.length - 1) {
+            channelSelector.value = visibleOptions[currentIndex + 1].value;
         } else if (diff < 0 && currentIndex > 0) {
-            channelSelector.selectedIndex = currentIndex - 1;
+            channelSelector.value = visibleOptions[currentIndex - 1].value;
         }
 
         channelSelector.dispatchEvent(new Event('change'));
     }
 }
 
-console.log('%c📺 Welcome to Retro TV Shop! 📺', 'color: #00ff88; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #00ff88;');
-console.log('%cEnjoy your retro shopping experience! 🎨', 'color: #ff69b4; font-size: 14px;');
+console.log('%c📺 Welcome to Sip of Ghoulaid Shop! 📺', 'color: #00ff88; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #00ff88;');
+console.log('%cEnjoy your spooky shopping experience! 🎨', 'color: #ff69b4; font-size: 14px;');

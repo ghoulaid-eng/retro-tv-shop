@@ -1,5 +1,5 @@
-# retro-tv-shop
-A retro TV-themed e-commerce shop with pastel colors, static effects, and TV remote click sounds
+# Sip of Ghoulaid Shop
+A retro TV-themed Sip of Ghoulaid shop with pastel colors, static effects, and TV remote click sounds
 
 ## GitHub Pages
 

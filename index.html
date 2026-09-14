@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sip of Ghoulaid</title>
+    <title>Sip of Ghoulaid Shop</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
@@ -17,7 +17,7 @@
                 <div class="screen-wrapper">
                     <div class="screen-content" id="screenContent">
                         <!-- Static Effect -->
-                        <div class="static"></div>
+                        <div class="static" id="staticOverlay"></div>
                         
                         <!-- Navigation -->
                         <nav class="tv-nav">
@@ -34,8 +34,9 @@
                         <main class="content-area">
                             <!-- Home Channel -->
                             <section id="home" class="channel active">
-                                <h1 class="glitch" data-text="WELCOME CULT LEADERS AND GHOULAID DRINKERS">WELCOME CULT LEADERS AND GHOULAID DRINKERS</h1>
-                                <p class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
+                                <h1 id="homeHeadline" class="glitch" data-text="WELCOME CULT LEADERS AND GHOULAID DRINKERS">WELCOME CULT LEADERS AND GHOULAID DRINKERS</h1>
+                                <p id="homeTagline" class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
+                                <div id="homeAnnouncement" class="broadcast-banner hidden"></div>
                                 <div class="intro-text">
                                     <p>From hand-poured & hand-painted wax melts to custom creations designed from scratch, everything here is made with a little darkness, a lot of creativity, and just the right amount of chaos.</p>
                                     <p>Change the channel to have a look around.</p>
@@ -44,9 +45,12 @@
 
                             <!-- Shop Channel -->
                             <section id="shop" class="channel">
-                                <h1 class="channel-title">SHOP CHANNEL</h1>
-                                <div id="shopGrid" class="shop-grid" aria-live="polite"></div>
-                                <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
+                                <h1 id="shopChannelTitle" class="channel-title">SIP OF GHOULAID SHOP</h1>
+                                <div id="shopAnnouncement" class="broadcast-banner hidden"></div>
+                                <div id="shopFeaturedCard" class="featured-broadcast hidden"></div>
+                                <div id="shopDiscounts" class="discount-broadcast hidden"></div>
+                                <div id="shopGrid" class="shop-grid card-size-cozy" aria-live="polite"></div>
+                                <p id="shopNote" class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
                                 <p class="shop-admin-link"><a href="admin.html">🛠️ Open Product Admin Panel</a></p>
                             </section>
 
@@ -299,7 +303,7 @@
 
                                 <div id="orderSuccess" class="order-success hidden">
                                     <h2>✅ ORDER RECEIVED!</h2>
-                                    <p>Thank you! We'll contact you soon to confirm your custom order.</p>
+                                    <p id="orderSuccessMessage">Thank you! We'll contact you soon to confirm your custom order.</p>
                                 </div>
                             </section>
 
