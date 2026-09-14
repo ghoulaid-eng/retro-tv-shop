@@ -38,6 +38,7 @@ function createProductSummary(product) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const clickSound = document.getElementById('clickSound');
     const productForm = document.getElementById('productForm');
     const productIdInput = document.getElementById('productId');
     const productNameInput = document.getElementById('productName');
@@ -52,11 +53,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formTitle = document.getElementById('formTitle');
     const submitLabel = document.getElementById('submitLabel');
     const statusMessage = document.getElementById('statusMessage');
+    const productCountStat = document.getElementById('productCountStat');
+    const subcategoryCountStat = document.getElementById('subcategoryCountStat');
+    const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
+    const sectionPanels = Array.from(document.querySelectorAll('[data-section-panel]'));
+    const quickSectionButtons = Array.from(document.querySelectorAll('[data-open-section]'));
+    const newProductShortcut = document.getElementById('newProductShortcut');
 
     let products = [];
 
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioContext = AudioContextClass ? new AudioContextClass() : null;
+
+    function playClickSound() {
+        if (!audioContext) {
+            return;
+        }
+
+        try {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+
+            oscillator.frequency.setValueAtTime(800, now);
+            oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.1);
+        } catch (error) {
+            console.log('Audio context error:', error);
+        }
+    }
+
+    function bindClickSound(container = document) {
+        container.querySelectorAll('.click-item').forEach(item => {
+            if (item.dataset.clickSoundBound === 'true') {
+                return;
+            }
+
+            item.addEventListener('click', () => {
+                if (clickSound) {
+                    playClickSound();
+                }
+            });
+            item.dataset.clickSoundBound = 'true';
+        });
+    }
+
     function setStatus(message) {
         statusMessage.textContent = message;
+    }
+
+    function activateSection(sectionName) {
+        navButtons.forEach(button => {
+            const isActive = button.dataset.sectionTarget === sectionName;
+            button.classList.toggle('admin-nav-item-active', isActive);
+            button.setAttribute('aria-current', isActive ? 'page' : 'false');
+        });
+
+        sectionPanels.forEach(panel => {
+            panel.classList.toggle('hidden', panel.dataset.sectionPanel !== sectionName);
+        });
     }
 
     function resetForm() {
@@ -67,10 +129,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelEditButton.classList.add('hidden');
     }
 
+    function renderDashboardStats() {
+        const subcategoryCount = products.reduce((count, product) => count + product.subcategories.length, 0);
+        productCountStat.textContent = String(products.length);
+        subcategoryCountStat.textContent = String(subcategoryCount);
+    }
+
     function renderProducts(nextProducts) {
         products = nextProducts;
         productTableBody.replaceChildren();
         adminPreviewGrid.replaceChildren();
+        renderDashboardStats();
 
         emptyProductsState.classList.toggle('hidden', products.length > 0);
 
@@ -102,6 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 submitLabel.textContent = '💾 Update Product';
                 cancelEditButton.classList.remove('hidden');
                 setStatus(`Editing ${product.name}.`);
+                activateSection('products');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
             actionsCell.appendChild(editButton);
@@ -158,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         window.ProductStore.saveProducts(nextProducts);
         resetForm();
+        activateSection('products');
     });
 
     cancelEditButton.addEventListener('click', () => {
@@ -169,11 +240,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         await window.ProductStore.resetProducts();
         resetForm();
         setStatus('Default products restored from products.json.');
+        activateSection('products');
     });
+
+    navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            activateSection(button.dataset.sectionTarget);
+        });
+    });
+
+    quickSectionButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            activateSection(button.dataset.openSection);
+        });
+    });
+
+    if (newProductShortcut) {
+        newProductShortcut.addEventListener('click', () => {
+            resetForm();
+            activateSection('products');
+            productNameInput.focus();
+            setStatus('Ready to add a new product.');
+        });
+    }
 
     const initialProducts = await window.ProductStore.getProducts();
     renderProducts(initialProducts);
     window.ProductStore.subscribe(renderProducts);
     resetForm();
+    bindClickSound();
+    activateSection('dashboard');
     setStatus('Product admin panel ready.');
 });

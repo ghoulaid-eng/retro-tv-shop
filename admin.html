@@ -15,109 +15,211 @@
                     <div class="screen-content admin-screen">
                         <main class="content-area admin-content">
                             <section class="channel active admin-channel">
-                                <h1 class="channel-title">PRODUCT ADMIN PANEL</h1>
-                                <p class="channel-intro">Cue up products, tweak categories, and keep the spooky shelves synced.</p>
-                                <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
-
-                                <div class="admin-panel-card admin-nav-card">
-                                    <h2>Admin Console</h2>
-                                    <div class="admin-nav-grid" aria-label="Admin navigation">
-                                        <div class="admin-nav-item click-item">📊 Dashboard</div>
-                                        <div class="admin-nav-item click-item">📦 Orders</div>
-                                        <div class="admin-nav-item admin-nav-item-active click-item">🛍️ Products</div>
-                                        <div class="admin-nav-item click-item">🏷️ Discounts</div>
-                                        <div class="admin-nav-item click-item">📣 Marketing</div>
-                                        <div class="admin-nav-item click-item">🧩 App center</div>
-                                        <div class="admin-nav-item click-item">⚙️ Settings</div>
-                                        <div class="admin-nav-item click-item">🎨 Shop designer</div>
+                                <div class="admin-header">
+                                    <div>
+                                        <h1 class="channel-title">SIP OF GHOULAID ADMIN</h1>
+                                        <p class="channel-intro">A spooky control panel for products, shop setup, and future storefront tools.</p>
                                     </div>
+                                    <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
                                 </div>
 
-                                <div class="admin-section-grid">
-                                    <div class="admin-panel-card">
-                                        <h2>Dashboard</h2>
-                                        <p>Monitor spooky shop activity, recent changes, and quick shortcuts from one haunted control room.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>Orders</h2>
-                                        <p>Track incoming orders, fulfillment progress, and custom requests when ordering tools are added.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>Discounts</h2>
-                                        <p>Keep promo codes, bundles, and limited-time creepy deals organized in one place.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>Marketing</h2>
-                                        <p>Plan announcements, featured launches, and spooky campaigns for new releases.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>App center</h2>
-                                        <p>Reserve space for future integrations, add-ons, and storefront tools.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>Settings</h2>
-                                        <p>Manage store preferences, display rules, and other haunted control switches.</p>
-                                    </div>
-                                    <div class="admin-panel-card">
-                                        <h2>Shop designer</h2>
-                                        <p>Use this area for future theme tweaks, featured layouts, and channel styling ideas.</p>
-                                    </div>
-                                </div>
+                                <div class="admin-shell">
+                                    <aside class="admin-sidebar admin-panel-card">
+                                        <h2>Admin Console</h2>
+                                        <nav class="admin-sidebar-nav" aria-label="Admin navigation">
+                                            <button type="button" class="admin-nav-item admin-nav-item-active click-item" data-section-target="dashboard">📊 Dashboard</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="orders">📦 Orders</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="products">🛍️ Products</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="discounts">🏷️ Discounts</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="marketing">📣 Marketing</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="app-center">🧩 App center</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="settings">⚙️ Settings</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="shop-designer">🎨 Shop designer</button>
+                                        </nav>
+                                    </aside>
 
-                                <div class="admin-grid">
-                                    <div class="admin-panel-card">
-                                        <h2 id="formTitle">Add New Product</h2>
-                                        <form id="productForm" class="custom-order-form admin-form">
-                                            <input type="hidden" id="productId" name="productId">
-
-                                            <div class="form-group">
-                                                <label for="productName">Product Name</label>
-                                                <input type="text" id="productName" name="productName" placeholder="Extra Large Wax Melts" required>
+                                    <div class="admin-main">
+                                        <section class="admin-panel-card admin-section-panel" data-section-panel="dashboard">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Overview</p>
+                                                    <h2>Dashboard</h2>
+                                                </div>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="productEmoji">Product Emoji/Icon</label>
-                                                <input type="text" id="productEmoji" name="productEmoji" placeholder="🕯️" maxlength="8" required>
+                                            <div class="admin-stat-grid">
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Products</span>
+                                                    <strong id="productCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Subcategories</span>
+                                                    <strong id="subcategoryCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Main focus</span>
+                                                    <strong class="admin-stat-value admin-stat-text">Products</strong>
+                                                </div>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="productDescription">Description</label>
-                                                <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
+                                            <div class="admin-section-grid">
+                                                <div class="admin-info-card">
+                                                    <h3>Quick actions</h3>
+                                                    <div class="admin-quick-actions">
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="products">Open products</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="shop-designer">Open shop designer</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="settings">Open settings</button>
+                                                    </div>
+                                                </div>
+                                                <div class="admin-info-card">
+                                                    <h3>Shop status</h3>
+                                                    <p>Your product catalog saves in localStorage and updates the storefront preview instantly.</p>
+                                                </div>
+                                                <div class="admin-info-card">
+                                                    <h3>What’s next</h3>
+                                                    <p>Use the sidebar to move between sections instead of scrolling through one long admin page.</p>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="orders">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Sales</p>
+                                                    <h2>Orders</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>This area is ready for future order tracking, custom order intake, and fulfillment workflows.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="products">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Catalog</p>
+                                                    <h2>Products</h2>
+                                                </div>
+                                                <button type="button" class="table-action-btn click-item" id="newProductShortcut">➕ New product</button>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="productSubcategories">Subcategories (optional)</label>
-                                                <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                            <div class="admin-grid">
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3 id="formTitle">Add New Product</h3>
+                                                    <form id="productForm" class="custom-order-form admin-form">
+                                                        <input type="hidden" id="productId" name="productId">
+
+                                                        <div class="form-group">
+                                                            <label for="productName">Product Name</label>
+                                                            <input type="text" id="productName" name="productName" placeholder="Extra Large Wax Melts" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productEmoji">Product Emoji/Icon</label>
+                                                            <input type="text" id="productEmoji" name="productEmoji" placeholder="🕯️" maxlength="8" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productDescription">Description</label>
+                                                            <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productSubcategories">Subcategories (optional)</label>
+                                                            <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                                        </div>
+
+                                                        <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
+                                                        <button type="button" class="reset-btn click-item hidden" id="cancelEdit">❌ Cancel Edit</button>
+                                                        <button type="button" class="reset-btn click-item" id="resetProducts">🔄 Restore Default Products</button>
+                                                    </form>
+                                                    <p id="statusMessage" class="admin-status" aria-live="polite"></p>
+                                                </div>
+
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Current Product Lineup</h3>
+                                                    <div class="admin-table-wrap">
+                                                        <table class="admin-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Product</th>
+                                                                    <th>Subcategories</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="productTableBody"></tbody>
+                                                        </table>
+                                                        <p id="emptyProductsState" class="empty-products-message hidden">No products saved yet.</p>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
-                                            <button type="button" class="reset-btn click-item hidden" id="cancelEdit">❌ Cancel Edit</button>
-                                            <button type="button" class="reset-btn click-item" id="resetProducts">🔄 Restore Default Products</button>
-                                        </form>
-                                        <p id="statusMessage" class="admin-status" aria-live="polite"></p>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <h3>Live Shop Preview</h3>
+                                                <div id="adminPreviewGrid" class="shop-grid" aria-live="polite"></div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="discounts">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Promotions</p>
+                                                    <h2>Discounts</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>Use this space for future coupon codes, spooky bundles, and launch specials.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="marketing">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Reach</p>
+                                                    <h2>Marketing</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>Plan product drops, featured items, and announcements for your ghouls here later.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="app-center">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Tools</p>
+                                                    <h2>App center</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>This slot is reserved for future add-ons and integrations.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="settings">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Store controls</p>
+                                                    <h2>Settings</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>Keep room here for preferences, shop rules, and storefront behavior settings.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="shop-designer">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Presentation</p>
+                                                    <h2>Shop designer</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-info-card">
+                                                <p>Use this area for future layout controls, featured collections, and theme tweaks.</p>
+                                            </div>
+                                        </section>
                                     </div>
-
-                                    <div class="admin-panel-card">
-                                        <h2>Current Product Lineup</h2>
-                                        <div class="admin-table-wrap">
-                                            <table class="admin-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Product</th>
-                                                        <th>Subcategories</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="productTableBody"></tbody>
-                                            </table>
-                                            <p id="emptyProductsState" class="empty-products-message hidden">No products saved yet.</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="admin-panel-card">
-                                    <h2>Live Shop Preview</h2>
-                                    <div id="adminPreviewGrid" class="shop-grid" aria-live="polite"></div>
                                 </div>
                             </section>
                         </main>
