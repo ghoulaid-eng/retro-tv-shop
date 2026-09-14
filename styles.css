@@ -701,6 +701,13 @@ input[type="checkbox"] {
     margin-bottom: 20px;
 }
 
+.admin-section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
 .admin-panel-card {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(221, 160, 221, 0.08));
     border: 2px solid #00ff88;
@@ -719,6 +726,41 @@ input[type="checkbox"] {
 .admin-form {
     max-width: none;
     margin: 0;
+}
+
+.admin-nav-card {
+    margin-bottom: 20px;
+}
+
+.admin-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.admin-nav-item {
+    padding: 14px 16px;
+    border: 2px solid #00ff88;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #00ff88;
+    text-align: center;
+    font-size: 16px;
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+    box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.08);
+    transition: all 0.3s ease;
+}
+
+.admin-nav-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 14px rgba(0, 255, 136, 0.35);
+}
+
+.admin-nav-item-active {
+    border-color: #ff69b4;
+    color: #ff69b4;
+    text-shadow: 0 0 8px rgba(255, 105, 180, 0.45);
+    box-shadow: 0 0 14px rgba(255, 105, 180, 0.18), inset 0 0 10px rgba(255, 105, 180, 0.08);
 }
 
 .admin-status {
