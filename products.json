@@ -1,0 +1,47 @@
+[
+    {
+        "id": "extra-large-wax-melts",
+        "name": "Extra Large Wax Melts",
+        "emoji": "🕯️",
+        "description": "Hand-poured & hand-painted masterpieces. Pick your scent family!",
+        "subcategories": []
+    },
+    {
+        "id": "full-size-wax-melts",
+        "name": "Full Size Wax Melts",
+        "emoji": "🔥",
+        "description": "Spooky scents to haunt your space",
+        "subcategories": []
+    },
+    {
+        "id": "mini-wax-melts",
+        "name": "Mini Wax Melts",
+        "emoji": "✨",
+        "description": "Small but mighty creepy-cute designs",
+        "subcategories": []
+    },
+    {
+        "id": "book-accessories",
+        "name": "Book Accessories",
+        "emoji": "📚",
+        "description": "Smut Exclusives & Feeling Thirsty? collections",
+        "subcategories": [
+            "Smut Exclusives",
+            "Feeling Thirsty?"
+        ]
+    },
+    {
+        "id": "headset-holder",
+        "name": "Headset Holder",
+        "emoji": "🎧",
+        "description": "3D Printed custom designs",
+        "subcategories": []
+    },
+    {
+        "id": "gift-boxes",
+        "name": "Gift Boxes",
+        "emoji": "🎁",
+        "description": "Curated spooky collections",
+        "subcategories": []
+    }
+]

@@ -45,42 +45,9 @@
                             <!-- Shop Channel -->
                             <section id="shop" class="channel">
                                 <h1 class="channel-title">SHOP CHANNEL</h1>
-                                <div class="shop-grid">
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🕯️</div>
-                                        <h3>Extra Large Wax Melts</h3>
-                                        <p class="product-desc">Hand-poured & hand-painted masterpieces. Pick your scent family!</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🔥</div>
-                                        <h3>Full Size Wax Melts</h3>
-                                        <p class="product-desc">Spooky scents to haunt your space</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">✨</div>
-                                        <h3>Mini Wax Melts</h3>
-                                        <p class="product-desc">Small but mighty creepy-cute designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">📚</div>
-                                        <h3>Book Accessories</h3>
-                                        <div class="subcategories">
-                                            <p class="subcategory">🔥 Smut Exclusives</p>
-                                            <p class="subcategory">🍷 Feeling Thirsty?</p>
-                                        </div>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎧</div>
-                                        <h3>Headset Holder</h3>
-                                        <p class="product-desc">3D Printed custom designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎁</div>
-                                        <h3>Gift Boxes</h3>
-                                        <p class="product-desc">Curated spooky collections</p>
-                                    </div>
-                                </div>
+                                <div id="shopGrid" class="shop-grid" aria-live="polite"></div>
                                 <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
+                                <p class="shop-admin-link"><a href="admin.html">🛠️ Open Product Admin Panel</a></p>
                             </section>
 
                             <!-- Summon Us Channel -->
@@ -381,6 +348,7 @@
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
+    <script src="products.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

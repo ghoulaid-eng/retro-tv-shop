@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sip of Ghoulaid Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="tv-container admin-page">
+        <div class="tv-frame">
+            <div class="tv-bezel">
+                <div class="screen-wrapper">
+                    <div class="screen-content admin-screen">
+                        <main class="content-area admin-content">
+                            <section class="channel active admin-channel">
+                                <h1 class="channel-title">PRODUCT ADMIN PANEL</h1>
+                                <p class="channel-intro">Cue up products, tweak categories, and keep the spooky shelves synced.</p>
+                                <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
+
+                                <div class="admin-grid">
+                                    <div class="admin-panel-card">
+                                        <h2 id="formTitle">Add New Product</h2>
+                                        <form id="productForm" class="custom-order-form admin-form">
+                                            <input type="hidden" id="productId" name="productId">
+
+                                            <div class="form-group">
+                                                <label for="productName">Product Name</label>
+                                                <input type="text" id="productName" name="productName" placeholder="Extra Large Wax Melts" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="productEmoji">Product Emoji/Icon</label>
+                                                <input type="text" id="productEmoji" name="productEmoji" placeholder="🕯️" maxlength="8" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="productDescription">Description</label>
+                                                <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="productSubcategories">Subcategories (optional)</label>
+                                                <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                            </div>
+
+                                            <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
+                                            <button type="button" class="reset-btn click-item hidden" id="cancelEdit">❌ Cancel Edit</button>
+                                            <button type="button" class="reset-btn click-item" id="resetProducts">🔄 Restore Default Products</button>
+                                        </form>
+                                        <p id="statusMessage" class="admin-status" aria-live="polite"></p>
+                                    </div>
+
+                                    <div class="admin-panel-card">
+                                        <h2>Current Product Lineup</h2>
+                                        <div class="admin-table-wrap">
+                                            <table class="admin-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Subcategories</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="productTableBody"></tbody>
+                                            </table>
+                                            <p id="emptyProductsState" class="empty-products-message hidden">No products saved yet.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="admin-panel-card">
+                                    <h2>Live Shop Preview</h2>
+                                    <div id="adminPreviewGrid" class="shop-grid" aria-live="polite"></div>
+                                </div>
+                            </section>
+                        </main>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="clickSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+    </audio>
+
+    <script src="products.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
