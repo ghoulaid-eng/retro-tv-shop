@@ -182,6 +182,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         orderCountStat.textContent = String(orders.length);
     }
 
+    async function saveProductsWithLatest(applyChange) {
+        const latestProducts = await window.ShopData.getProducts();
+        const nextProducts = applyChange(latestProducts);
+        window.ShopData.saveProducts(nextProducts);
+    }
+
     function renderProducts(nextProducts) {
         products = nextProducts;
         productTableBody.replaceChildren();
@@ -225,8 +231,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
             deleteButton.textContent = '🗑️ Delete';
-            deleteButton.addEventListener('click', () => {
-                window.ShopData.saveProducts(products.filter(item => item.id !== product.id));
+            deleteButton.addEventListener('click', async () => {
+                await saveProductsWithLatest(currentProducts => currentProducts.filter(item => item.id !== product.id));
                 resetProductForm();
                 setStatus(statusMessage, `${product.name} removed from the lineup.`);
             });
@@ -389,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyDesignerPreview();
     }
 
-    productForm.addEventListener('submit', event => {
+    productForm.addEventListener('submit', async event => {
         event.preventDefault();
 
         const normalizedProduct = window.ShopData.normalizeProducts([{
@@ -405,18 +411,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const existingIndex = products.findIndex(item => item.id === normalizedProduct.id);
-        const nextProducts = [...products];
+        await saveProductsWithLatest(currentProducts => {
+            const existingIndex = currentProducts.findIndex(item => item.id === normalizedProduct.id);
+            const nextProducts = [...currentProducts];
 
-        if (existingIndex >= 0) {
-            nextProducts[existingIndex] = normalizedProduct;
-            setStatus(statusMessage, `${normalizedProduct.name} updated.`);
-        } else {
-            nextProducts.push(normalizedProduct);
-            setStatus(statusMessage, `${normalizedProduct.name} added to the shop.`);
-        }
+            if (existingIndex >= 0) {
+                nextProducts[existingIndex] = normalizedProduct;
+                setStatus(statusMessage, `${normalizedProduct.name} updated.`);
+            } else {
+                nextProducts.push(normalizedProduct);
+                setStatus(statusMessage, `${normalizedProduct.name} added to the shop.`);
+            }
 
-        window.ShopData.saveProducts(nextProducts);
+            return nextProducts;
+        });
         resetProductForm();
         activateSection('products');
     });
@@ -509,50 +517,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    [products, orders, discounts, marketing, settings, appCenter, designer] = await Promise.all([
-        window.ShopData.getProducts(),
-        window.ShopData.getOrders(),
-        window.ShopData.getDiscounts(),
-        window.ShopData.getMarketing(),
-        window.ShopData.getSettings(),
-        window.ShopData.getAppCenter(),
-        window.ShopData.getDesigner()
-    ]);
+    try {
+        [products, orders, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+            window.ShopData.getProducts(),
+            window.ShopData.getOrders(),
+            window.ShopData.getDiscounts(),
+            window.ShopData.getMarketing(),
+            window.ShopData.getSettings(),
+            window.ShopData.getAppCenter(),
+            window.ShopData.getDesigner()
+        ]);
 
-    renderProducts(products);
-    renderOrders(orders);
-    renderDiscounts(discounts);
-    loadMarketingForm();
-    loadSettingsForm();
-    loadAppCenterForm();
-    loadDesignerForm();
-    resetProductForm();
-    bindClickSound();
-    activateSection('dashboard');
-    setStatus(statusMessage, 'Product admin panel ready.');
-    setStatus(discountStatus, 'Create and manage promo codes here.');
-    setStatus(marketingStatus, 'Broadcast shop announcements here.');
-    setStatus(settingsStatus, 'Update your public shop text here.');
-    setStatus(appCenterStatus, 'Toggle storefront features here.');
-    setStatus(designerStatus, 'Adjust the public shop look here.');
-
-    window.ShopData.subscribe('products', renderProducts);
-    window.ShopData.subscribe('orders', renderOrders);
-    window.ShopData.subscribe('discounts', renderDiscounts);
-    window.ShopData.subscribe('marketing', nextMarketing => {
-        marketing = nextMarketing;
+        renderProducts(products);
+        renderOrders(orders);
+        renderDiscounts(discounts);
         loadMarketingForm();
-    });
-    window.ShopData.subscribe('settings', nextSettings => {
-        settings = nextSettings;
         loadSettingsForm();
-    });
-    window.ShopData.subscribe('appCenter', nextAppCenter => {
-        appCenter = nextAppCenter;
         loadAppCenterForm();
-    });
-    window.ShopData.subscribe('designer', nextDesigner => {
-        designer = nextDesigner;
         loadDesignerForm();
-    });
+        resetProductForm();
+        bindClickSound();
+        activateSection('dashboard');
+        setStatus(statusMessage, 'Product admin panel ready.');
+        setStatus(discountStatus, 'Create and manage promo codes here.');
+        setStatus(marketingStatus, 'Broadcast shop announcements here.');
+        setStatus(settingsStatus, 'Update your public shop text here.');
+        setStatus(appCenterStatus, 'Toggle storefront features here.');
+        setStatus(designerStatus, 'Adjust the public shop look here.');
+
+        window.ShopData.subscribe('products', renderProducts);
+        window.ShopData.subscribe('orders', renderOrders);
+        window.ShopData.subscribe('discounts', renderDiscounts);
+        window.ShopData.subscribe('marketing', nextMarketing => {
+            marketing = nextMarketing;
+            loadMarketingForm();
+        });
+        window.ShopData.subscribe('settings', nextSettings => {
+            settings = nextSettings;
+            loadSettingsForm();
+        });
+        window.ShopData.subscribe('appCenter', nextAppCenter => {
+            appCenter = nextAppCenter;
+            loadAppCenterForm();
+        });
+        window.ShopData.subscribe('designer', nextDesigner => {
+            designer = nextDesigner;
+            loadDesignerForm();
+        });
+    } catch (error) {
+        console.error('Unable to initialize product admin panel.', error);
+        activateSection('products');
+        setStatus(statusMessage, `Unable to load product admin data: ${error.message}`);
+    }
 });
