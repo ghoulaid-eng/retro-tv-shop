@@ -1,5 +1,6 @@
 (function () {
     const DEFAULT_PRODUCTS_PATH = 'products.json';
+    let idCounter = 0;
     const DEFAULT_PAYMENT_METHODS = [
         {
             id: 'paypal',
@@ -113,7 +114,15 @@
     };
 
     function createId(prefix = 'item') {
-        return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        idCounter += 1;
+
+        if (window.crypto?.getRandomValues) {
+            const values = new Uint32Array(2);
+            window.crypto.getRandomValues(values);
+            return `${prefix}-${Date.now().toString(36)}-${values[0].toString(36)}${values[1].toString(36)}`;
+        }
+
+        return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}-${Math.floor(performance.now()).toString(36)}`;
     }
 
     function normalizeText(value, fallback = '') {
