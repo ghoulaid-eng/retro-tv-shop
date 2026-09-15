@@ -4,6 +4,32 @@
     box-sizing: border-box;
 }
 
+@keyframes antennaAdjust {
+    0%, 14% {
+        transform: translateY(0);
+    }
+    18% {
+        transform: translateY(calc(var(--media-shift, 0%) * 0.25)) translateX(-1px);
+    }
+    22%, 100% {
+        transform: translateY(var(--media-shift, 0%));
+    }
+}
+
+@keyframes staticBuzz {
+    0% { opacity: 0.12; transform: translateY(0); }
+    50% { opacity: 0.24; transform: translateY(-2px); }
+    100% { opacity: 0.14; transform: translateY(1px); }
+}
+
+@keyframes signalJitter {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, 1px); }
+    50% { transform: translate(1px, -1px); }
+    75% { transform: translate(-1px, -1px); }
+    100% { transform: translate(0, 0); }
+}
+
 body {
     font-family: 'VT323', monospace;
     background: #1a1a2e;
@@ -388,6 +414,113 @@ p, label {
     margin-top: 10px;
 }
 
+.price-stack,
+.product-price-block {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.price-original {
+    color: rgba(221, 160, 221, 0.85);
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+}
+
+.price-sale {
+    color: #ff69b4;
+    text-shadow: 0 0 8px rgba(255, 105, 180, 0.6);
+}
+
+.product-meta-text {
+    margin-top: 8px;
+    color: #00ff88;
+}
+
+.product-media-viewport {
+    position: relative;
+    height: 180px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 2px solid rgba(0, 255, 136, 0.65);
+    background: #050510;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.product-media-track {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    animation-name: antennaAdjust;
+    animation-iteration-count: infinite;
+}
+
+.product-media-track-static {
+    animation: none;
+}
+
+.product-media-frame {
+    min-height: 100%;
+    height: 100%;
+    padding: 8px;
+}
+
+.product-media-item {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+    filter: saturate(0.92) contrast(1.05);
+}
+
+.product-media-static {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 255, 255, 0.06) 1px,
+            transparent 1px,
+            transparent 3px
+        );
+    opacity: 0.18;
+    mix-blend-mode: screen;
+    animation: staticBuzz 0.18s infinite;
+}
+
+.retro-signal-boost {
+    animation: signalJitter 0.18s infinite;
+}
+
+.retro-static-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 180px;
+    font-size: 56px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 255, 136, 0.12));
+}
+
+.product-variant-group {
+    margin-top: 14px;
+    text-align: left;
+}
+
+.product-variant-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.product-variant-select {
+    width: 100%;
+}
+
 /* Products List */
 .products-list {
     display: grid;
@@ -467,6 +600,7 @@ input[type="text"],
 input[type="email"],
 input[type="tel"],
 input[type="number"],
+input[type="file"],
 input[type="date"],
 textarea,
 select {
@@ -486,6 +620,7 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="tel"]:focus,
 input[type="number"]:focus,
+input[type="file"]:focus,
 input[type="date"]:focus,
 textarea:focus,
 select:focus {
@@ -639,6 +774,20 @@ input[type="checkbox"] {
 
 .saved-item-card p {
     margin-top: 8px;
+}
+
+.cart-totals-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.18);
+}
+
+.cart-totals-row-total {
+    border-bottom: 0;
+    padding-top: 14px;
+    color: #00ff88;
 }
 
 /* Buttons */
@@ -970,6 +1119,33 @@ input[type="checkbox"] {
     gap: 12px;
 }
 
+.admin-helper-text {
+    color: #00ff88;
+    font-size: 13px;
+}
+
+.admin-media-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.admin-media-preview-card {
+    padding: 10px;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.admin-media-preview-item {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #000;
+}
+
 .admin-toggle-list {
     display: grid;
     gap: 12px;
@@ -1159,6 +1335,10 @@ input[type="checkbox"] {
 
     .account-banner {
         align-items: flex-start;
+    }
+
+    .product-media-viewport {
+        height: 160px;
     }
 
     h1 {

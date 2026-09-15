@@ -44,6 +44,11 @@ const cartSummaryMessage = document.getElementById('cartSummaryMessage');
 const cartStatusMessage = document.getElementById('cartStatusMessage');
 const moveWishlistToCartButton = document.getElementById('moveWishlistToCartButton');
 const clearCartButton = document.getElementById('clearCartButton');
+const cartTotalsPanel = document.getElementById('cartTotalsPanel');
+const cartSubtotalValue = document.getElementById('cartSubtotalValue');
+const cartTaxValue = document.getElementById('cartTaxValue');
+const cartShippingValue = document.getElementById('cartShippingValue');
+const cartTotalValue = document.getElementById('cartTotalValue');
 const fullNameInput = document.getElementById('fullName');
 const usernameInput = document.getElementById('username');
 const contactMethodInput = document.getElementById('contactMethod');
@@ -59,6 +64,7 @@ let savedUsers = [];
 let currentUserState = {};
 let wishlists = [];
 let carts = [];
+let currentSettings = {};
 
 function playClickSound() {
     if (!audioContext) {
@@ -97,18 +103,18 @@ function bindClickSound(container = document) {
 }
 
 function bindProductCardEffects(container = document) {
-    container.querySelectorAll('.product-card, .product-detail').forEach(card => {
-        if (card.dataset.cardEffectsBound === 'true') {
+    container.querySelectorAll('.product-media-viewport').forEach(viewport => {
+        if (viewport.dataset.retroSignalBound === 'true') {
             return;
         }
 
-        card.addEventListener('mousemove', event => {
-            const rect = card.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            card.style.backgroundPosition = `${x}px ${y}px`;
+        viewport.addEventListener('mouseenter', () => {
+            viewport.classList.add('retro-signal-boost');
         });
-        card.dataset.cardEffectsBound = 'true';
+        viewport.addEventListener('mouseleave', () => {
+            viewport.classList.remove('retro-signal-boost');
+        });
+        viewport.dataset.retroSignalBound = 'true';
     });
 }
 
@@ -116,6 +122,14 @@ function setStatus(target, message) {
     if (target) {
         target.textContent = message;
     }
+}
+
+function formatMoney(amount) {
+    return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+function getEffectivePrice(product) {
+    return product.onSale && product.salePrice > 0 ? product.salePrice : product.listingPrice;
 }
 
 function getActiveUser() {
@@ -142,13 +156,42 @@ function getCartEntry(userId) {
     return carts.find(entry => entry.userId === userId) || { userId, items: [] };
 }
 
+function getCartItemVariantLabel(item) {
+    return item.variant || 'Standard';
+}
+
+function getCartItemKey(productId, variant = '') {
+    return `${productId}::${variant}`;
+}
+
 function getCartQuantity(productId) {
     const activeUser = getActiveUser();
     if (!activeUser) {
         return 0;
     }
 
-    return getCartEntry(activeUser.id).items.find(item => item.productId === productId)?.quantity || 0;
+    return getCartEntry(activeUser.id).items
+        .filter(item => item.productId === productId)
+        .reduce((total, item) => total + item.quantity, 0);
+}
+
+function getDefaultVariant(product) {
+    return product.variants[0] || '';
+}
+
+function getSelectedVariant(select, product) {
+    if (!select) {
+        return '';
+    }
+
+    return select.value || getDefaultVariant(product);
+}
+
+function getProductMedia(product) {
+    return [
+        ...product.images.map(src => ({ type: 'image', src })),
+        ...product.videos.map(src => ({ type: 'video', src }))
+    ];
 }
 
 function setActiveChannel(channelName) {
@@ -202,14 +245,140 @@ function ensureActiveUser(message) {
     return null;
 }
 
+function createPriceDisplay(product) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'product-price-block';
+
+    if (product.onSale && product.salePrice > 0) {
+        const original = document.createElement('span');
+        original.className = 'price price-original';
+        original.textContent = formatMoney(product.listingPrice);
+        wrapper.appendChild(original);
+
+        const sale = document.createElement('span');
+        sale.className = 'price price-sale';
+        sale.textContent = formatMoney(product.salePrice);
+        wrapper.appendChild(sale);
+    } else {
+        const listing = document.createElement('span');
+        listing.className = 'price';
+        listing.textContent = formatMoney(product.listingPrice);
+        wrapper.appendChild(listing);
+    }
+
+    return wrapper;
+}
+
+function createProductMedia(product) {
+    const media = getProductMedia(product);
+    if (!media.length) {
+        const fallback = document.createElement('div');
+        fallback.className = 'product-image retro-static-placeholder';
+        fallback.textContent = product.emoji || '🛍️';
+        return fallback;
+    }
+
+    const viewport = document.createElement('div');
+    viewport.className = 'product-media-viewport';
+    viewport.style.setProperty('--media-shift', `${Math.max(media.length - 1, 0) * -100}%`);
+
+    const track = document.createElement('div');
+    track.className = 'product-media-track';
+
+    if (media.length > 1) {
+        track.style.animationDuration = `${Math.max(media.length * 2.5, 5)}s`;
+        track.style.animationTimingFunction = `steps(${media.length - 1}, end)`;
+    } else {
+        track.classList.add('product-media-track-static');
+    }
+
+    media.forEach((entry, index) => {
+        const frame = document.createElement('div');
+        frame.className = 'product-media-frame';
+
+        if (entry.type === 'image') {
+            const image = document.createElement('img');
+            image.src = entry.src;
+            image.alt = `${product.name} preview ${index + 1}`;
+            image.className = 'product-media-item';
+            frame.appendChild(image);
+        } else {
+            const video = document.createElement('video');
+            video.src = entry.src;
+            video.className = 'product-media-item';
+            video.muted = true;
+            video.loop = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.preload = 'metadata';
+            video.controls = true;
+            frame.appendChild(video);
+        }
+
+        track.appendChild(frame);
+    });
+
+    const staticLayer = document.createElement('div');
+    staticLayer.className = 'product-media-static';
+
+    viewport.appendChild(track);
+    viewport.appendChild(staticLayer);
+    return viewport;
+}
+
+function calculateCartTotals(cart) {
+    const baseShipping = Number(currentSettings.shippingBaseRate || 0);
+    const salesTaxRate = Number(currentSettings.salesTaxRate || 0);
+
+    const summary = cart.items.reduce((totals, item) => {
+        const product = findProduct(item.productId);
+        if (!product) {
+            return totals;
+        }
+
+        const unitPrice = getEffectivePrice(product);
+        totals.subtotal += unitPrice * item.quantity;
+        totals.shipping += Number(product.shippingPrice || 0) * item.quantity;
+        totals.items += item.quantity;
+        return totals;
+    }, { subtotal: 0, shipping: 0, items: 0 });
+
+    if (summary.items > 0) {
+        summary.shipping += baseShipping;
+    }
+
+    summary.tax = summary.subtotal * (salesTaxRate / 100);
+    summary.total = summary.subtotal + summary.shipping + summary.tax;
+    return summary;
+}
+
+function renderCartTotals(cart) {
+    if (!cartTotalsPanel || !cartSubtotalValue || !cartTaxValue || !cartShippingValue || !cartTotalValue) {
+        return;
+    }
+
+    if (!cart.items.length) {
+        cartTotalsPanel.classList.add('hidden');
+        cartSubtotalValue.textContent = '$0.00';
+        cartTaxValue.textContent = '$0.00';
+        cartShippingValue.textContent = '$0.00';
+        cartTotalValue.textContent = '$0.00';
+        return;
+    }
+
+    const totals = calculateCartTotals(cart);
+    cartTotalsPanel.classList.remove('hidden');
+    cartSubtotalValue.textContent = formatMoney(totals.subtotal);
+    cartTaxValue.textContent = formatMoney(totals.tax);
+    cartShippingValue.textContent = formatMoney(totals.shipping);
+    cartTotalValue.textContent = formatMoney(totals.total);
+}
+
 function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card click-item';
 
-    const productImage = document.createElement('div');
-    productImage.className = 'product-image';
-    productImage.textContent = product.emoji || '🛍️';
-    card.appendChild(productImage);
+    card.appendChild(createProductMedia(product));
 
     const title = document.createElement('h3');
     title.textContent = product.name;
@@ -221,6 +390,13 @@ function createProductCard(product) {
         description.textContent = product.description;
         card.appendChild(description);
     }
+
+    card.appendChild(createPriceDisplay(product));
+
+    const shippingText = document.createElement('p');
+    shippingText.className = 'product-meta-text';
+    shippingText.textContent = `Shipping: ${formatMoney(product.shippingPrice)}`;
+    card.appendChild(shippingText);
 
     if (product.subcategories.length) {
         const subcategories = document.createElement('div');
@@ -234,6 +410,30 @@ function createProductCard(product) {
         });
 
         card.appendChild(subcategories);
+    }
+
+    let variantSelect = null;
+    if (product.variants.length) {
+        const variantGroup = document.createElement('div');
+        variantGroup.className = 'product-variant-group';
+
+        const variantLabel = document.createElement('label');
+        variantLabel.className = 'product-variant-label';
+        variantLabel.textContent = 'Variant';
+        variantGroup.appendChild(variantLabel);
+
+        variantSelect = document.createElement('select');
+        variantSelect.className = 'product-variant-select';
+
+        product.variants.forEach(variant => {
+            const option = document.createElement('option');
+            option.value = variant;
+            option.textContent = variant;
+            variantSelect.appendChild(option);
+        });
+
+        variantGroup.appendChild(variantSelect);
+        card.appendChild(variantGroup);
     }
 
     const actions = document.createElement('div');
@@ -288,10 +488,11 @@ function createProductCard(product) {
             return;
         }
 
+        const variant = getSelectedVariant(variantSelect, product);
         await saveCartsWithLatest(currentCarts => {
             const existingEntry = currentCarts.find(entry => entry.userId === user.id);
             const items = [...(existingEntry?.items || [])];
-            const existingItemIndex = items.findIndex(item => item.productId === product.id);
+            const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant));
 
             if (existingItemIndex >= 0) {
                 items[existingItemIndex] = {
@@ -299,7 +500,7 @@ function createProductCard(product) {
                     quantity: items[existingItemIndex].quantity + 1
                 };
             } else {
-                items.push({ productId: product.id, quantity: 1 });
+                items.push({ productId: product.id, variant, quantity: 1 });
             }
 
             const nextEntry = {
@@ -492,6 +693,7 @@ function renderPaymentMethods(paymentMethods) {
 }
 
 function applySettings(settings) {
+    currentSettings = settings;
     document.title = settings.shopName;
 
     const homeHeadline = document.getElementById('homeHeadline');
@@ -514,6 +716,8 @@ function applySettings(settings) {
     if (shopNote) {
         shopNote.textContent = settings.shopNote;
     }
+
+    renderCart();
 }
 
 function applyAppCenter(appCenter) {
@@ -668,10 +872,20 @@ function renderWishlist() {
         title.textContent = `${product.emoji || '🛍️'} ${product.name}`;
         item.appendChild(title);
 
+        const price = document.createElement('p');
+        price.textContent = `Current price: ${formatMoney(getEffectivePrice(product))}`;
+        item.appendChild(price);
+
         if (product.description) {
             const description = document.createElement('p');
             description.textContent = product.description;
             item.appendChild(description);
+        }
+
+        if (product.variants.length) {
+            const variantHint = document.createElement('p');
+            variantHint.textContent = `Variants: ${product.variants.join(', ')}`;
+            item.appendChild(variantHint);
         }
 
         const actions = document.createElement('div');
@@ -682,10 +896,11 @@ function renderWishlist() {
         moveButton.className = 'table-action-btn click-item';
         moveButton.textContent = 'Add to cart';
         moveButton.addEventListener('click', async () => {
+            const defaultVariant = getDefaultVariant(product);
             await saveCartsWithLatest(currentCarts => {
                 const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
                 const items = [...(existingEntry?.items || [])];
-                const existingItemIndex = items.findIndex(item => item.productId === product.id);
+                const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, defaultVariant));
 
                 if (existingItemIndex >= 0) {
                     items[existingItemIndex] = {
@@ -693,7 +908,7 @@ function renderWishlist() {
                         quantity: items[existingItemIndex].quantity + 1
                     };
                 } else {
-                    items.push({ productId: product.id, quantity: 1 });
+                    items.push({ productId: product.id, variant: defaultVariant, quantity: 1 });
                 }
 
                 return [
@@ -738,6 +953,7 @@ function renderCart() {
             cartSummaryMessage.textContent = 'Sign in to save a cart on this device.';
         }
         renderSavedListMessage(cartList, 'Create or switch to an account to save cart items.');
+        renderCartTotals({ items: [] });
         return;
     }
 
@@ -750,6 +966,7 @@ function renderCart() {
 
     if (!cart.items.length) {
         renderSavedListMessage(cartList, 'Your saved cart is empty. Add products from the shop channel.');
+        renderCartTotals(cart);
         return;
     }
 
@@ -768,9 +985,21 @@ function renderCart() {
         title.textContent = `${product.emoji || '🛍️'} ${product.name}`;
         card.appendChild(title);
 
+        const variantText = document.createElement('p');
+        variantText.textContent = `Variant: ${getCartItemVariantLabel(item)}`;
+        card.appendChild(variantText);
+
         const quantityText = document.createElement('p');
         quantityText.textContent = `Quantity: ${item.quantity}`;
         card.appendChild(quantityText);
+
+        const priceText = document.createElement('p');
+        priceText.textContent = `Item total: ${formatMoney(getEffectivePrice(product) * item.quantity)}`;
+        card.appendChild(priceText);
+
+        const shippingText = document.createElement('p');
+        shippingText.textContent = `Shipping for this item: ${formatMoney(Number(product.shippingPrice || 0) * item.quantity)}`;
+        card.appendChild(shippingText);
 
         const actions = document.createElement('div');
         actions.className = 'product-card-actions';
@@ -783,7 +1012,7 @@ function renderCart() {
             await saveCartsWithLatest(currentCarts => {
                 const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
                 const nextItems = (existingEntry?.items || [])
-                    .map(existingItem => existingItem.productId === item.productId
+                    .map(existingItem => getCartItemKey(existingItem.productId, existingItem.variant) === getCartItemKey(item.productId, item.variant)
                         ? { ...existingItem, quantity: existingItem.quantity - 1 }
                         : existingItem)
                     .filter(existingItem => existingItem.quantity > 0);
@@ -803,7 +1032,7 @@ function renderCart() {
         increaseButton.addEventListener('click', async () => {
             await saveCartsWithLatest(currentCarts => {
                 const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
-                const nextItems = (existingEntry?.items || []).map(existingItem => existingItem.productId === item.productId
+                const nextItems = (existingEntry?.items || []).map(existingItem => getCartItemKey(existingItem.productId, existingItem.variant) === getCartItemKey(item.productId, item.variant)
                     ? { ...existingItem, quantity: existingItem.quantity + 1 }
                     : existingItem);
 
@@ -822,7 +1051,7 @@ function renderCart() {
         removeButton.addEventListener('click', async () => {
             await saveCartsWithLatest(currentCarts => {
                 const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
-                const nextItems = (existingEntry?.items || []).filter(existingItem => existingItem.productId !== item.productId);
+                const nextItems = (existingEntry?.items || []).filter(existingItem => getCartItemKey(existingItem.productId, existingItem.variant) !== getCartItemKey(item.productId, item.variant));
 
                 return [
                     ...currentCarts.filter(entry => entry.userId !== activeUser.id),
@@ -837,6 +1066,7 @@ function renderCart() {
         cartList.appendChild(card);
     });
 
+    renderCartTotals(cart);
     bindClickSound(cartList);
 }
 
@@ -1093,14 +1323,16 @@ if (moveWishlistToCartButton) {
             const items = [...(existingEntry?.items || [])];
 
             wishlistIds.forEach(productId => {
-                const existingItemIndex = items.findIndex(item => item.productId === productId);
+                const product = findProduct(productId);
+                const variant = product ? getDefaultVariant(product) : '';
+                const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(productId, variant));
                 if (existingItemIndex >= 0) {
                     items[existingItemIndex] = {
                         ...items[existingItemIndex],
                         quantity: items[existingItemIndex].quantity + 1
                     };
                 } else {
-                    items.push({ productId, quantity: 1 });
+                    items.push({ productId, variant, quantity: 1 });
                 }
             });
 

@@ -175,13 +175,49 @@
         return numericValue;
     }
 
+    function normalizeStringMatrix(value) {
+        if (Array.isArray(value)) {
+            return value
+                .map(item => String(item).trim())
+                .filter(Boolean);
+        }
+
+        if (typeof value === 'string') {
+            return value
+                .split(/\r?\n/)
+                .map(item => item.trim())
+                .filter(Boolean);
+        }
+
+        return [];
+    }
+
+    function normalizeMediaList(value, maxItems) {
+        const media = Array.isArray(value) ? value : [];
+        return media
+            .map(item => String(item).trim())
+            .filter(Boolean)
+            .slice(0, maxItems);
+    }
+
     function normalizeProduct(product) {
+        const listingPrice = normalizeAmount(product.listingPrice);
+        const onSale = normalizeBoolean(product.onSale);
+        const salePrice = normalizeAmount(product.salePrice);
+
         return {
             id: normalizeText(product.id, createId('product')),
             name: normalizeText(product.name),
             emoji: normalizeText(product.emoji, '🛍️'),
             description: normalizeText(product.description),
-            subcategories: normalizeStringArray(product.subcategories)
+            subcategories: normalizeStringArray(product.subcategories),
+            listingPrice,
+            onSale,
+            salePrice: onSale && salePrice > 0 ? salePrice : 0,
+            shippingPrice: normalizeAmount(product.shippingPrice),
+            variants: normalizeStringMatrix(product.variants),
+            images: normalizeMediaList(product.images, 10),
+            videos: normalizeMediaList(product.videos, 3)
         };
     }
 
@@ -294,6 +330,7 @@
     function normalizeCartItem(item) {
         return {
             productId: normalizeText(item.productId),
+            variant: normalizeText(item.variant),
             quantity: normalizeInteger(item.quantity, 1)
         };
     }
@@ -370,7 +407,9 @@
             shopName: normalizeText(settings.shopName, 'Sip of Ghoulaid Shop'),
             homeHeadline: normalizeText(settings.homeHeadline, 'WELCOME CULT LEADERS AND GHOULAID DRINKERS'),
             homeTagline: normalizeText(settings.homeTagline, 'CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED'),
-            shopNote: normalizeText(settings.shopNote, 'Visit sipofghoulaid.com for the full collection and latest releases! 👻')
+            shopNote: normalizeText(settings.shopNote, 'Visit sipofghoulaid.com for the full collection and latest releases! 👻'),
+            salesTaxRate: normalizeAmount(settings.salesTaxRate, 8.25),
+            shippingBaseRate: normalizeAmount(settings.shippingBaseRate, 4.99)
         };
     }
 
@@ -513,6 +552,7 @@
         loadDefaultProducts,
         normalizeProducts,
         normalizeOrders,
+        normalizeAmount,
         normalizeDiscounts,
         normalizeMarketing,
         normalizeSettings,

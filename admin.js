@@ -1,3 +1,37 @@
+function formatMoney(amount) {
+    return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+function getEffectivePrice(product) {
+    return product.onSale && product.salePrice > 0 ? product.salePrice : product.listingPrice;
+}
+
+function createProductPricing(product) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'price-stack';
+
+    if (product.listingPrice > 0) {
+        if (product.onSale && product.salePrice > 0) {
+            const listingPrice = document.createElement('span');
+            listingPrice.className = 'price price-original';
+            listingPrice.textContent = formatMoney(product.listingPrice);
+            wrapper.appendChild(listingPrice);
+
+            const salePrice = document.createElement('span');
+            salePrice.className = 'price price-sale';
+            salePrice.textContent = formatMoney(product.salePrice);
+            wrapper.appendChild(salePrice);
+        } else {
+            const price = document.createElement('span');
+            price.className = 'price';
+            price.textContent = formatMoney(product.listingPrice);
+            wrapper.appendChild(price);
+        }
+    }
+
+    return wrapper;
+}
+
 function createProductSummary(product) {
     const productSummary = document.createElement('div');
     productSummary.className = 'admin-product-summary';
@@ -16,6 +50,11 @@ function createProductSummary(product) {
         const description = document.createElement('p');
         description.textContent = product.description;
         details.appendChild(description);
+    }
+
+    const pricing = createProductPricing(product);
+    if (pricing.childElementCount) {
+        details.appendChild(pricing);
     }
 
     if (product.subcategories.length) {
@@ -44,6 +83,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const productEmojiInput = document.getElementById('productEmoji');
     const productDescriptionInput = document.getElementById('productDescription');
     const productSubcategoriesInput = document.getElementById('productSubcategories');
+    const productListingPriceInput = document.getElementById('productListingPrice');
+    const productShippingPriceInput = document.getElementById('productShippingPrice');
+    const productOnSaleInput = document.getElementById('productOnSale');
+    const productSalePriceInput = document.getElementById('productSalePrice');
+    const productVariantsInput = document.getElementById('productVariants');
+    const productImagesInput = document.getElementById('productImages');
+    const productVideosInput = document.getElementById('productVideos');
+    const productImagesPreview = document.getElementById('productImagesPreview');
+    const productVideosPreview = document.getElementById('productVideosPreview');
+    const clearProductImagesButton = document.getElementById('clearProductImages');
+    const clearProductVideosButton = document.getElementById('clearProductVideos');
     const cancelEditButton = document.getElementById('cancelEdit');
     const resetProductsButton = document.getElementById('resetProducts');
     const productTableBody = document.getElementById('productTableBody');
@@ -80,6 +130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const settingsHomeHeadline = document.getElementById('settingsHomeHeadline');
     const settingsHomeTagline = document.getElementById('settingsHomeTagline');
     const settingsShopNote = document.getElementById('settingsShopNote');
+    const settingsSalesTaxRate = document.getElementById('settingsSalesTaxRate');
+    const settingsShippingBaseRate = document.getElementById('settingsShippingBaseRate');
     const settingsStatus = document.getElementById('settingsStatus');
     const appCenterForm = document.getElementById('appCenterForm');
     const appMarketingEnabled = document.getElementById('appMarketingEnabled');
@@ -109,6 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let settings = {};
     let appCenter = {};
     let designer = {};
+    let productImagesDraft = [];
+    let productVideosDraft = [];
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioContext = AudioContextClass ? new AudioContextClass() : null;
@@ -156,10 +210,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function formatCurrency(amount) {
-        return `$${Number(amount || 0).toFixed(2)}`;
-    }
-
     function getPaymentMethodName(methodId) {
         return paymentMethods.find(method => method.id === methodId)?.name || 'Not selected';
     }
@@ -190,9 +240,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     function resetProductForm() {
         productForm.reset();
         productIdInput.value = '';
+        productListingPriceInput.value = '';
+        productShippingPriceInput.value = '';
+        productSalePriceInput.value = '';
+        productVariantsInput.value = '';
+        productOnSaleInput.checked = false;
+        productImagesDraft = [];
+        productVideosDraft = [];
+        renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+        renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
         formTitle.textContent = 'Add New Product';
         submitLabel.textContent = '📼 Save Product';
         cancelEditButton.classList.add('hidden');
+        syncSalePriceField();
     }
 
     function renderDashboardStats() {
@@ -200,7 +260,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         subcategoryCountStat.textContent = String(products.reduce((count, product) => count + product.subcategories.length, 0));
         orderCountStat.textContent = String(orders.length);
         paidOrderCountStat.textContent = String(orders.filter(order => order.paymentStatus === 'Paid').length);
-        paymentReceivedStat.textContent = formatCurrency(orders.reduce((total, order) => total + Number(order.paymentStatus === 'Paid' ? order.paymentAmount : 0), 0));
+        paymentReceivedStat.textContent = formatMoney(orders.reduce((total, order) => total + Number(order.paymentStatus === 'Paid' ? order.paymentAmount : 0), 0));
+    }
+
+    function syncSalePriceField() {
+        productSalePriceInput.disabled = !productOnSaleInput.checked;
+        if (!productOnSaleInput.checked) {
+            productSalePriceInput.value = '';
+        }
+    }
+
+    function renderMediaPreview(target, items, kind) {
+        target.replaceChildren();
+
+        if (!items.length) {
+            const empty = document.createElement('p');
+            empty.className = 'admin-helper-text';
+            empty.textContent = kind === 'image' ? 'No images uploaded yet.' : 'No videos uploaded yet.';
+            target.appendChild(empty);
+            return;
+        }
+
+        items.forEach((src, index) => {
+            const card = document.createElement('div');
+            card.className = 'admin-media-preview-card';
+
+            const media = document.createElement(kind === 'image' ? 'img' : 'video');
+            media.src = src;
+            media.className = 'admin-media-preview-item';
+            if (kind === 'video') {
+                media.controls = true;
+                media.muted = true;
+                media.preload = 'metadata';
+            } else {
+                media.alt = `Product ${kind} ${index + 1}`;
+            }
+
+            const label = document.createElement('p');
+            label.className = 'admin-helper-text';
+            label.textContent = `${kind === 'image' ? 'Image' : 'Video'} ${index + 1}`;
+
+            card.appendChild(media);
+            card.appendChild(label);
+            target.appendChild(card);
+        });
+    }
+
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error || new Error(`Unable to read ${file.name}`));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function appendMediaFiles(input, kind, maxItems) {
+        const files = Array.from(input.files || []);
+        if (!files.length) {
+            return;
+        }
+
+        const currentItems = kind === 'image' ? productImagesDraft : productVideosDraft;
+        const nextCount = currentItems.length + files.length;
+        if (nextCount > maxItems) {
+            setStatus(statusMessage, `You can upload up to ${maxItems} ${kind === 'image' ? 'images' : 'videos'} per product.`);
+            input.value = '';
+            return;
+        }
+
+        const dataUrls = await Promise.all(files.map(readFileAsDataUrl));
+        if (kind === 'image') {
+            productImagesDraft = [...productImagesDraft, ...dataUrls].slice(0, maxItems);
+            renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+        } else {
+            productVideosDraft = [...productVideosDraft, ...dataUrls].slice(0, maxItems);
+            renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
+        }
+
+        input.value = '';
     }
 
     async function saveProductsWithLatest(applyChange) {
@@ -234,6 +372,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             productCell.appendChild(createProductSummary(product));
             row.appendChild(productCell);
 
+            const pricingCell = document.createElement('td');
+            const effectivePrice = getEffectivePrice(product);
+            pricingCell.appendChild(createProductPricing(product));
+            const shippingText = document.createElement('p');
+            shippingText.textContent = `Shipping: ${formatMoney(product.shippingPrice)}`;
+            pricingCell.appendChild(shippingText);
+            if (product.variants.length) {
+                const variantText = document.createElement('p');
+                variantText.textContent = `${product.variants.length} variant option(s)`;
+                pricingCell.appendChild(variantText);
+            }
+            if (!effectivePrice && !product.shippingPrice) {
+                pricingCell.textContent = '—';
+            }
+            row.appendChild(pricingCell);
+
             const subcategoryCell = document.createElement('td');
             subcategoryCell.textContent = product.subcategories.join(', ') || '—';
             row.appendChild(subcategoryCell);
@@ -250,7 +404,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 productNameInput.value = product.name;
                 productEmojiInput.value = product.emoji;
                 productDescriptionInput.value = product.description;
+                productListingPriceInput.value = product.listingPrice || '';
+                productShippingPriceInput.value = product.shippingPrice || '';
+                productOnSaleInput.checked = Boolean(product.onSale);
+                productSalePriceInput.value = product.salePrice || '';
                 productSubcategoriesInput.value = product.subcategories.join('\n');
+                productVariantsInput.value = product.variants.join('\n');
+                productImagesDraft = [...product.images];
+                productVideosDraft = [...product.videos];
+                renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+                renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
+                syncSalePriceField();
                 formTitle.textContent = `Edit ${product.name}`;
                 submitLabel.textContent = '💾 Update Product';
                 cancelEditButton.classList.remove('hidden');
@@ -333,7 +497,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentCell.appendChild(paymentMethod);
             paymentCell.appendChild(document.createElement('br'));
             const paymentSummary = document.createElement('span');
-            paymentSummary.textContent = `${order.paymentStatus || 'Awaiting Payment'} • ${formatCurrency(order.paymentAmount)}`;
+            paymentSummary.textContent = `${order.paymentStatus || 'Awaiting Payment'} • ${formatMoney(order.paymentAmount)}`;
             paymentCell.appendChild(paymentSummary);
             if (order.paymentReference) {
                 paymentCell.appendChild(document.createElement('br'));
@@ -415,7 +579,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ['Paid orders', String(paidOrders.length)],
             ['Awaiting payment', String(awaitingOrders.length)],
             ['Partial payment', String(partialOrders.length)],
-            ['Received total', formatCurrency(totalReceived)]
+            ['Received total', formatMoney(totalReceived)]
         ].forEach(([label, value]) => {
             const card = document.createElement('div');
             card.className = 'admin-stat-card';
@@ -621,6 +785,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         settingsHomeHeadline.value = settings.homeHeadline || '';
         settingsHomeTagline.value = settings.homeTagline || '';
         settingsShopNote.value = settings.shopNote || '';
+        settingsSalesTaxRate.value = settings.salesTaxRate ?? 8.25;
+        settingsShippingBaseRate.value = settings.shippingBaseRate ?? 4.99;
         applyAdminBranding();
     }
 
@@ -656,6 +822,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(paymentMethodsStatus, 'Default payment methods restored.');
     });
 
+    productOnSaleInput.addEventListener('change', syncSalePriceField);
+
+    productImagesInput.addEventListener('change', async () => {
+        try {
+            await appendMediaFiles(productImagesInput, 'image', 10);
+        } catch (error) {
+            console.error('Unable to load image files.', error);
+            setStatus(statusMessage, `Unable to load images: ${error.message}`);
+        }
+    });
+
+    productVideosInput.addEventListener('change', async () => {
+        try {
+            await appendMediaFiles(productVideosInput, 'video', 3);
+        } catch (error) {
+            console.error('Unable to load video files.', error);
+            setStatus(statusMessage, `Unable to load videos: ${error.message}`);
+        }
+    });
+
+    clearProductImagesButton.addEventListener('click', () => {
+        productImagesDraft = [];
+        productImagesInput.value = '';
+        renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+        setStatus(statusMessage, 'Product images cleared.');
+    });
+
+    clearProductVideosButton.addEventListener('click', () => {
+        productVideosDraft = [];
+        productVideosInput.value = '';
+        renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
+        setStatus(statusMessage, 'Product videos cleared.');
+    });
+
     productForm.addEventListener('submit', async event => {
         event.preventDefault();
 
@@ -664,11 +864,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             name: productNameInput.value,
             emoji: productEmojiInput.value,
             description: productDescriptionInput.value,
-            subcategories: productSubcategoriesInput.value
+            listingPrice: productListingPriceInput.value,
+            shippingPrice: productShippingPriceInput.value,
+            onSale: productOnSaleInput.checked,
+            salePrice: productSalePriceInput.value,
+            subcategories: productSubcategoriesInput.value,
+            variants: productVariantsInput.value,
+            images: productImagesDraft,
+            videos: productVideosDraft
         }])[0];
 
         if (!normalizedProduct) {
             setStatus(statusMessage, 'Add a product name before saving.');
+            return;
+        }
+
+        if (normalizedProduct.listingPrice <= 0) {
+            setStatus(statusMessage, 'Add a listing price greater than zero.');
+            return;
+        }
+
+        if (normalizedProduct.onSale && normalizedProduct.salePrice <= 0) {
+            setStatus(statusMessage, 'Add a sale price greater than zero when the on-sale box is checked.');
             return;
         }
 
@@ -733,7 +950,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             shopName: settingsShopName.value,
             homeHeadline: settingsHomeHeadline.value,
             homeTagline: settingsHomeTagline.value,
-            shopNote: settingsShopNote.value
+            shopNote: settingsShopNote.value,
+            salesTaxRate: settingsSalesTaxRate.value,
+            shippingBaseRate: settingsShippingBaseRate.value
         });
         setStatus(settingsStatus, 'Shop settings saved.');
     });

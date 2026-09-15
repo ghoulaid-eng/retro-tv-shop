@@ -192,9 +192,52 @@
                                                             <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
                                                         </div>
 
+                                                        <div class="form-row">
+                                                            <div class="form-group">
+                                                                <label for="productListingPrice">Listing Price</label>
+                                                                <input type="number" id="productListingPrice" name="productListingPrice" min="0" step="0.01" placeholder="18.00" required>
+                                                            </div>
+
+                                                            <div class="form-group">
+                                                                <label for="productShippingPrice">Shipping Charge</label>
+                                                                <input type="number" id="productShippingPrice" name="productShippingPrice" min="0" step="0.01" placeholder="4.99">
+                                                            </div>
+                                                        </div>
+
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="productOnSale" name="productOnSale">
+                                                            <span>On sale</span>
+                                                        </label>
+
+                                                        <div class="form-group">
+                                                            <label for="productSalePrice">Sale Price</label>
+                                                            <input type="number" id="productSalePrice" name="productSalePrice" min="0" step="0.01" placeholder="12.00">
+                                                        </div>
+
                                                         <div class="form-group">
                                                             <label for="productSubcategories">Subcategories (optional)</label>
                                                             <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productVariants">Variants (one per line)</label>
+                                                            <textarea id="productVariants" name="productVariants" placeholder="Pink Drip&#10;Black Glitter&#10;Green Glow" rows="4"></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productImages">Product Images (up to 10)</label>
+                                                            <input type="file" id="productImages" name="productImages" accept="image/*" multiple>
+                                                            <p class="admin-helper-text">Upload up to 10 images. Existing uploads stay saved until you clear or replace them.</p>
+                                                            <div id="productImagesPreview" class="admin-media-preview-grid"></div>
+                                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductImages">Clear images</button>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productVideos">Product Videos (up to 3)</label>
+                                                            <input type="file" id="productVideos" name="productVideos" accept="video/*" multiple>
+                                                            <p class="admin-helper-text">Upload up to 3 videos. Existing uploads stay saved until you clear or replace them.</p>
+                                                            <div id="productVideosPreview" class="admin-media-preview-grid"></div>
+                                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductVideos">Clear videos</button>
                                                         </div>
 
                                                         <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
@@ -211,6 +254,7 @@
                                                             <thead>
                                                                 <tr>
                                                                     <th>Product</th>
+                                                                    <th>Pricing</th>
                                                                     <th>Subcategories</th>
                                                                     <th>Actions</th>
                                                                 </tr>
@@ -346,6 +390,16 @@
                                                     <div class="form-group">
                                                         <label for="settingsShopNote">Shop Note</label>
                                                         <textarea id="settingsShopNote" rows="3" placeholder="Visit sipofghoulaid.com for the full collection and latest releases! 👻"></textarea>
+                                                    </div>
+                                                    <div class="form-row">
+                                                        <div class="form-group">
+                                                            <label for="settingsSalesTaxRate">Sales Tax Rate (%)</label>
+                                                            <input type="number" id="settingsSalesTaxRate" min="0" step="0.01" placeholder="8.25">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="settingsShippingBaseRate">Base Shipping ($)</label>
+                                                            <input type="number" id="settingsShippingBaseRate" min="0" step="0.01" placeholder="4.99">
+                                                        </div>
                                                     </div>
                                                     <button type="submit" class="submit-btn click-item">Save Settings</button>
                                                 </form>
