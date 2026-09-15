@@ -292,6 +292,24 @@
                                         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any other special requests, notes, or important information..." rows="3"></textarea>
                                     </div>
 
+                                    <hr class="form-divider">
+
+                                    <h3 class="form-section-title">💳 PAYMENT</h3>
+
+                                    <div class="payment-methods-panel">
+                                        <p class="payment-help-text">Choose your preferred payment method. We&apos;ll confirm your order total first, then send payment directions using your selected option.</p>
+                                        <div id="paymentMethodsList" class="payment-method-list" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="paymentMethod">Preferred Payment Method</label>
+                                        <select id="paymentMethod" name="paymentMethod" required>
+                                            <option value="">Choose payment method...</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="paymentMethodInstructions" class="payment-instructions" aria-live="polite"></div>
+
                                     <div class="form-group checkbox">
                                         <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
                                         <label for="agreeTerms">I agree to the terms & conditions</label>

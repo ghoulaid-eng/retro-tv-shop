@@ -556,6 +556,35 @@ input[type="checkbox"] {
     color: #dda0dd;
 }
 
+.payment-methods-panel,
+.payment-instructions {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.payment-help-text {
+    margin-bottom: 12px;
+}
+
+.payment-method-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.payment-method-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #ff69b4;
+    border-radius: 999px;
+    background: rgba(255, 105, 180, 0.1);
+    color: #ff69b4;
+}
+
 /* Buttons */
 .submit-btn,
 .reset-btn,
@@ -911,6 +940,13 @@ input[type="checkbox"] {
 .admin-stack {
     display: grid;
     gap: 12px;
+}
+
+.admin-payment-method-card {
+    padding: 14px;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
 }
 
 .card-size-compact {

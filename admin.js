@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const productCountStat = document.getElementById('productCountStat');
     const subcategoryCountStat = document.getElementById('subcategoryCountStat');
     const orderCountStat = document.getElementById('orderCountStat');
+    const paidOrderCountStat = document.getElementById('paidOrderCountStat');
+    const paymentReceivedStat = document.getElementById('paymentReceivedStat');
     const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
     const sectionPanels = Array.from(document.querySelectorAll('[data-section-panel]'));
     const quickSectionButtons = Array.from(document.querySelectorAll('[data-open-section]'));
@@ -90,9 +92,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const designerStatus = document.getElementById('designerStatus');
     const ordersTableBody = document.getElementById('ordersTableBody');
     const emptyOrdersState = document.getElementById('emptyOrdersState');
+    const paymentMethodsForm = document.getElementById('paymentMethodsForm');
+    const paymentMethodsAdminList = document.getElementById('paymentMethodsAdminList');
+    const paymentMethodsStatus = document.getElementById('paymentMethodsStatus');
+    const paymentSummaryCards = document.getElementById('paymentSummaryCards');
+    const paymentManagerStatus = document.getElementById('paymentManagerStatus');
+    const paymentsTableBody = document.getElementById('paymentsTableBody');
+    const emptyPaymentsState = document.getElementById('emptyPaymentsState');
+    const resetPaymentMethodsButton = document.getElementById('resetPaymentMethods');
 
     let products = [];
     let orders = [];
+    let paymentMethods = [];
     let discounts = [];
     let marketing = {};
     let settings = {};
@@ -145,6 +156,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function formatCurrency(amount) {
+        return `$${Number(amount || 0).toFixed(2)}`;
+    }
+
+    function getPaymentMethodName(methodId) {
+        return paymentMethods.find(method => method.id === methodId)?.name || 'Not selected';
+    }
+
     function activateSection(sectionName) {
         navButtons.forEach(button => {
             const isActive = button.dataset.sectionTarget === sectionName;
@@ -180,12 +199,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         productCountStat.textContent = String(products.length);
         subcategoryCountStat.textContent = String(products.reduce((count, product) => count + product.subcategories.length, 0));
         orderCountStat.textContent = String(orders.length);
+        paidOrderCountStat.textContent = String(orders.filter(order => order.paymentStatus === 'Paid').length);
+        paymentReceivedStat.textContent = formatCurrency(orders.reduce((total, order) => total + Number(order.paymentStatus === 'Paid' ? order.paymentAmount : 0), 0));
     }
 
     async function saveProductsWithLatest(applyChange) {
         const latestProducts = await window.ShopData.getProducts();
         const nextProducts = applyChange(latestProducts);
         window.ShopData.saveProducts(nextProducts);
+    }
+
+    async function saveOrdersWithLatest(applyChange) {
+        const latestOrders = await window.ShopData.getOrders();
+        const nextOrders = applyChange(latestOrders);
+        window.ShopData.saveOrders(nextOrders);
+    }
+
+    async function savePaymentMethodsWithLatest(applyChange) {
+        const latestPaymentMethods = await window.ShopData.getPaymentMethods();
+        const nextPaymentMethods = applyChange(latestPaymentMethods);
+        window.ShopData.savePaymentMethods(nextPaymentMethods);
     }
 
     function renderProducts(nextProducts) {
@@ -288,12 +321,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 option.selected = optionValue === order.status;
                 statusSelect.appendChild(option);
             });
-            statusSelect.addEventListener('change', () => {
-                const updatedOrders = orders.map(item => item.id === order.id ? { ...item, status: statusSelect.value } : item);
-                window.ShopData.saveOrders(updatedOrders);
+            statusSelect.addEventListener('change', async () => {
+                await saveOrdersWithLatest(currentOrders => currentOrders.map(item => item.id === order.id ? { ...item, status: statusSelect.value } : item));
             });
             statusCell.appendChild(statusSelect);
             row.appendChild(statusCell);
+
+            const paymentCell = document.createElement('td');
+            const paymentMethod = document.createElement('strong');
+            paymentMethod.textContent = getPaymentMethodName(order.paymentMethod);
+            paymentCell.appendChild(paymentMethod);
+            paymentCell.appendChild(document.createElement('br'));
+            const paymentSummary = document.createElement('span');
+            paymentSummary.textContent = `${order.paymentStatus || 'Awaiting Payment'} • ${formatCurrency(order.paymentAmount)}`;
+            paymentCell.appendChild(paymentSummary);
+            if (order.paymentReference) {
+                paymentCell.appendChild(document.createElement('br'));
+                const paymentReference = document.createElement('span');
+                paymentReference.textContent = `Ref: ${order.paymentReference}`;
+                paymentCell.appendChild(paymentReference);
+            }
+            row.appendChild(paymentCell);
 
             const actionsCell = document.createElement('td');
             actionsCell.className = 'admin-actions';
@@ -301,8 +349,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
             deleteButton.textContent = 'Delete';
-            deleteButton.addEventListener('click', () => {
-                window.ShopData.saveOrders(orders.filter(item => item.id !== order.id));
+            deleteButton.addEventListener('click', async () => {
+                await saveOrdersWithLatest(currentOrders => currentOrders.filter(item => item.id !== order.id));
             });
             actionsCell.appendChild(deleteButton);
             row.appendChild(actionsCell);
@@ -312,6 +360,199 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderDashboardStats();
         bindClickSound(ordersTableBody);
+    }
+
+    function renderPaymentMethods(nextPaymentMethods) {
+        paymentMethods = nextPaymentMethods;
+        paymentMethodsAdminList.replaceChildren();
+
+        paymentMethods.forEach(method => {
+            const card = document.createElement('div');
+            card.className = 'admin-payment-method-card';
+
+            const toggle = document.createElement('label');
+            toggle.className = 'admin-toggle-item';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = `payment-method-enabled-${method.id}`;
+            checkbox.checked = Boolean(method.enabled);
+            const labelText = document.createElement('span');
+            labelText.textContent = `Accept ${method.name}`;
+            toggle.appendChild(checkbox);
+            toggle.appendChild(labelText);
+            card.appendChild(toggle);
+
+            const instructionsGroup = document.createElement('div');
+            instructionsGroup.className = 'form-group';
+            const instructionsLabel = document.createElement('label');
+            instructionsLabel.setAttribute('for', `payment-method-instructions-${method.id}`);
+            instructionsLabel.textContent = `${method.name} instructions`;
+            const instructionsInput = document.createElement('textarea');
+            instructionsInput.id = `payment-method-instructions-${method.id}`;
+            instructionsInput.name = `payment-method-instructions-${method.id}`;
+            instructionsInput.rows = 3;
+            instructionsInput.value = method.instructions || '';
+            instructionsGroup.appendChild(instructionsLabel);
+            instructionsGroup.appendChild(instructionsInput);
+            card.appendChild(instructionsGroup);
+
+            paymentMethodsAdminList.appendChild(card);
+        });
+
+        bindClickSound(paymentMethodsAdminList);
+        renderOrders(orders);
+        renderPayments();
+    }
+
+    function renderPaymentSummary() {
+        paymentSummaryCards.replaceChildren();
+        const paidOrders = orders.filter(order => order.paymentStatus === 'Paid');
+        const awaitingOrders = orders.filter(order => order.paymentStatus === 'Awaiting Payment');
+        const partialOrders = orders.filter(order => order.paymentStatus === 'Partial Payment');
+        const totalReceived = paidOrders.reduce((total, order) => total + Number(order.paymentAmount || 0), 0);
+
+        [
+            ['Paid orders', String(paidOrders.length)],
+            ['Awaiting payment', String(awaitingOrders.length)],
+            ['Partial payment', String(partialOrders.length)],
+            ['Received total', formatCurrency(totalReceived)]
+        ].forEach(([label, value]) => {
+            const card = document.createElement('div');
+            card.className = 'admin-stat-card';
+
+            const heading = document.createElement('span');
+            heading.className = 'admin-stat-label';
+            heading.textContent = label;
+            card.appendChild(heading);
+
+            const amount = document.createElement('strong');
+            amount.className = 'admin-stat-value admin-stat-text';
+            amount.textContent = value;
+            card.appendChild(amount);
+
+            paymentSummaryCards.appendChild(card);
+        });
+    }
+
+    function renderPayments() {
+        paymentsTableBody.replaceChildren();
+        emptyPaymentsState.classList.toggle('hidden', orders.length > 0);
+
+        orders.forEach(order => {
+            const row = document.createElement('tr');
+
+            const customerCell = document.createElement('td');
+            const customerName = document.createElement('strong');
+            customerName.textContent = order.fullName || 'Unknown ghoul';
+            customerCell.appendChild(customerName);
+            customerCell.appendChild(document.createElement('br'));
+            const customerHandle = document.createElement('span');
+            customerHandle.textContent = order.username || 'No username';
+            customerCell.appendChild(customerHandle);
+            row.appendChild(customerCell);
+
+            const methodCell = document.createElement('td');
+            const methodSelect = document.createElement('select');
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = 'Not selected';
+            methodSelect.appendChild(placeholderOption);
+            paymentMethods.forEach(method => {
+                const option = document.createElement('option');
+                option.value = method.id;
+                option.textContent = method.name;
+                option.selected = method.id === order.paymentMethod;
+                methodSelect.appendChild(option);
+            });
+            methodCell.appendChild(methodSelect);
+            row.appendChild(methodCell);
+
+            const paymentStatusCell = document.createElement('td');
+            const paymentStatusSelect = document.createElement('select');
+            ['Awaiting Payment', 'Partial Payment', 'Paid', 'Refunded'].forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                option.selected = optionValue === order.paymentStatus;
+                paymentStatusSelect.appendChild(option);
+            });
+            paymentStatusCell.appendChild(paymentStatusSelect);
+            row.appendChild(paymentStatusCell);
+
+            const amountCell = document.createElement('td');
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.min = '0';
+            amountInput.step = '0.01';
+            amountInput.value = String(order.paymentAmount || 0);
+            amountCell.appendChild(amountInput);
+            row.appendChild(amountCell);
+
+            const referenceCell = document.createElement('td');
+            const referenceInput = document.createElement('input');
+            referenceInput.type = 'text';
+            referenceInput.value = order.paymentReference || '';
+            referenceInput.placeholder = 'Invoice / txn id';
+            referenceCell.appendChild(referenceInput);
+            row.appendChild(referenceCell);
+
+            const receivedCell = document.createElement('td');
+            receivedCell.textContent = order.paymentReceivedAt
+                ? new Date(order.paymentReceivedAt).toLocaleDateString()
+                : '—';
+            row.appendChild(receivedCell);
+
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'admin-actions';
+
+            const saveButton = document.createElement('button');
+            saveButton.type = 'button';
+            saveButton.className = 'table-action-btn click-item';
+            saveButton.textContent = 'Save';
+            const savePaymentUpdate = async () => {
+                const nextStatus = paymentStatusSelect.value;
+                const nextAmount = Number.parseFloat(amountInput.value) || 0;
+                const nextReference = referenceInput.value.trim();
+                await saveOrdersWithLatest(currentOrders => currentOrders.map(item => {
+                    if (item.id !== order.id) {
+                        return item;
+                    }
+
+                    const wasPaid = item.paymentStatus === 'Paid';
+                    const isPaid = nextStatus === 'Paid';
+
+                    return {
+                        ...item,
+                        paymentMethod: methodSelect.value,
+                        paymentStatus: nextStatus,
+                        paymentAmount: nextAmount,
+                        paymentReference: nextReference,
+                        paymentReceivedAt: isPaid
+                            ? (wasPaid && item.paymentReceivedAt ? item.paymentReceivedAt : new Date().toISOString())
+                            : ''
+                    };
+                }));
+                setStatus(paymentManagerStatus, `Saved payment update for ${order.fullName || 'this order'}.`);
+            };
+            saveButton.addEventListener('click', savePaymentUpdate);
+            actionsCell.appendChild(saveButton);
+
+            const markPaidButton = document.createElement('button');
+            markPaidButton.type = 'button';
+            markPaidButton.className = 'table-action-btn click-item';
+            markPaidButton.textContent = 'Mark Paid';
+            markPaidButton.addEventListener('click', async () => {
+                paymentStatusSelect.value = 'Paid';
+                await savePaymentUpdate();
+            });
+            actionsCell.appendChild(markPaidButton);
+
+            row.appendChild(actionsCell);
+            paymentsTableBody.appendChild(row);
+        });
+
+        renderPaymentSummary();
+        bindClickSound(paymentsTableBody);
     }
 
     function renderDiscounts(nextDiscounts) {
@@ -394,6 +635,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         designerStaticEffect.checked = Boolean(designer.staticEffect);
         applyDesignerPreview();
     }
+
+    paymentMethodsForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        await savePaymentMethodsWithLatest(currentPaymentMethods => currentPaymentMethods.map(method => {
+            const enabledInput = paymentMethodsForm.elements.namedItem(`payment-method-enabled-${method.id}`);
+            const instructionsInput = paymentMethodsForm.elements.namedItem(`payment-method-instructions-${method.id}`);
+
+            return {
+                ...method,
+                enabled: Boolean(enabledInput?.checked),
+                instructions: instructionsInput?.value?.trim() || ''
+            };
+        }));
+        setStatus(paymentMethodsStatus, 'Payment methods saved.');
+    });
+
+    resetPaymentMethodsButton.addEventListener('click', async () => {
+        await window.ShopData.resetPaymentMethods();
+        setStatus(paymentMethodsStatus, 'Default payment methods restored.');
+    });
 
     productForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -518,9 +779,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        [products, orders, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+        [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer] = await Promise.all([
             window.ShopData.getProducts(),
             window.ShopData.getOrders(),
+            window.ShopData.getPaymentMethods(),
             window.ShopData.getDiscounts(),
             window.ShopData.getMarketing(),
             window.ShopData.getSettings(),
@@ -530,6 +792,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderProducts(products);
         renderOrders(orders);
+        renderPaymentMethods(paymentMethods);
+        renderPayments();
         renderDiscounts(discounts);
         loadMarketingForm();
         loadSettingsForm();
@@ -544,9 +808,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(settingsStatus, 'Update your public shop text here.');
         setStatus(appCenterStatus, 'Toggle storefront features here.');
         setStatus(designerStatus, 'Adjust the public shop look here.');
+        setStatus(paymentMethodsStatus, 'Manage PayPal, Klarna, Afterpay, Zip, and Apple Pay here.');
+        setStatus(paymentManagerStatus, 'Monitor payments received for each custom order here.');
 
         window.ShopData.subscribe('products', renderProducts);
         window.ShopData.subscribe('orders', renderOrders);
+        window.ShopData.subscribe('orders', renderPayments);
+        window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
         window.ShopData.subscribe('discounts', renderDiscounts);
         window.ShopData.subscribe('marketing', nextMarketing => {
             marketing = nextMarketing;

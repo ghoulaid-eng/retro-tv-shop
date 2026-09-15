@@ -29,6 +29,7 @@
                                         <nav class="admin-sidebar-nav" aria-label="Admin navigation">
                                             <button type="button" class="admin-nav-item admin-nav-item-active click-item" data-section-target="dashboard">📊 Dashboard</button>
                                             <button type="button" class="admin-nav-item click-item" data-section-target="orders">📦 Orders</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="payments">💳 Payments</button>
                                             <button type="button" class="admin-nav-item click-item" data-section-target="products">🛍️ Products</button>
                                             <button type="button" class="admin-nav-item click-item" data-section-target="discounts">🏷️ Discounts</button>
                                             <button type="button" class="admin-nav-item click-item" data-section-target="marketing">📣 Marketing</button>
@@ -60,6 +61,14 @@
                                                     <span class="admin-stat-label">Orders</span>
                                                     <strong id="orderCountStat" class="admin-stat-value">0</strong>
                                                 </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Paid Orders</span>
+                                                    <strong id="paidOrderCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Payment Received</span>
+                                                    <strong id="paymentReceivedStat" class="admin-stat-value admin-stat-text">$0.00</strong>
+                                                </div>
                                             </div>
 
                                             <div class="admin-section-grid">
@@ -68,12 +77,13 @@
                                                     <div class="admin-quick-actions">
                                                         <button type="button" class="table-action-btn click-item" data-open-section="products">Open products</button>
                                                         <button type="button" class="table-action-btn click-item" data-open-section="orders">Open orders</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="payments">Open payments</button>
                                                         <button type="button" class="table-action-btn click-item" data-open-section="settings">Open settings</button>
                                                     </div>
                                                 </div>
                                                 <div class="admin-info-card">
                                                     <h3>Shop status</h3>
-                                                    <p>Products, settings, discounts, designer options, and custom orders all save locally and update the storefront immediately.</p>
+                                                    <p>Products, settings, discounts, payment methods, designer options, and custom orders all save locally and update the storefront immediately.</p>
                                                 </div>
                                                 <div class="admin-info-card">
                                                     <h3>Now functional</h3>
@@ -97,12 +107,58 @@
                                                             <th>Request</th>
                                                             <th>Contact</th>
                                                             <th>Status</th>
+                                                            <th>Payment</th>
                                                             <th>Actions</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="ordersTableBody"></tbody>
                                                 </table>
                                                 <p id="emptyOrdersState" class="empty-products-message hidden">No custom orders yet.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="payments">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Money</p>
+                                                    <h2>Payment manager</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-grid admin-grid-equal">
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Accepted Payment Methods</h3>
+                                                    <form id="paymentMethodsForm" class="admin-simple-form">
+                                                        <div id="paymentMethodsAdminList" class="admin-stack"></div>
+                                                        <button type="submit" class="submit-btn click-item">Save Payment Methods</button>
+                                                        <button type="button" class="reset-btn click-item" id="resetPaymentMethods">Restore Default Payment Methods</button>
+                                                    </form>
+                                                    <p id="paymentMethodsStatus" class="admin-status"></p>
+                                                </div>
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Payments Received</h3>
+                                                    <div id="paymentSummaryCards" class="admin-section-grid"></div>
+                                                    <p id="paymentManagerStatus" class="admin-status"></p>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <h3>Order Payments</h3>
+                                                <div class="admin-table-wrap">
+                                                    <table class="admin-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Customer</th>
+                                                                <th>Method</th>
+                                                                <th>Payment Status</th>
+                                                                <th>Amount</th>
+                                                                <th>Reference</th>
+                                                                <th>Received</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="paymentsTableBody"></tbody>
+                                                    </table>
+                                                    <p id="emptyPaymentsState" class="empty-products-message hidden">No orders are ready for payment tracking yet.</p>
+                                                </div>
                                             </div>
                                         </section>
 

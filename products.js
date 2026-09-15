@@ -1,5 +1,37 @@
 (function () {
     const DEFAULT_PRODUCTS_PATH = 'products.json';
+    const DEFAULT_PAYMENT_METHODS = [
+        {
+            id: 'paypal',
+            name: 'PayPal',
+            enabled: true,
+            instructions: 'Send your payment through PayPal once your order total is confirmed.'
+        },
+        {
+            id: 'klarna',
+            name: 'Klarna',
+            enabled: true,
+            instructions: 'Ask for a Klarna-ready invoice after we confirm your spooky order details.'
+        },
+        {
+            id: 'afterpay',
+            name: 'Afterpay',
+            enabled: true,
+            instructions: 'Afterpay is available after we review and approve your final order total.'
+        },
+        {
+            id: 'zip',
+            name: 'Zip',
+            enabled: true,
+            instructions: 'Choose Zip if you want to split your payment after the order is confirmed.'
+        },
+        {
+            id: 'apple-pay',
+            name: 'Apple Pay',
+            enabled: true,
+            instructions: 'Apple Pay can be requested when we send your final payment request.'
+        }
+    ];
     const resourceConfigs = {
         products: {
             storageKey: 'sip-of-ghoulaid-products',
@@ -10,6 +42,11 @@
             storageKey: 'sip-of-ghoulaid-orders',
             eventName: 'sip-of-ghoulaid-orders-updated',
             getDefault: async () => []
+        },
+        paymentMethods: {
+            storageKey: 'sip-of-ghoulaid-payment-methods',
+            eventName: 'sip-of-ghoulaid-payment-methods-updated',
+            getDefault: async () => DEFAULT_PAYMENT_METHODS
         },
         discounts: {
             storageKey: 'sip-of-ghoulaid-discounts',
@@ -91,6 +128,15 @@
         return [];
     }
 
+    function normalizeAmount(value, fallback = 0) {
+        const numericValue = Number.parseFloat(value);
+        if (!Number.isFinite(numericValue) || numericValue < 0) {
+            return fallback;
+        }
+
+        return Math.round(numericValue * 100) / 100;
+    }
+
     function normalizeProduct(product) {
         return {
             id: normalizeText(product.id, createId('product')),
@@ -130,6 +176,12 @@
             additionalSetCount: normalizeText(order.additionalSetCount),
             deadline: normalizeText(order.deadline),
             additionalInfo: normalizeText(order.additionalInfo),
+            paymentMethod: normalizeText(order.paymentMethod),
+            paymentStatus: normalizeText(order.paymentStatus, 'Awaiting Payment'),
+            paymentAmount: normalizeAmount(order.paymentAmount),
+            paymentReference: normalizeText(order.paymentReference),
+            paymentNotes: normalizeText(order.paymentNotes),
+            paymentReceivedAt: normalizeText(order.paymentReceivedAt),
             status: normalizeText(order.status, 'Pending'),
             createdAt: normalizeText(order.createdAt, new Date().toISOString())
         };
@@ -163,6 +215,25 @@
         return discounts
             .map(normalizeDiscount)
             .filter(discount => discount.code || discount.description);
+    }
+
+    function normalizePaymentMethod(method) {
+        return {
+            id: normalizeText(method.id, createId('payment-method')),
+            name: normalizeText(method.name),
+            enabled: normalizeBoolean(method.enabled, true),
+            instructions: normalizeText(method.instructions)
+        };
+    }
+
+    function normalizePaymentMethods(methods) {
+        if (!Array.isArray(methods)) {
+            return normalizePaymentMethods(DEFAULT_PAYMENT_METHODS);
+        }
+
+        return methods
+            .map(normalizePaymentMethod)
+            .filter(method => method.name);
     }
 
     function normalizeMarketing(marketing) {
@@ -206,12 +277,17 @@
             return [];
         }
 
+        if (resourceName === 'paymentMethods') {
+            return [];
+        }
+
         return {};
     }
 
     const normalizers = {
         products: normalizeProducts,
         orders: normalizeOrders,
+        paymentMethods: normalizePaymentMethods,
         discounts: normalizeDiscounts,
         marketing: normalizeMarketing,
         settings: normalizeSettings,
@@ -327,6 +403,9 @@
         resetProducts: () => resetResource('products'),
         getOrders: () => getResource('orders'),
         saveOrders: value => saveResource('orders', value),
+        getPaymentMethods: () => getResource('paymentMethods'),
+        savePaymentMethods: value => saveResource('paymentMethods', value),
+        resetPaymentMethods: () => resetResource('paymentMethods'),
         getDiscounts: () => getResource('discounts'),
         saveDiscounts: value => saveResource('discounts', value),
         getMarketing: () => getResource('marketing'),

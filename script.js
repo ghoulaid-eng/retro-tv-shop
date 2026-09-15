@@ -10,11 +10,15 @@ const volumeBtn = document.getElementById('volumeBtn');
 const staticOverlay = document.getElementById('staticOverlay');
 const additionalSetCountGroup = document.getElementById('additionalSetCountGroup');
 const additionalSetRadios = document.querySelectorAll('input[name="additionalSets"]');
+const paymentMethodsList = document.getElementById('paymentMethodsList');
+const paymentMethodSelect = document.getElementById('paymentMethod');
+const paymentMethodInstructions = document.getElementById('paymentMethodInstructions');
 
 let isPoweredOn = true;
 let volumeLevel = 100;
 let touchStartX = 0;
 let touchEndX = 0;
+let availablePaymentMethods = [];
 
 function playClickSound() {
     if (!audioContext) {
@@ -215,6 +219,66 @@ function renderFeaturedBroadcast(marketing, enabled) {
     target.appendChild(text);
 }
 
+function renderPaymentMethodDetails() {
+    if (!paymentMethodInstructions) {
+        return;
+    }
+
+    const selectedMethod = availablePaymentMethods.find(method => method.id === paymentMethodSelect?.value);
+    paymentMethodInstructions.textContent = selectedMethod?.instructions || 'We will confirm your order total before requesting payment.';
+}
+
+function renderPaymentMethods(paymentMethods) {
+    availablePaymentMethods = paymentMethods.filter(method => method.enabled);
+
+    if (paymentMethodsList) {
+        paymentMethodsList.replaceChildren();
+
+        availablePaymentMethods.forEach(method => {
+            const badge = document.createElement('span');
+            badge.className = 'payment-method-chip';
+            badge.textContent = method.name;
+            paymentMethodsList.appendChild(badge);
+        });
+
+        if (!availablePaymentMethods.length) {
+            const emptyState = document.createElement('p');
+            emptyState.className = 'empty-products-message';
+            emptyState.textContent = 'Payment methods are being updated. Please check back soon.';
+            paymentMethodsList.appendChild(emptyState);
+        }
+    }
+
+    if (paymentMethodSelect) {
+        const previousValue = paymentMethodSelect.value;
+        paymentMethodSelect.replaceChildren();
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = availablePaymentMethods.length
+            ? 'Choose payment method...'
+            : 'Payment methods unavailable';
+        paymentMethodSelect.appendChild(placeholderOption);
+
+        availablePaymentMethods.forEach(method => {
+            const option = document.createElement('option');
+            option.value = method.id;
+            option.textContent = method.name;
+            option.selected = previousValue ? previousValue === method.id : false;
+            paymentMethodSelect.appendChild(option);
+        });
+
+        if (!availablePaymentMethods.some(method => method.id === previousValue) && availablePaymentMethods[0]) {
+            paymentMethodSelect.value = availablePaymentMethods[0].id;
+        }
+
+        paymentMethodSelect.disabled = !availablePaymentMethods.length;
+        paymentMethodSelect.required = availablePaymentMethods.length > 0;
+    }
+
+    renderPaymentMethodDetails();
+}
+
 function applySettings(settings) {
     document.title = settings.shopName;
 
@@ -280,19 +344,21 @@ function updateAdditionalSetVisibility() {
 }
 
 async function initializeShopData() {
-    const [products, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+    const [products, discounts, marketing, settings, appCenter, designer, paymentMethods] = await Promise.all([
         window.ShopData.getProducts(),
         window.ShopData.getDiscounts(),
         window.ShopData.getMarketing(),
         window.ShopData.getSettings(),
         window.ShopData.getAppCenter(),
-        window.ShopData.getDesigner()
+        window.ShopData.getDesigner(),
+        window.ShopData.getPaymentMethods()
     ]);
 
     renderShopProducts(products);
     applySettings(settings);
     applyAppCenter(appCenter);
     applyDesigner(designer);
+    renderPaymentMethods(paymentMethods);
     renderAnnouncement('homeAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
     renderAnnouncement('shopAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
     renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
@@ -301,6 +367,7 @@ async function initializeShopData() {
     window.ShopData.subscribe('products', renderShopProducts);
     window.ShopData.subscribe('settings', applySettings);
     window.ShopData.subscribe('designer', applyDesigner);
+    window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
     window.ShopData.subscribe('discounts', nextDiscounts => {
         window.ShopData.getAppCenter().then(currentAppCenter => {
             renderDiscounts(nextDiscounts, currentAppCenter.discountsEnabled);
@@ -350,6 +417,12 @@ if (customOrderForm) {
     customOrderForm.addEventListener('submit', async event => {
         event.preventDefault();
 
+        if (!availablePaymentMethods.length) {
+            document.getElementById('orderSuccessMessage').textContent = 'Payment methods are unavailable right now. Please try again later.';
+            orderSuccess.classList.remove('hidden');
+            return;
+        }
+
         const formData = new FormData(customOrderForm);
         const rawData = Object.fromEntries(formData);
         const order = window.ShopData.normalizeOrders([{
@@ -357,6 +430,7 @@ if (customOrderForm) {
             scents: formData.getAll('scent'),
             glitter: formData.get('glitter') === 'yes',
             glow: formData.get('glow') === 'yes',
+            paymentStatus: 'Awaiting Payment',
             status: 'Pending'
         }])[0];
 
@@ -365,7 +439,7 @@ if (customOrderForm) {
 
         customOrderForm.style.display = 'none';
         orderSuccess.classList.remove('hidden');
-        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${order.fullName || 'ghoul'}! Your custom order has been saved for the Sip of Ghoulaid shop.`;
+        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${order.fullName || 'ghoul'}! Your custom order has been saved. We’ll confirm your total and send ${availablePaymentMethods.find(method => method.id === order.paymentMethod)?.name || 'payment'} instructions soon.`;
         playClickSound();
 
         setTimeout(() => {
@@ -375,6 +449,10 @@ if (customOrderForm) {
             orderSuccess.classList.add('hidden');
         }, 3000);
     });
+}
+
+if (paymentMethodSelect) {
+    paymentMethodSelect.addEventListener('change', renderPaymentMethodDetails);
 }
 
 if (powerBtn) {
