@@ -1,6 +1,5 @@
 # Sip of Ghoulaid Shop
-A retro TV-themed Sip of Ghoulaid shop with pastel colors, static effects, and TV remote click sounds
-
+Sip of Ghoulaid shop 
 ## GitHub Pages
 
 This repository includes a GitHub Pages workflow at `/home/runner/work/retro-tv-shop/retro-tv-shop/.github/workflows/deploy-pages.yml`.
@@ -14,3 +13,5 @@ To publish the site:
 Your public URLs will be:
 - Shop: `https://ghoulaid-eng.github.io/retro-tv-shop/`
 - Admin: `https://ghoulaid-eng.github.io/retro-tv-shop/admin.html`
+# Sip-of-Ghoulaid-Shop
+A retro TV-themed e-commerce shop with pastel colors, static effects, and TV remote click sounds
