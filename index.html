@@ -24,6 +24,7 @@
                             <select id="channelSelector" class="channel-selector">
                                 <option value="home">📺 HOME</option>
                                 <option value="shop">🛍️ SHOP</option>
+                                <option value="account">👤 ACCOUNT</option>
                                 <option value="summon">🔮 SUMMON US</option>
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
                                 <option value="about">ℹ️ ABOUT</option>
@@ -49,9 +50,133 @@
                                 <div id="shopAnnouncement" class="broadcast-banner hidden"></div>
                                 <div id="shopFeaturedCard" class="featured-broadcast hidden"></div>
                                 <div id="shopDiscounts" class="discount-broadcast hidden"></div>
+                                <div class="account-banner">
+                                    <div>
+                                        <h3 id="shopAccountGreeting">Browsing as guest</h3>
+                                        <p id="shopAccountSummary">Create a local account to save wishlists, carts, and shipping details on this device.</p>
+                                    </div>
+                                    <button type="button" class="table-action-btn click-item" id="openAccountFromShop">Open account</button>
+                                </div>
                                 <div id="shopGrid" class="shop-grid card-size-cozy" aria-live="polite"></div>
                                 <p id="shopNote" class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
                                 <p class="shop-admin-link"><a href="admin.html">🛠️ Open Product Admin Panel</a></p>
+                            </section>
+
+                            <section id="account" class="channel">
+                                <h1 class="channel-title">ACCOUNT VAULT</h1>
+                                <p class="channel-intro">Create a local account on this device to save your spooky wishlist, saved cart, and shipping details.</p>
+
+                                <div class="account-grid">
+                                    <div class="account-stack">
+                                        <div class="account-panel">
+                                            <h3 id="accountGreeting">No account active</h3>
+                                            <p id="accountSummary">Create an account or switch to one saved on this device.</p>
+                                            <p id="accountStatusMessage" class="admin-status" aria-live="polite"></p>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Switch local account</h3>
+                                            <div class="form-group">
+                                                <label for="savedAccountSelect">Saved accounts on this device</label>
+                                                <select id="savedAccountSelect">
+                                                    <option value="">Choose an account...</option>
+                                                </select>
+                                            </div>
+                                            <div class="account-button-row">
+                                                <button type="button" class="table-action-btn click-item" id="switchAccountButton">Use selected account</button>
+                                                <button type="button" class="table-action-btn click-item" id="createAccountModeButton">Create new account</button>
+                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="signOutButton">Sign out</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Account profile</h3>
+                                            <form id="accountProfileForm" class="admin-simple-form">
+                                                <div class="form-group">
+                                                    <label for="accountName">Name</label>
+                                                    <input type="text" id="accountName" placeholder="Your name" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountUsername">Username</label>
+                                                    <input type="text" id="accountUsername" placeholder="@ghoul-next-door" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountEmail">Email</label>
+                                                    <input type="email" id="accountEmail" placeholder="you@example.com" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountContactMethod">Preferred Contact Method</label>
+                                                    <select id="accountContactMethod">
+                                                        <option value="">Choose contact method...</option>
+                                                        <option value="email">📧 Email</option>
+                                                        <option value="phone">📱 Phone</option>
+                                                        <option value="instagram">📷 Instagram DM</option>
+                                                        <option value="discord">💬 Discord</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountContactInfo">Contact Details</label>
+                                                    <input type="text" id="accountContactInfo" placeholder="Email, phone, or handle">
+                                                </div>
+                                                <button type="submit" class="submit-btn click-item">Save account</button>
+                                            </form>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Shipping details</h3>
+                                            <form id="shippingProfileForm" class="admin-simple-form">
+                                                <div class="form-group">
+                                                    <label for="shippingFullName">Full Name</label>
+                                                    <input type="text" id="shippingFullName" placeholder="Full shipping name">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingAddressLine1">Address Line 1</label>
+                                                    <input type="text" id="shippingAddressLine1" placeholder="123 Haunted Hollow Rd">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingAddressLine2">Address Line 2</label>
+                                                    <input type="text" id="shippingAddressLine2" placeholder="Apartment, suite, etc.">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingCity">City</label>
+                                                    <input type="text" id="shippingCity" placeholder="Salem">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingState">State / Region</label>
+                                                    <input type="text" id="shippingState" placeholder="Massachusetts">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingPostalCode">Postal Code</label>
+                                                    <input type="text" id="shippingPostalCode" placeholder="01970">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingCountry">Country</label>
+                                                    <input type="text" id="shippingCountry" placeholder="United States">
+                                                </div>
+                                                <button type="submit" class="submit-btn click-item">Save shipping details</button>
+                                            </form>
+                                            <p id="shippingStatusMessage" class="admin-status" aria-live="polite"></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="account-stack">
+                                        <div class="account-panel">
+                                            <h3>Wishlist</h3>
+                                            <div id="wishlistList" class="account-saved-list"></div>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Saved cart</h3>
+                                            <p id="cartSummaryMessage">Your active account cart is saved automatically on this device.</p>
+                                            <div class="account-button-row">
+                                                <button type="button" class="table-action-btn click-item" id="moveWishlistToCartButton">Move wishlist to cart</button>
+                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearCartButton">Clear cart</button>
+                                            </div>
+                                            <div id="cartList" class="account-saved-list"></div>
+                                            <p id="cartStatusMessage" class="admin-status" aria-live="polite"></p>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
 
                             <!-- Summon Us Channel -->

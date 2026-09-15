@@ -585,6 +585,62 @@ input[type="checkbox"] {
     color: #ff69b4;
 }
 
+.account-banner,
+.account-panel {
+    margin-bottom: 20px;
+    padding: 16px 18px;
+    border: 2px solid #00ff88;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(255, 105, 180, 0.08));
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.18);
+}
+
+.account-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.account-stack {
+    display: grid;
+    gap: 20px;
+}
+
+.account-button-row,
+.product-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.product-card-actions {
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.account-saved-list {
+    display: grid;
+    gap: 12px;
+}
+
+.saved-item-card {
+    padding: 14px;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.saved-item-card p {
+    margin-top: 8px;
+}
+
 /* Buttons */
 .submit-btn,
 .reset-btn,
@@ -1094,6 +1150,15 @@ input[type="checkbox"] {
 
     .screen-content {
         padding: 15px;
+    }
+
+    .account-banner,
+    .account-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-banner {
+        align-items: flex-start;
     }
 
     h1 {

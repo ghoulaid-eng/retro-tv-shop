@@ -13,12 +13,52 @@ const additionalSetRadios = document.querySelectorAll('input[name="additionalSet
 const paymentMethodsList = document.getElementById('paymentMethodsList');
 const paymentMethodSelect = document.getElementById('paymentMethod');
 const paymentMethodInstructions = document.getElementById('paymentMethodInstructions');
+const openAccountFromShopButton = document.getElementById('openAccountFromShop');
+const shopAccountGreeting = document.getElementById('shopAccountGreeting');
+const shopAccountSummary = document.getElementById('shopAccountSummary');
+const accountGreeting = document.getElementById('accountGreeting');
+const accountSummary = document.getElementById('accountSummary');
+const accountStatusMessage = document.getElementById('accountStatusMessage');
+const savedAccountSelect = document.getElementById('savedAccountSelect');
+const switchAccountButton = document.getElementById('switchAccountButton');
+const createAccountModeButton = document.getElementById('createAccountModeButton');
+const signOutButton = document.getElementById('signOutButton');
+const accountProfileForm = document.getElementById('accountProfileForm');
+const accountNameInput = document.getElementById('accountName');
+const accountUsernameInput = document.getElementById('accountUsername');
+const accountEmailInput = document.getElementById('accountEmail');
+const accountContactMethodInput = document.getElementById('accountContactMethod');
+const accountContactInfoInput = document.getElementById('accountContactInfo');
+const shippingProfileForm = document.getElementById('shippingProfileForm');
+const shippingFullNameInput = document.getElementById('shippingFullName');
+const shippingAddressLine1Input = document.getElementById('shippingAddressLine1');
+const shippingAddressLine2Input = document.getElementById('shippingAddressLine2');
+const shippingCityInput = document.getElementById('shippingCity');
+const shippingStateInput = document.getElementById('shippingState');
+const shippingPostalCodeInput = document.getElementById('shippingPostalCode');
+const shippingCountryInput = document.getElementById('shippingCountry');
+const shippingStatusMessage = document.getElementById('shippingStatusMessage');
+const wishlistList = document.getElementById('wishlistList');
+const cartList = document.getElementById('cartList');
+const cartSummaryMessage = document.getElementById('cartSummaryMessage');
+const cartStatusMessage = document.getElementById('cartStatusMessage');
+const moveWishlistToCartButton = document.getElementById('moveWishlistToCartButton');
+const clearCartButton = document.getElementById('clearCartButton');
+const fullNameInput = document.getElementById('fullName');
+const usernameInput = document.getElementById('username');
+const contactMethodInput = document.getElementById('contactMethod');
+const contactInfoInput = document.getElementById('contactInfo');
 
 let isPoweredOn = true;
 let volumeLevel = 100;
 let touchStartX = 0;
 let touchEndX = 0;
+let shopProducts = [];
 let availablePaymentMethods = [];
+let savedUsers = [];
+let currentUserState = {};
+let wishlists = [];
+let carts = [];
 
 function playClickSound() {
     if (!audioContext) {
@@ -72,6 +112,96 @@ function bindProductCardEffects(container = document) {
     });
 }
 
+function setStatus(target, message) {
+    if (target) {
+        target.textContent = message;
+    }
+}
+
+function getActiveUser() {
+    return savedUsers.find(user => user.id === currentUserState.userId) || null;
+}
+
+function getUserDisplayName(user) {
+    if (!user) {
+        return 'guest';
+    }
+
+    return user.name || user.username || user.email || 'ghoul';
+}
+
+function findProduct(productId) {
+    return shopProducts.find(product => product.id === productId) || null;
+}
+
+function getWishlistEntry(userId) {
+    return wishlists.find(entry => entry.userId === userId) || { userId, productIds: [] };
+}
+
+function getCartEntry(userId) {
+    return carts.find(entry => entry.userId === userId) || { userId, items: [] };
+}
+
+function getCartQuantity(productId) {
+    const activeUser = getActiveUser();
+    if (!activeUser) {
+        return 0;
+    }
+
+    return getCartEntry(activeUser.id).items.find(item => item.productId === productId)?.quantity || 0;
+}
+
+function setActiveChannel(channelName) {
+    if (!channelSelector) {
+        return;
+    }
+
+    channelSelector.value = channelName;
+    channelSelector.dispatchEvent(new Event('change'));
+}
+
+function renderSavedListMessage(target, message) {
+    if (!target) {
+        return;
+    }
+
+    target.replaceChildren();
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-products-message';
+    emptyState.textContent = message;
+    target.appendChild(emptyState);
+}
+
+async function saveUsersWithLatest(applyChange) {
+    const latestUsers = await window.ShopData.getUsers();
+    const nextUsers = applyChange(latestUsers);
+    window.ShopData.saveUsers(nextUsers);
+}
+
+async function saveWishlistsWithLatest(applyChange) {
+    const latestWishlists = await window.ShopData.getWishlists();
+    const nextWishlists = applyChange(latestWishlists);
+    window.ShopData.saveWishlists(nextWishlists);
+}
+
+async function saveCartsWithLatest(applyChange) {
+    const latestCarts = await window.ShopData.getCarts();
+    const nextCarts = applyChange(latestCarts);
+    window.ShopData.saveCarts(nextCarts);
+}
+
+function ensureActiveUser(message) {
+    const activeUser = getActiveUser();
+    if (activeUser) {
+        return activeUser;
+    }
+
+    setStatus(accountStatusMessage, message);
+    setStatus(cartStatusMessage, message);
+    setActiveChannel('account');
+    return null;
+}
+
 function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card click-item';
@@ -106,10 +236,92 @@ function createProductCard(product) {
         card.appendChild(subcategories);
     }
 
+    const actions = document.createElement('div');
+    actions.className = 'product-card-actions';
+
+    const activeUser = getActiveUser();
+    const wishlistIds = activeUser ? getWishlistEntry(activeUser.id).productIds : [];
+    const wishlistButton = document.createElement('button');
+    wishlistButton.type = 'button';
+    wishlistButton.className = 'table-action-btn click-item';
+    wishlistButton.textContent = wishlistIds.includes(product.id) ? '♥ Wishlisted' : '♡ Wishlist';
+    wishlistButton.addEventListener('click', async event => {
+        event.stopPropagation();
+        const user = ensureActiveUser('Create or switch to an account to save a wishlist.');
+        if (!user) {
+            return;
+        }
+
+        await saveWishlistsWithLatest(currentWishlists => {
+            const existingEntry = currentWishlists.find(entry => entry.userId === user.id);
+            const nextIds = new Set(existingEntry?.productIds || []);
+
+            if (nextIds.has(product.id)) {
+                nextIds.delete(product.id);
+            } else {
+                nextIds.add(product.id);
+            }
+
+            const nextEntry = {
+                userId: user.id,
+                productIds: [...nextIds],
+                updatedAt: new Date().toISOString()
+            };
+
+            const remainingEntries = currentWishlists.filter(entry => entry.userId !== user.id);
+            return [...remainingEntries, nextEntry];
+        });
+
+        setStatus(accountStatusMessage, `${product.name} wishlist updated.`);
+    });
+    actions.appendChild(wishlistButton);
+
+    const cartButton = document.createElement('button');
+    cartButton.type = 'button';
+    cartButton.className = 'table-action-btn click-item';
+    const quantity = getCartQuantity(product.id);
+    cartButton.textContent = quantity ? `🛒 Add another (${quantity})` : '🛒 Save to cart';
+    cartButton.addEventListener('click', async event => {
+        event.stopPropagation();
+        const user = ensureActiveUser('Create or switch to an account to save a cart.');
+        if (!user) {
+            return;
+        }
+
+        await saveCartsWithLatest(currentCarts => {
+            const existingEntry = currentCarts.find(entry => entry.userId === user.id);
+            const items = [...(existingEntry?.items || [])];
+            const existingItemIndex = items.findIndex(item => item.productId === product.id);
+
+            if (existingItemIndex >= 0) {
+                items[existingItemIndex] = {
+                    ...items[existingItemIndex],
+                    quantity: items[existingItemIndex].quantity + 1
+                };
+            } else {
+                items.push({ productId: product.id, quantity: 1 });
+            }
+
+            const nextEntry = {
+                userId: user.id,
+                items,
+                updatedAt: new Date().toISOString()
+            };
+
+            const remainingEntries = currentCarts.filter(entry => entry.userId !== user.id);
+            return [...remainingEntries, nextEntry];
+        });
+
+        setStatus(cartStatusMessage, `${product.name} saved to your cart.`);
+    });
+    actions.appendChild(cartButton);
+
+    card.appendChild(actions);
     return card;
 }
 
 function renderShopProducts(products) {
+    shopProducts = products;
     const shopGrid = document.getElementById('shopGrid');
     if (!shopGrid) {
         return;
@@ -343,16 +555,332 @@ function updateAdditionalSetVisibility() {
     additionalSetCountGroup.style.display = shouldShow ? 'block' : 'none';
 }
 
+function fillOrderProfileFromAccount() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        return;
+    }
+
+    if (fullNameInput) {
+        fullNameInput.value = activeUser.name || activeUser.shippingFullName || '';
+    }
+
+    if (usernameInput) {
+        usernameInput.value = activeUser.username || '';
+    }
+
+    if (contactMethodInput) {
+        contactMethodInput.value = activeUser.contactMethod || '';
+    }
+
+    if (contactInfoInput) {
+        contactInfoInput.value = activeUser.contactInfo || activeUser.email || '';
+    }
+}
+
+function renderSavedAccounts() {
+    if (!savedAccountSelect) {
+        return;
+    }
+
+    const activeUser = getActiveUser();
+    savedAccountSelect.replaceChildren();
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = savedUsers.length ? 'Choose an account...' : 'No saved accounts yet';
+    savedAccountSelect.appendChild(placeholder);
+
+    savedUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = `${getUserDisplayName(user)}${user.email ? ` • ${user.email}` : ''}`;
+        option.selected = Boolean(activeUser && activeUser.id === user.id);
+        savedAccountSelect.appendChild(option);
+    });
+}
+
+function renderShopAccountBanner() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        setStatus(shopAccountGreeting, 'Browsing as guest');
+        setStatus(shopAccountSummary, 'Create a local account to save wishlists, carts, and shipping details on this device.');
+        return;
+    }
+
+    const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
+    const cartItemCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
+    setStatus(shopAccountGreeting, `Browsing as ${getUserDisplayName(activeUser)}`);
+    setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) saved on this device.`);
+}
+
+function loadAccountForms() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        accountProfileForm?.reset();
+        shippingProfileForm?.reset();
+        return;
+    }
+
+    accountNameInput.value = activeUser.name || '';
+    accountUsernameInput.value = activeUser.username || '';
+    accountEmailInput.value = activeUser.email || '';
+    accountContactMethodInput.value = activeUser.contactMethod || '';
+    accountContactInfoInput.value = activeUser.contactInfo || '';
+    shippingFullNameInput.value = activeUser.shippingFullName || activeUser.name || '';
+    shippingAddressLine1Input.value = activeUser.shippingAddressLine1 || '';
+    shippingAddressLine2Input.value = activeUser.shippingAddressLine2 || '';
+    shippingCityInput.value = activeUser.shippingCity || '';
+    shippingStateInput.value = activeUser.shippingState || '';
+    shippingPostalCodeInput.value = activeUser.shippingPostalCode || '';
+    shippingCountryInput.value = activeUser.shippingCountry || '';
+}
+
+function renderWishlist() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        renderSavedListMessage(wishlistList, 'Create or switch to an account to save wishlist items.');
+        return;
+    }
+
+    const wishlistIds = getWishlistEntry(activeUser.id).productIds;
+    if (!wishlistIds.length) {
+        renderSavedListMessage(wishlistList, 'Your wishlist is empty. Save products from the shop channel.');
+        return;
+    }
+
+    wishlistList.replaceChildren();
+
+    wishlistIds.forEach(productId => {
+        const product = findProduct(productId);
+        if (!product) {
+            return;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'saved-item-card';
+
+        const title = document.createElement('strong');
+        title.textContent = `${product.emoji || '🛍️'} ${product.name}`;
+        item.appendChild(title);
+
+        if (product.description) {
+            const description = document.createElement('p');
+            description.textContent = product.description;
+            item.appendChild(description);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'product-card-actions';
+
+        const moveButton = document.createElement('button');
+        moveButton.type = 'button';
+        moveButton.className = 'table-action-btn click-item';
+        moveButton.textContent = 'Add to cart';
+        moveButton.addEventListener('click', async () => {
+            await saveCartsWithLatest(currentCarts => {
+                const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
+                const items = [...(existingEntry?.items || [])];
+                const existingItemIndex = items.findIndex(item => item.productId === product.id);
+
+                if (existingItemIndex >= 0) {
+                    items[existingItemIndex] = {
+                        ...items[existingItemIndex],
+                        quantity: items[existingItemIndex].quantity + 1
+                    };
+                } else {
+                    items.push({ productId: product.id, quantity: 1 });
+                }
+
+                return [
+                    ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+                    { userId: activeUser.id, items, updatedAt: new Date().toISOString() }
+                ];
+            });
+            setStatus(cartStatusMessage, `${product.name} added to your cart.`);
+        });
+        actions.appendChild(moveButton);
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'table-action-btn table-action-btn-danger click-item';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', async () => {
+            await saveWishlistsWithLatest(currentWishlists => {
+                const existingEntry = currentWishlists.find(entry => entry.userId === activeUser.id);
+                const nextIds = (existingEntry?.productIds || []).filter(id => id !== product.id);
+
+                return [
+                    ...currentWishlists.filter(entry => entry.userId !== activeUser.id),
+                    { userId: activeUser.id, productIds: nextIds, updatedAt: new Date().toISOString() }
+                ];
+            });
+            setStatus(accountStatusMessage, `${product.name} removed from your wishlist.`);
+        });
+        actions.appendChild(removeButton);
+
+        item.appendChild(actions);
+        wishlistList.appendChild(item);
+    });
+
+    bindClickSound(wishlistList);
+}
+
+function renderCart() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        if (cartSummaryMessage) {
+            cartSummaryMessage.textContent = 'Sign in to save a cart on this device.';
+        }
+        renderSavedListMessage(cartList, 'Create or switch to an account to save cart items.');
+        return;
+    }
+
+    const cart = getCartEntry(activeUser.id);
+    const totalItems = cart.items.reduce((total, item) => total + item.quantity, 0);
+
+    if (cartSummaryMessage) {
+        cartSummaryMessage.textContent = `Your active account cart is saved automatically on this device. ${totalItems} item(s) saved right now.`;
+    }
+
+    if (!cart.items.length) {
+        renderSavedListMessage(cartList, 'Your saved cart is empty. Add products from the shop channel.');
+        return;
+    }
+
+    cartList.replaceChildren();
+
+    cart.items.forEach(item => {
+        const product = findProduct(item.productId);
+        if (!product) {
+            return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'saved-item-card';
+
+        const title = document.createElement('strong');
+        title.textContent = `${product.emoji || '🛍️'} ${product.name}`;
+        card.appendChild(title);
+
+        const quantityText = document.createElement('p');
+        quantityText.textContent = `Quantity: ${item.quantity}`;
+        card.appendChild(quantityText);
+
+        const actions = document.createElement('div');
+        actions.className = 'product-card-actions';
+
+        const decreaseButton = document.createElement('button');
+        decreaseButton.type = 'button';
+        decreaseButton.className = 'table-action-btn click-item';
+        decreaseButton.textContent = '−1';
+        decreaseButton.addEventListener('click', async () => {
+            await saveCartsWithLatest(currentCarts => {
+                const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
+                const nextItems = (existingEntry?.items || [])
+                    .map(existingItem => existingItem.productId === item.productId
+                        ? { ...existingItem, quantity: existingItem.quantity - 1 }
+                        : existingItem)
+                    .filter(existingItem => existingItem.quantity > 0);
+
+                return [
+                    ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+                    { userId: activeUser.id, items: nextItems, updatedAt: new Date().toISOString() }
+                ];
+            });
+        });
+        actions.appendChild(decreaseButton);
+
+        const increaseButton = document.createElement('button');
+        increaseButton.type = 'button';
+        increaseButton.className = 'table-action-btn click-item';
+        increaseButton.textContent = '+1';
+        increaseButton.addEventListener('click', async () => {
+            await saveCartsWithLatest(currentCarts => {
+                const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
+                const nextItems = (existingEntry?.items || []).map(existingItem => existingItem.productId === item.productId
+                    ? { ...existingItem, quantity: existingItem.quantity + 1 }
+                    : existingItem);
+
+                return [
+                    ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+                    { userId: activeUser.id, items: nextItems, updatedAt: new Date().toISOString() }
+                ];
+            });
+        });
+        actions.appendChild(increaseButton);
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'table-action-btn table-action-btn-danger click-item';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', async () => {
+            await saveCartsWithLatest(currentCarts => {
+                const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
+                const nextItems = (existingEntry?.items || []).filter(existingItem => existingItem.productId !== item.productId);
+
+                return [
+                    ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+                    { userId: activeUser.id, items: nextItems, updatedAt: new Date().toISOString() }
+                ];
+            });
+            setStatus(cartStatusMessage, `${product.name} removed from your cart.`);
+        });
+        actions.appendChild(removeButton);
+
+        card.appendChild(actions);
+        cartList.appendChild(card);
+    });
+
+    bindClickSound(cartList);
+}
+
+function renderAccountState() {
+    const activeUser = getActiveUser();
+
+    if (!activeUser) {
+        setStatus(accountGreeting, 'No account active');
+        setStatus(accountSummary, 'Create an account or switch to one saved on this device.');
+    } else {
+        const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
+        const cartCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
+        setStatus(accountGreeting, `Welcome back, ${getUserDisplayName(activeUser)}`);
+        setStatus(accountSummary, `${wishlistCount} wishlist item(s), ${cartCount} saved cart item(s), and shipping details stored on this device.`);
+    }
+
+    renderSavedAccounts();
+    renderShopAccountBanner();
+    loadAccountForms();
+    fillOrderProfileFromAccount();
+    renderWishlist();
+    renderCart();
+    renderShopProducts(shopProducts);
+}
+
 async function initializeShopData() {
-    const [products, discounts, marketing, settings, appCenter, designer, paymentMethods] = await Promise.all([
+    const [products, discounts, marketing, settings, appCenter, designer, paymentMethods, users, currentUser, storedWishlists, storedCarts] = await Promise.all([
         window.ShopData.getProducts(),
         window.ShopData.getDiscounts(),
         window.ShopData.getMarketing(),
         window.ShopData.getSettings(),
         window.ShopData.getAppCenter(),
         window.ShopData.getDesigner(),
-        window.ShopData.getPaymentMethods()
+        window.ShopData.getPaymentMethods(),
+        window.ShopData.getUsers(),
+        window.ShopData.getCurrentUser(),
+        window.ShopData.getWishlists(),
+        window.ShopData.getCarts()
     ]);
+
+    savedUsers = users;
+    currentUserState = currentUser;
+    wishlists = storedWishlists;
+    carts = storedCarts;
 
     renderShopProducts(products);
     applySettings(settings);
@@ -363,11 +891,28 @@ async function initializeShopData() {
     renderAnnouncement('shopAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
     renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
     renderDiscounts(discounts, appCenter.discountsEnabled);
+    renderAccountState();
 
     window.ShopData.subscribe('products', renderShopProducts);
     window.ShopData.subscribe('settings', applySettings);
     window.ShopData.subscribe('designer', applyDesigner);
     window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
+    window.ShopData.subscribe('users', nextUsers => {
+        savedUsers = nextUsers;
+        renderAccountState();
+    });
+    window.ShopData.subscribe('currentUser', nextCurrentUser => {
+        currentUserState = nextCurrentUser;
+        renderAccountState();
+    });
+    window.ShopData.subscribe('wishlists', nextWishlists => {
+        wishlists = nextWishlists;
+        renderAccountState();
+    });
+    window.ShopData.subscribe('carts', nextCarts => {
+        carts = nextCarts;
+        renderAccountState();
+    });
     window.ShopData.subscribe('discounts', nextDiscounts => {
         window.ShopData.getAppCenter().then(currentAppCenter => {
             renderDiscounts(nextDiscounts, currentAppCenter.discountsEnabled);
@@ -413,6 +958,177 @@ if (channelSelector && channels.length) {
     });
 }
 
+if (openAccountFromShopButton) {
+    openAccountFromShopButton.addEventListener('click', () => {
+        setActiveChannel('account');
+    });
+}
+
+if (accountProfileForm) {
+    accountProfileForm.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const activeUser = getActiveUser();
+        const nextName = accountNameInput.value.trim();
+        const nextUsername = accountUsernameInput.value.trim();
+        const nextEmail = accountEmailInput.value.trim();
+
+        if (!nextName || !nextUsername || !nextEmail) {
+            setStatus(accountStatusMessage, 'Name, username, and email are required.');
+            return;
+        }
+
+        const latestUsers = await window.ShopData.getUsers();
+        const duplicateUser = latestUsers.find(user => user.id !== activeUser?.id && (
+            user.username.toLowerCase() === nextUsername.toLowerCase() ||
+            user.email.toLowerCase() === nextEmail.toLowerCase()
+        ));
+
+        if (duplicateUser) {
+            setStatus(accountStatusMessage, 'That username or email is already saved on this device.');
+            return;
+        }
+
+        if (activeUser) {
+            await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
+                ...user,
+                name: nextName,
+                username: nextUsername,
+                email: nextEmail,
+                contactMethod: accountContactMethodInput.value,
+                contactInfo: accountContactInfoInput.value.trim(),
+                updatedAt: new Date().toISOString()
+            } : user));
+            setStatus(accountStatusMessage, `Updated account for ${nextName}.`);
+            return;
+        }
+
+        const newUser = {
+            id: window.ShopData.createId('user'),
+            name: nextName,
+            username: nextUsername,
+            email: nextEmail,
+            contactMethod: accountContactMethodInput.value,
+            contactInfo: accountContactInfoInput.value.trim(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await saveUsersWithLatest(currentUsers => [...currentUsers, newUser]);
+        window.ShopData.saveCurrentUser({ userId: newUser.id, updatedAt: new Date().toISOString() });
+        setStatus(accountStatusMessage, `Created local account for ${nextName}.`);
+    });
+}
+
+if (shippingProfileForm) {
+    shippingProfileForm.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const activeUser = ensureActiveUser('Create or switch to an account before saving shipping details.');
+        if (!activeUser) {
+            return;
+        }
+
+        await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
+            ...user,
+            shippingFullName: shippingFullNameInput.value.trim(),
+            shippingAddressLine1: shippingAddressLine1Input.value.trim(),
+            shippingAddressLine2: shippingAddressLine2Input.value.trim(),
+            shippingCity: shippingCityInput.value.trim(),
+            shippingState: shippingStateInput.value.trim(),
+            shippingPostalCode: shippingPostalCodeInput.value.trim(),
+            shippingCountry: shippingCountryInput.value.trim(),
+            updatedAt: new Date().toISOString()
+        } : user));
+
+        setStatus(shippingStatusMessage, 'Shipping details saved to your account.');
+    });
+}
+
+if (switchAccountButton) {
+    switchAccountButton.addEventListener('click', () => {
+        if (!savedAccountSelect?.value) {
+            setStatus(accountStatusMessage, 'Choose an account to switch.');
+            return;
+        }
+
+        window.ShopData.saveCurrentUser({ userId: savedAccountSelect.value, updatedAt: new Date().toISOString() });
+        setStatus(accountStatusMessage, 'Switched local account.');
+    });
+}
+
+if (createAccountModeButton) {
+    createAccountModeButton.addEventListener('click', () => {
+        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
+        accountProfileForm?.reset();
+        shippingProfileForm?.reset();
+        setStatus(accountStatusMessage, 'Enter account details to create a new local account.');
+        setStatus(shippingStatusMessage, '');
+        setStatus(cartStatusMessage, '');
+    });
+}
+
+if (signOutButton) {
+    signOutButton.addEventListener('click', () => {
+        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
+        setStatus(accountStatusMessage, 'Signed out on this device.');
+    });
+}
+
+if (moveWishlistToCartButton) {
+    moveWishlistToCartButton.addEventListener('click', async () => {
+        const activeUser = ensureActiveUser('Create or switch to an account before moving wishlist items.');
+        if (!activeUser) {
+            return;
+        }
+
+        const wishlistIds = getWishlistEntry(activeUser.id).productIds;
+        if (!wishlistIds.length) {
+            setStatus(cartStatusMessage, 'Your wishlist is empty.');
+            return;
+        }
+
+        await saveCartsWithLatest(currentCarts => {
+            const existingEntry = currentCarts.find(entry => entry.userId === activeUser.id);
+            const items = [...(existingEntry?.items || [])];
+
+            wishlistIds.forEach(productId => {
+                const existingItemIndex = items.findIndex(item => item.productId === productId);
+                if (existingItemIndex >= 0) {
+                    items[existingItemIndex] = {
+                        ...items[existingItemIndex],
+                        quantity: items[existingItemIndex].quantity + 1
+                    };
+                } else {
+                    items.push({ productId, quantity: 1 });
+                }
+            });
+
+            return [
+                ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+                { userId: activeUser.id, items, updatedAt: new Date().toISOString() }
+            ];
+        });
+
+        setStatus(cartStatusMessage, 'Moved wishlist items into your cart.');
+    });
+}
+
+if (clearCartButton) {
+    clearCartButton.addEventListener('click', async () => {
+        const activeUser = ensureActiveUser('Create or switch to an account before clearing a cart.');
+        if (!activeUser) {
+            return;
+        }
+
+        await saveCartsWithLatest(currentCarts => [
+            ...currentCarts.filter(entry => entry.userId !== activeUser.id),
+            { userId: activeUser.id, items: [], updatedAt: new Date().toISOString() }
+        ]);
+        setStatus(cartStatusMessage, 'Cleared your saved cart.');
+    });
+}
+
 if (customOrderForm) {
     customOrderForm.addEventListener('submit', async event => {
         event.preventDefault();
@@ -445,6 +1161,7 @@ if (customOrderForm) {
         setTimeout(() => {
             customOrderForm.reset();
             updateAdditionalSetVisibility();
+            fillOrderProfileFromAccount();
             customOrderForm.style.display = 'block';
             orderSuccess.classList.add('hidden');
         }, 3000);

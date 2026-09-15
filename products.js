@@ -43,6 +43,26 @@
             eventName: 'sip-of-ghoulaid-orders-updated',
             getDefault: async () => []
         },
+        users: {
+            storageKey: 'sip-of-ghoulaid-users',
+            eventName: 'sip-of-ghoulaid-users-updated',
+            getDefault: async () => []
+        },
+        currentUser: {
+            storageKey: 'sip-of-ghoulaid-current-user',
+            eventName: 'sip-of-ghoulaid-current-user-updated',
+            getDefault: async () => ({})
+        },
+        wishlists: {
+            storageKey: 'sip-of-ghoulaid-wishlists',
+            eventName: 'sip-of-ghoulaid-wishlists-updated',
+            getDefault: async () => []
+        },
+        carts: {
+            storageKey: 'sip-of-ghoulaid-carts',
+            eventName: 'sip-of-ghoulaid-carts-updated',
+            getDefault: async () => []
+        },
         paymentMethods: {
             storageKey: 'sip-of-ghoulaid-payment-methods',
             eventName: 'sip-of-ghoulaid-payment-methods-updated',
@@ -137,6 +157,15 @@
         return Math.round(numericValue * 100) / 100;
     }
 
+    function normalizeInteger(value, fallback = 1) {
+        const numericValue = Number.parseInt(value, 10);
+        if (!Number.isFinite(numericValue) || numericValue < 1) {
+            return fallback;
+        }
+
+        return numericValue;
+    }
+
     function normalizeProduct(product) {
         return {
             id: normalizeText(product.id, createId('product')),
@@ -196,6 +225,88 @@
             .map(normalizeOrder)
             .filter(order => order.fullName || order.description)
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+
+    function normalizeUser(user) {
+        return {
+            id: normalizeText(user.id, createId('user')),
+            name: normalizeText(user.name),
+            username: normalizeText(user.username),
+            email: normalizeText(user.email),
+            contactMethod: normalizeText(user.contactMethod),
+            contactInfo: normalizeText(user.contactInfo),
+            shippingFullName: normalizeText(user.shippingFullName),
+            shippingAddressLine1: normalizeText(user.shippingAddressLine1),
+            shippingAddressLine2: normalizeText(user.shippingAddressLine2),
+            shippingCity: normalizeText(user.shippingCity),
+            shippingState: normalizeText(user.shippingState),
+            shippingPostalCode: normalizeText(user.shippingPostalCode),
+            shippingCountry: normalizeText(user.shippingCountry),
+            createdAt: normalizeText(user.createdAt, new Date().toISOString()),
+            updatedAt: normalizeText(user.updatedAt, new Date().toISOString())
+        };
+    }
+
+    function normalizeUsers(users) {
+        if (!Array.isArray(users)) {
+            return [];
+        }
+
+        return users
+            .map(normalizeUser)
+            .filter(user => user.name || user.username || user.email);
+    }
+
+    function normalizeCurrentUser(currentUser) {
+        return {
+            userId: normalizeText(currentUser.userId),
+            updatedAt: normalizeText(currentUser.updatedAt, new Date().toISOString())
+        };
+    }
+
+    function normalizeWishlistEntry(entry) {
+        return {
+            userId: normalizeText(entry.userId),
+            productIds: [...new Set(normalizeStringArray(entry.productIds))],
+            updatedAt: normalizeText(entry.updatedAt, new Date().toISOString())
+        };
+    }
+
+    function normalizeWishlists(wishlists) {
+        if (!Array.isArray(wishlists)) {
+            return [];
+        }
+
+        return wishlists
+            .map(normalizeWishlistEntry)
+            .filter(entry => entry.userId);
+    }
+
+    function normalizeCartItem(item) {
+        return {
+            productId: normalizeText(item.productId),
+            quantity: normalizeInteger(item.quantity, 1)
+        };
+    }
+
+    function normalizeCart(cart) {
+        return {
+            userId: normalizeText(cart.userId),
+            items: Array.isArray(cart.items)
+                ? cart.items.map(normalizeCartItem).filter(item => item.productId)
+                : [],
+            updatedAt: normalizeText(cart.updatedAt, new Date().toISOString())
+        };
+    }
+
+    function normalizeCarts(carts) {
+        if (!Array.isArray(carts)) {
+            return [];
+        }
+
+        return carts
+            .map(normalizeCart)
+            .filter(cart => cart.userId);
     }
 
     function normalizeDiscount(discount) {
@@ -277,7 +388,7 @@
             return [];
         }
 
-        if (resourceName === 'paymentMethods') {
+        if (resourceName === 'users' || resourceName === 'wishlists' || resourceName === 'carts' || resourceName === 'paymentMethods') {
             return [];
         }
 
@@ -287,6 +398,10 @@
     const normalizers = {
         products: normalizeProducts,
         orders: normalizeOrders,
+        users: normalizeUsers,
+        currentUser: normalizeCurrentUser,
+        wishlists: normalizeWishlists,
+        carts: normalizeCarts,
         paymentMethods: normalizePaymentMethods,
         discounts: normalizeDiscounts,
         marketing: normalizeMarketing,
@@ -403,6 +518,14 @@
         resetProducts: () => resetResource('products'),
         getOrders: () => getResource('orders'),
         saveOrders: value => saveResource('orders', value),
+        getUsers: () => getResource('users'),
+        saveUsers: value => saveResource('users', value),
+        getCurrentUser: () => getResource('currentUser'),
+        saveCurrentUser: value => saveResource('currentUser', value),
+        getWishlists: () => getResource('wishlists'),
+        saveWishlists: value => saveResource('wishlists', value),
+        getCarts: () => getResource('carts'),
+        saveCarts: value => saveResource('carts', value),
         getPaymentMethods: () => getResource('paymentMethods'),
         savePaymentMethods: value => saveResource('paymentMethods', value),
         resetPaymentMethods: () => resetResource('paymentMethods'),
