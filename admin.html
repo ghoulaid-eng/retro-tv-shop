@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Sip of Ghoulaid | Owner Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="admin-body">
+    <main class="admin-shell">
+        <a class="back-link" href="index.html">← RETURN TO STOREFRONT</a>
+        <header class="admin-header">
+            <p class="eyebrow">SIP OF GHOULAID / OWNER FREQUENCY</p>
+            <h1>THE GHOUL ROOM</h1>
+            <p>Catalog controls for this browser only.</p>
+        </header>
+        <section id="loginPanel" class="admin-panel login-panel">
+            <h2>OWNER LOGIN</h2>
+            <p class="prototype-warning"><strong>LOCAL PROTOTYPE ONLY — NOT SECURE FOR PRODUCTION.</strong> This client-side check is visible in browser code and offers no real protection.</p>
+            <p class="demo-credentials">Demo credentials: <strong>owner</strong> / <strong>ghoulaid-demo</strong></p>
+            <form id="loginForm">
+                <label for="adminUsername">Username</label>
+                <input id="adminUsername" name="username" autocomplete="username" required>
+                <label for="adminPassword">Password</label>
+                <input id="adminPassword" name="password" type="password" autocomplete="current-password" required>
+                <button class="submit-btn" type="submit">UNLOCK CONSOLE</button>
+                <p id="loginMessage" class="form-message" aria-live="polite"></p>
+            </form>
+        </section>
+        <section id="dashboardPanel" class="admin-dashboard hidden">
+            <div class="dashboard-heading">
+                <div><h2>YOUR PRODUCTS</h2><p>Make a change here, then see it on the storefront in this browser.</p></div>
+                <div class="header-actions"><button id="newProductButton" class="submit-btn" type="button">+ ADD PRODUCT</button><button id="logoutButton" class="ghost-btn" type="button">LOG OUT</button></div>
+            </div>
+            <div class="admin-grid">
+                <section class="admin-panel catalog-list-panel">
+                    <div class="catalog-list-heading"><h3>PRODUCT LIST</h3><button id="resetCatalogButton" class="text-btn" type="button">RESET DEMO CATALOG</button></div>
+                    <div id="adminCatalogList" class="admin-catalog-list" aria-live="polite"></div>
+                </section>
+                <form id="productForm" class="admin-panel hidden">
+                    <h3 id="productFormTitle">ADD A NEW DROP</h3>
+                    <input id="productId" type="hidden">
+                    <label for="productName">Product name</label>
+                    <input id="productName" required maxlength="60">
+                    <div class="form-row">
+                        <div><label for="productPrice">Price</label><input id="productPrice" type="number" min="0" step="0.01" required placeholder="0.00"></div>
+                        <div><label for="productStock">In stock</label><input id="productStock" type="number" min="0" step="1" required value="1"></div>
+                    </div>
+                    <label for="productDescription">Description</label>
+                    <textarea id="productDescription" required maxlength="220" rows="4"></textarea>
+                    <label for="productImage">Image URL <span class="field-note">(optional)</span></label>
+                    <input id="productImage" type="url" placeholder="https://example.com/product.jpg">
+                    <label class="toggle-label" for="productAvailable"><input id="productAvailable" type="checkbox" checked> Visible on storefront</label>
+                    <button class="submit-btn" type="submit">SAVE PRODUCT</button>
+                    <button id="cancelEditButton" class="ghost-btn hidden" type="button">CANCEL EDIT</button>
+                </form>
+            </div>
+            <aside class="prototype-help"><strong>LOCAL PROTOTYPE HELP:</strong> Products, login, and settings stay in this browser only. There is no checkout, server, secure account system, or shared inventory. Use a real backend and authentication before production.</aside>
+        </section>
+    </main>
+    <script src="admin.js"></script>
+</body>
+</html>

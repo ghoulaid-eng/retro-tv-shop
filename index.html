@@ -15,19 +15,41 @@
             <div class="tv-bezel">
                 <!-- Screen -->
                 <div class="screen-wrapper">
-                    <div class="screen-content" id="screenContent">
+                    <div class="screen-content is-booting" id="screenContent">
                         <!-- Static Effect -->
                         <div class="static"></div>
+                        <div id="tvBoot" class="tv-boot" aria-hidden="true">
+                            <span class="boot-line"></span>
+                            <p>POWERING ON...</p>
+                        </div>
+                        <aside class="promo-ticker" aria-label="Current promotions">
+                            <div class="promo-ticker-track">
+                                <span>FREE SHIPPING ON ORDERS OVER $50</span>
+                                <span>NEW SPOOKY DROPS LANDING SOON</span>
+                                <span>USE CODE: STAYWEIRD FOR 10% OFF</span>
+                                <span aria-hidden="true">FREE SHIPPING ON ORDERS OVER $50</span>
+                                <span aria-hidden="true">NEW SPOOKY DROPS LANDING SOON</span>
+                                <span aria-hidden="true">USE CODE: STAYWEIRD FOR 10% OFF</span>
+                            </div>
+                        </aside>
                         
                         <!-- Navigation -->
                         <nav class="tv-nav">
-                            <select id="channelSelector" class="channel-selector">
-                                <option value="home">📺 HOME</option>
-                                <option value="shop">🛍️ SHOP</option>
-                                <option value="summon">🔮 SUMMON US</option>
-                                <option value="custom-order">✨ CUSTOM ORDER</option>
-                                <option value="about">ℹ️ ABOUT</option>
-                            </select>
+                            <div class="channel-guide">
+                                <button id="guideToggle" class="guide-toggle" type="button" aria-expanded="false" aria-controls="guideOptions">
+                                    <span id="guideLabel">CH 01 · HOME</span>
+                                    <span aria-hidden="true">TV GUIDE ▾</span>
+                                </button>
+                                <div id="guideOptions" class="guide-options" hidden>
+                                    <p class="guide-heading">SIP OF GHOULAID TV GUIDE</p>
+                                    <button type="button" data-channel="home"><span>01</span> HOME</button>
+                                    <button type="button" data-channel="shop"><span>02</span> SHOP</button>
+                                    <button type="button" data-channel="summon"><span>03</span> SUMMON US</button>
+                                    <button type="button" data-channel="custom-order"><span>04</span> CUSTOM ORDER</button>
+                                    <button type="button" data-channel="about"><span>05</span> ABOUT</button>
+                                </div>
+                            </div>
+                            <span id="channelStatus" class="channel-status" aria-live="polite">CHANNEL 01</span>
                         </nav>
 
                         <!-- Main Content Area -->
@@ -45,42 +67,15 @@
                             <!-- Shop Channel -->
                             <section id="shop" class="channel">
                                 <h1 class="channel-title">SHOP CHANNEL</h1>
-                                <div class="shop-grid">
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🕯️</div>
-                                        <h3>Extra Large Wax Melts</h3>
-                                        <p class="product-desc">Hand-poured & hand-painted masterpieces. Pick your scent family!</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🔥</div>
-                                        <h3>Full Size Wax Melts</h3>
-                                        <p class="product-desc">Spooky scents to haunt your space</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">✨</div>
-                                        <h3>Mini Wax Melts</h3>
-                                        <p class="product-desc">Small but mighty creepy-cute designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">📚</div>
-                                        <h3>Book Accessories</h3>
-                                        <div class="subcategories">
-                                            <p class="subcategory">🔥 Smut Exclusives</p>
-                                            <p class="subcategory">🍷 Feeling Thirsty?</p>
-                                        </div>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎧</div>
-                                        <h3>Headset Holder</h3>
-                                        <p class="product-desc">3D Printed custom designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎁</div>
-                                        <h3>Gift Boxes</h3>
-                                        <p class="product-desc">Curated spooky collections</p>
-                                    </div>
+                                <p class="shop-note">Handmade drops from the spooky laboratory. Choose a category or browse the whole crypt.</p>
+                                <div class="catalog-toolbar" aria-label="Catalog filters">
+                                    <button class="filter-btn active" type="button" data-category="all">ALL DROPS</button>
+                                    <button class="filter-btn" type="button" data-category="Wax Melts">WAX MELTS</button>
+                                    <button class="filter-btn" type="button" data-category="Accessories">ACCESSORIES</button>
+                                    <button class="filter-btn" type="button" data-category="Gift Boxes">GIFT BOXES</button>
                                 </div>
-                                <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
+                                <div id="shopGrid" class="shop-grid" aria-live="polite"></div>
+                                <p id="catalogEmpty" class="catalog-empty hidden">The crypt is being restocked. Check back soon, ghoul.</p>
                             </section>
 
                             <!-- Summon Us Channel -->
@@ -364,6 +359,7 @@
                                 </div>
                             </section>
                         </main>
+                        <a class="owner-link" href="admin.html">OWNER SIGNAL: ADMIN LOGIN</a>
                     </div>
                 </div>
 
