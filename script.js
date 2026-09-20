@@ -312,16 +312,24 @@ function setupCustomOrderForm() {
     }
 
     customOrderForm.addEventListener('invalid', (event) => {
-        event.target.setAttribute('aria-invalid', 'true');
-        if (event.target.id === 'additionalSetCount') {
-            event.target.setCustomValidity('Please tell us how many additional sets you want.');
+        const field = event.target;
+        if (!(field instanceof HTMLElement) || typeof field.setAttribute !== 'function') return;
+
+        field.setAttribute('aria-invalid', 'true');
+        if ('setCustomValidity' in field && field.id === 'additionalSetCount') {
+            field.setCustomValidity('Please tell us how many additional sets you want.');
         }
         setFormStatus('Please complete the required fields highlighted by your browser.', true);
     }, true);
 
     customOrderForm.addEventListener('input', (event) => {
-        event.target.setAttribute('aria-invalid', 'false');
-        event.target.setCustomValidity('');
+        const field = event.target;
+        if (!(field instanceof HTMLElement) || typeof field.setAttribute !== 'function') return;
+
+        field.setAttribute('aria-invalid', 'false');
+        if ('setCustomValidity' in field) {
+            field.setCustomValidity('');
+        }
         clearFormState();
     });
 
