@@ -137,22 +137,28 @@ function renderCart() {
     cartItems.forEach((item) => {
         const lineItem = document.createElement('li');
         lineItem.className = 'cart-item';
-        lineItem.innerHTML = `
-            <div class="cart-item-details">
-                <h3>${item.name}</h3>
-                <p>${formatCurrency(item.price)} × ${item.quantity}</p>
-            </div>
-            <button
-                type="button"
-                class="remove-item-btn click-item"
-                data-action="remove-item"
-                data-product-id="${item.id}"
-                data-skip-click-sound="true"
-                aria-label="Remove ${item.name} from cart"
-            >
-                Remove
-            </button>
-        `;
+
+        const details = document.createElement('div');
+        details.className = 'cart-item-details';
+
+        const title = document.createElement('h3');
+        title.textContent = item.name;
+        details.appendChild(title);
+
+        const quantity = document.createElement('p');
+        quantity.textContent = `${formatCurrency(item.price)} × ${item.quantity}`;
+        details.appendChild(quantity);
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'remove-item-btn click-item';
+        removeButton.dataset.action = 'remove-item';
+        removeButton.dataset.productId = item.id;
+        removeButton.dataset.skipClickSound = 'true';
+        removeButton.setAttribute('aria-label', `Remove ${item.name} from cart`);
+        removeButton.textContent = 'Remove';
+
+        lineItem.append(details, removeButton);
         cartItemsList.appendChild(lineItem);
     });
 
@@ -312,7 +318,7 @@ function setupCustomOrderForm() {
     }, true);
 
     customOrderForm.addEventListener('input', (event) => {
-        event.target.removeAttribute('aria-invalid');
+        event.target.setAttribute('aria-invalid', 'false');
         event.target.setCustomValidity('');
         clearFormState();
     });
