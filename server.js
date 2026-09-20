@@ -16,6 +16,12 @@ const PORT = Number.parseInt(process.env.PORT || '3000', 10);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'retro_tv_shop_session';
 const SESSION_TTL_HOURS = Number.parseInt(process.env.SESSION_TTL_HOURS || '168', 10);
+const COOKIE_SECURE = process.env.COOKIE_SECURE
+  ? ['1', 'true', 'yes'].includes(String(process.env.COOKIE_SECURE).toLowerCase())
+  : BASE_URL.startsWith('https://');
+const ALLOW_TOKEN_PREVIEW = process.env.ALLOW_TOKEN_PREVIEW
+  ? ['1', 'true', 'yes'].includes(String(process.env.ALLOW_TOKEN_PREVIEW).toLowerCase())
+  : process.env.NODE_ENV !== 'production';
 const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'owner@sipofghoulaid.local';
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
 const DEFAULT_ADMIN_NAME = process.env.ADMIN_NAME || 'Shop Owner';
@@ -341,19 +347,31 @@ const resourceNormalizers = {
 };
 
 function normalizeResource(name, value) {
-  const normalizer = resourceNormalizers[name];
-  if (!normalizer) {
-    throw new Error(`Unknown resource: ${name}`);
+  switch (name) {
+    case 'products': return normalizeProducts(value);
+    case 'orders': return normalizeOrders(value);
+    case 'paymentMethods': return normalizePaymentMethods(value);
+    case 'discounts': return normalizeDiscounts(value);
+    case 'marketing': return normalizeMarketing(value);
+    case 'settings': return normalizeSettings(value);
+    case 'appCenter': return normalizeAppCenter(value);
+    case 'designer': return normalizeDesigner(value);
+    default: throw new Error(`Unknown resource: ${name}`);
   }
-  return normalizer(value);
 }
 
 function getDefaultResource(name) {
-  const factory = resourceDefaults[name];
-  if (!factory) {
-    throw new Error(`Unknown resource: ${name}`);
+  switch (name) {
+    case 'products': return resourceDefaults.products();
+    case 'orders': return resourceDefaults.orders();
+    case 'paymentMethods': return resourceDefaults.paymentMethods();
+    case 'discounts': return resourceDefaults.discounts();
+    case 'marketing': return resourceDefaults.marketing();
+    case 'settings': return resourceDefaults.settings();
+    case 'appCenter': return resourceDefaults.appCenter();
+    case 'designer': return resourceDefaults.designer();
+    default: throw new Error(`Unknown resource: ${name}`);
   }
-  return factory();
 }
 
 function readResource(name) {
@@ -465,16 +483,52 @@ function getCart(userId) {
 }
 
 function createSession(userId, res) {
-  const sessionId = createId('session');
+  const sessionToken = createId('session');
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000).toISOString();
-  db.prepare('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').run(sessionId, userId, expiresAt, createdAt);
-  const cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_HOURS * 60 * 60}`;
+  db.prepare('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').run(sha256(sessionToken), userId, expiresAt, createdAt);
+  const cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_HOURS * 60 * 60}${COOKIE_SECURE ? '; Secure' : ''}`;
   res.append('Set-Cookie', cookie);
 }
 
 function clearSessionCookie(res) {
-  res.append('Set-Cookie', `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  res.append('Set-Cookie', `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${COOKIE_SECURE ? '; Secure' : ''}`);
+}
+
+function refreshSession(sessionToken, userId, res) {
+  const nextExpiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000).toISOString();
+  db.prepare('UPDATE sessions SET expires_at = ? WHERE id = ? AND user_id = ?').run(nextExpiresAt, sha256(sessionToken), userId);
+  const cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_HOURS * 60 * 60}${COOKIE_SECURE ? '; Secure' : ''}`;
+  res.append('Set-Cookie', cookie);
+}
+
+function fileHeaderMatches(buffer, signature) {
+  return signature.every((byte, index) => buffer[index] === byte);
+}
+
+function detectUploadedFileKind(filePath) {
+  const handle = fs.openSync(filePath, 'r');
+  try {
+    const header = Buffer.alloc(16);
+    fs.readSync(handle, header, 0, header.length, 0);
+    if (fileHeaderMatches(header, [0x89, 0x50, 0x4E, 0x47])) return 'image';
+    if (fileHeaderMatches(header, [0xFF, 0xD8, 0xFF])) return 'image';
+    if (fileHeaderMatches(header, [0x47, 0x49, 0x46, 0x38])) return 'image';
+    if (header.toString('ascii', 0, 4) === 'RIFF' && header.toString('ascii', 8, 12) === 'WEBP') return 'image';
+    if (header.toString('ascii', 4, 8) === 'ftyp') return 'video';
+    if (header.toString('ascii', 0, 4) === '\x1A\x45\xDF\xA3') return 'video';
+    if (header.toString('ascii', 0, 4) === 'OggS') return 'video';
+    return 'unknown';
+  } finally {
+    fs.closeSync(handle);
+  }
+}
+
+function resolveTextUpdate(value, fallback) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  return String(value).trim();
 }
 
 function parseCookies(req) {
@@ -501,6 +555,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const readLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false });
+const writeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
+const publicReadableResources = new Set(['products', 'paymentMethods', 'discounts', 'marketing', 'settings', 'appCenter', 'designer']);
+const publicStaticFiles = new Set(['index.html', 'admin.html', 'styles.css', 'products.js', 'script.js', 'admin.js', 'products.json']);
+
 function ensureAdminUser() {
   const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
   if (existingAdmin) return;
@@ -523,7 +583,7 @@ function ensureAdminUser() {
   );
   upsertWishlist(id, []);
   upsertCart(id, []);
-  console.warn(`Seeded admin user: ${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}`);
+  console.warn(`Seeded admin user for ${DEFAULT_ADMIN_EMAIL}. Set ADMIN_PASSWORD explicitly before deployment.`);
 }
 
 ensureResourceSeeds();
@@ -551,28 +611,30 @@ app.use(helmet({
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false }));
+app.use(readLimiter);
 app.use((req, res, next) => {
   const cookies = parseCookies(req);
-  const sessionId = cookies[SESSION_COOKIE_NAME];
-  if (!sessionId) {
+  const sessionToken = cookies[SESSION_COOKIE_NAME];
+  if (!sessionToken) {
     req.user = null;
     return next();
   }
-  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionId);
+  const sessionHash = sha256(sessionToken);
+  const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(sessionHash);
   if (!session || new Date(session.expires_at).getTime() < Date.now()) {
-    if (session) db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+    if (session) db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionHash);
     clearSessionCookie(res);
     req.user = null;
     return next();
   }
   const userRow = getUserById(session.user_id);
   req.user = sanitizeUserRow(userRow);
-  req.sessionId = sessionId;
+  req.sessionToken = sessionToken;
+  if (req.user) {
+    refreshSession(sessionToken, req.user.id, res);
+  }
   next();
 });
-
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
-const writeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -645,7 +707,7 @@ app.get('/api/resources/:name', (req, res) => {
   if (!resourceNormalizers[name]) {
     return res.status(404).json({ error: 'Unknown resource.' });
   }
-  if (name === 'orders' && (!req.user || req.user.role !== 'admin')) {
+  if (!publicReadableResources.has(name) && (!req.user || req.user.role !== 'admin')) {
     return res.status(req.user ? 403 : 401).json({ error: 'Admin access required.' });
   }
   res.json({ value: readResource(name) });
@@ -708,10 +770,12 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
   const verificationToken = createVerificationTokenForUser(id);
   createSession(id, res);
   const user = sanitizeUserRow(getUserById(id));
-  res.status(201).json({
-    user,
-    verificationPreviewUrl: `${BASE_URL}/api/auth/verify-email?token=${verificationToken}`
-  });
+  res.status(201).json(ALLOW_TOKEN_PREVIEW
+    ? {
+        user,
+        verificationPreviewUrl: `${BASE_URL}/api/auth/verify-email?token=${verificationToken}`
+      }
+    : { user });
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
@@ -729,9 +793,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   res.json({ user: sanitizeUserRow(userRow) });
 });
 
-app.post('/api/auth/logout', requireAuth, (req, res) => {
-  if (req.sessionId) {
-    db.prepare('DELETE FROM sessions WHERE id = ?').run(req.sessionId);
+app.post('/api/auth/logout', writeLimiter, requireAuth, (req, res) => {
+  if (req.sessionToken) {
+    db.prepare('DELETE FROM sessions WHERE id = ?').run(sha256(req.sessionToken));
   }
   clearSessionCookie(res);
   res.status(204).end();
@@ -748,10 +812,12 @@ app.post('/api/auth/request-password-reset', authLimiter, (req, res) => {
     return res.json({ message: 'If that email exists, a reset link has been generated.' });
   }
   const token = createPasswordResetTokenForUser(userRow.id);
-  res.json({
-    message: 'If that email exists, a reset link has been generated.',
-    resetPreviewUrl: `${BASE_URL}/index.html?resetToken=${token}`
-  });
+  res.json(ALLOW_TOKEN_PREVIEW
+    ? {
+        message: 'If that email exists, a reset link has been generated.',
+        resetPreviewUrl: `${BASE_URL}/index.html?resetToken=${token}`
+      }
+    : { message: 'If that email exists, a reset link has been generated.' });
 });
 
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
@@ -774,7 +840,9 @@ app.post('/api/auth/resend-verification', authLimiter, requireAuth, (req, res) =
     return res.json({ message: 'Email already verified.' });
   }
   const token = createVerificationTokenForUser(req.user.id);
-  res.json({ verificationPreviewUrl: `${BASE_URL}/api/auth/verify-email?token=${token}` });
+  res.json(ALLOW_TOKEN_PREVIEW
+    ? { verificationPreviewUrl: `${BASE_URL}/api/auth/verify-email?token=${token}` }
+    : { message: 'Verification email resent.' });
 });
 
 app.get('/api/auth/verify-email', (req, res) => {
@@ -857,7 +925,25 @@ app.post('/api/orders/custom', writeLimiter, (req, res) => {
 app.post('/api/admin/uploads', writeLimiter, requireAdmin, upload.array('files', 10), (req, res) => {
   const kind = req.query.kind === 'video' ? 'video' : 'image';
   const maxItems = kind === 'video' ? 3 : 10;
-  const uploadedFiles = (req.files || []).slice(0, maxItems).map(file => `/uploads/${kind === 'video' ? 'videos' : 'images'}/${file.filename}`);
+  const requestFiles = Array.isArray(req.files) ? req.files : [];
+  if (requestFiles.length > maxItems) {
+    requestFiles.forEach(file => {
+      try {
+        fs.unlinkSync(file.path);
+      } catch {}
+    });
+    return res.status(400).json({ error: `You can upload up to ${maxItems} ${kind === 'video' ? 'videos' : 'images'} per request.` });
+  }
+  const invalidFile = requestFiles.find(file => detectUploadedFileKind(file.path) !== kind);
+  if (invalidFile) {
+    requestFiles.forEach(file => {
+      try {
+        fs.unlinkSync(file.path);
+      } catch {}
+    });
+    return res.status(400).json({ error: `Only valid ${kind} files are allowed.` });
+  }
+  const uploadedFiles = requestFiles.slice(0, maxItems).map(file => `/uploads/${kind === 'video' ? 'videos' : 'images'}/${file.filename}`);
   res.status(201).json({ files: uploadedFiles });
 });
 
@@ -867,11 +953,11 @@ app.post('/api/admin/payments/:orderId', writeLimiter, requireAdmin, (req, res) 
   if (orderIndex < 0) {
     return res.status(404).json({ error: 'Order not found.' });
   }
-  const provider = normalizeText(req.body?.paymentMethod || orders[orderIndex].paymentMethod);
-  const status = normalizeText(req.body?.paymentStatus || orders[orderIndex].paymentStatus, 'Awaiting Payment');
-  const amount = normalizeAmount(req.body?.paymentAmount || orders[orderIndex].paymentAmount);
-  const reference = normalizeText(req.body?.paymentReference || orders[orderIndex].paymentReference);
-  const notes = normalizeText(req.body?.paymentNotes || orders[orderIndex].paymentNotes);
+  const provider = normalizeText(resolveTextUpdate(req.body?.paymentMethod, orders[orderIndex].paymentMethod));
+  const status = normalizeText(resolveTextUpdate(req.body?.paymentStatus, orders[orderIndex].paymentStatus), 'Awaiting Payment');
+  const amount = normalizeAmount(req.body?.paymentAmount ?? orders[orderIndex].paymentAmount);
+  const reference = resolveTextUpdate(req.body?.paymentReference, orders[orderIndex].paymentReference);
+  const notes = resolveTextUpdate(req.body?.paymentNotes, orders[orderIndex].paymentNotes);
   const wasPaid = orders[orderIndex].paymentStatus === 'Paid';
   const isPaid = status === 'Paid';
   orders[orderIndex] = normalizeOrder({
@@ -908,12 +994,21 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
   fallthrough: false,
   maxAge: '7d'
 }));
-app.use(express.static(ROOT, { extensions: ['html'] }));
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(ROOT, 'index.html'));
+});
+app.get('/:fileName', (req, res, next) => {
+  const { fileName } = req.params;
+  if (!publicStaticFiles.has(fileName)) {
+    return next();
+  }
+  res.sendFile(path.join(ROOT, fileName));
+});
 
 app.use((error, _req, res, _next) => {
   console.error(error);
   const status = error.status || 500;
-  res.status(status).json({ error: error.message || 'Internal server error.' });
+  res.status(status).json({ error: status >= 500 ? 'Internal server error.' : (error.message || 'Request failed.') });
 });
 
 app.listen(PORT, () => {

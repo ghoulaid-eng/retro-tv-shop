@@ -93,6 +93,20 @@
                                                 </div>
                                             </form>
                                             <p id="signInStatusMessage" class="admin-status" aria-live="polite"></p>
+                                            <div id="passwordResetPanel" class="hidden">
+                                                <h4>Finish password reset</h4>
+                                                <form id="resetPasswordForm" class="admin-simple-form">
+                                                    <div class="form-group">
+                                                        <label for="resetPasswordInput">New Password</label>
+                                                        <input type="password" id="resetPasswordInput" placeholder="At least 8 characters">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="resetPasswordConfirmInput">Confirm New Password</label>
+                                                        <input type="password" id="resetPasswordConfirmInput" placeholder="Repeat password">
+                                                    </div>
+                                                    <button type="submit" class="submit-btn click-item">Save new password</button>
+                                                </form>
+                                            </div>
                                         </div>
 
                                         <div class="account-panel">

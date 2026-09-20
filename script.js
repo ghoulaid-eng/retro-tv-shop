@@ -25,6 +25,10 @@ const signInEmailInput = document.getElementById('signInEmail');
 const signInPasswordInput = document.getElementById('signInPassword');
 const signInStatusMessage = document.getElementById('signInStatusMessage');
 const requestPasswordResetButton = document.getElementById('requestPasswordResetButton');
+const passwordResetPanel = document.getElementById('passwordResetPanel');
+const resetPasswordForm = document.getElementById('resetPasswordForm');
+const resetPasswordInput = document.getElementById('resetPasswordInput');
+const resetPasswordConfirmInput = document.getElementById('resetPasswordConfirmInput');
 const signOutButton = document.getElementById('signOutButton');
 const accountProfileForm = document.getElementById('accountProfileForm');
 const accountFormTitle = document.getElementById('accountFormTitle');
@@ -75,6 +79,7 @@ let carts = [];
 let currentSettings = {};
 let currentMarketingState = {};
 let currentAppCenterState = {};
+let pendingPasswordResetToken = '';
 
 function playClickSound() {
     if (!audioContext) {
@@ -1345,6 +1350,40 @@ if (requestPasswordResetButton) {
     });
 }
 
+if (resetPasswordForm) {
+    resetPasswordForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!pendingPasswordResetToken) {
+            setStatus(signInStatusMessage, 'Open your password reset link again to continue.');
+            passwordResetPanel?.classList.add('hidden');
+            return;
+        }
+
+        if ((resetPasswordInput?.value || '').length < 8) {
+            setStatus(signInStatusMessage, 'Use a password with at least 8 characters.');
+            return;
+        }
+
+        if (resetPasswordInput.value !== resetPasswordConfirmInput.value) {
+            setStatus(signInStatusMessage, 'New passwords do not match.');
+            return;
+        }
+
+        try {
+            await window.ShopData.auth.resetPassword(pendingPasswordResetToken, resetPasswordInput.value);
+            pendingPasswordResetToken = '';
+            resetPasswordForm.reset();
+            passwordResetPanel?.classList.add('hidden');
+            setStatus(signInStatusMessage, 'Password updated. You can sign in now.');
+        } catch (error) {
+            pendingPasswordResetToken = '';
+            resetPasswordForm.reset();
+            passwordResetPanel?.classList.add('hidden');
+            setStatus(signInStatusMessage, `${error.message} Reopen your reset link to try again.`);
+        }
+    });
+}
+
 if (signOutButton) {
     signOutButton.addEventListener('click', async () => {
         await window.ShopData.auth.signOut();
@@ -1545,17 +1584,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(accountVerificationStatus, 'Email verified.');
     }
     if (params.get('resetToken')) {
+        pendingPasswordResetToken = params.get('resetToken');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (pendingPasswordResetToken) {
         setActiveChannel('account');
-        const nextPassword = window.prompt('Enter your new password (minimum 8 characters):');
-        if (nextPassword) {
-            try {
-                await window.ShopData.auth.resetPassword(params.get('resetToken'), nextPassword);
-                setStatus(signInStatusMessage, 'Password updated. You can sign in now.');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } catch (error) {
-                setStatus(signInStatusMessage, error.message);
-            }
-        }
+        passwordResetPanel?.classList.remove('hidden');
+        setStatus(signInStatusMessage, 'Enter your new password to finish resetting your account.');
     }
 });
 

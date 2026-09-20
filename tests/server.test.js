@@ -153,4 +153,44 @@ test('admin can review orders and update payments', async () => {
   assert.equal(paymentUpdate.response.status, 200);
   assert.equal(paymentUpdate.body.orders[0].paymentStatus, 'Paid');
   assert.equal(paymentUpdate.body.orders[0].paymentReference, 'TEST-ORDER-42');
+  assert.ok(paymentUpdate.body.orders[0].paymentReceivedAt);
+
+  const refreshedBootstrap = await request('/api/bootstrap/admin', {}, adminCookie);
+  assert.equal(refreshedBootstrap.response.status, 200);
+  const matchingEvent = refreshedBootstrap.body.paymentEvents.find(event => event.order_id === orderId && event.reference === 'TEST-ORDER-42');
+  assert.ok(matchingEvent);
+  assert.equal(matchingEvent.status, 'Paid');
+
+  const clearedPaymentUpdate = await request(`/api/admin/payments/${orderId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      paymentMethod: 'paypal',
+      paymentStatus: 'Awaiting Payment',
+      paymentAmount: 0,
+      paymentReference: '',
+      paymentNotes: ''
+    })
+  }, adminCookie);
+  assert.equal(clearedPaymentUpdate.response.status, 200);
+  assert.equal(clearedPaymentUpdate.body.orders[0].paymentAmount, 0);
+  assert.equal(clearedPaymentUpdate.body.orders[0].paymentReference, '');
+  assert.equal(clearedPaymentUpdate.body.orders[0].paymentNotes, '');
+});
+
+test('admin endpoints reject unauthenticated access', async () => {
+  const bootstrap = await request('/api/bootstrap/admin');
+  assert.equal(bootstrap.response.status, 401);
+
+  const paymentUpdate = await request('/api/admin/payments/example-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      paymentMethod: 'paypal',
+      paymentStatus: 'Paid',
+      paymentAmount: 10,
+      paymentReference: 'DENIED'
+    })
+  });
+  assert.equal(paymentUpdate.response.status, 401);
 });

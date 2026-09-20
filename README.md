@@ -49,6 +49,7 @@ The app now supports:
 - protected admin access
 
 In local development, verification and reset URLs are returned by the API so the flows can be completed without an SMTP provider.
+Disable that behavior in production by setting `ALLOW_TOKEN_PREVIEW=false`.
 
 ## Data storage
 
