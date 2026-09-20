@@ -1,6 +1,33 @@
-// Initialize click sound
 const clickSound = document.getElementById('clickSound');
 let audioContext = null;
+
+const channelSelector = document.getElementById('channelSelector');
+const channels = Array.from(document.querySelectorAll('.channel'));
+const customOrderForm = document.getElementById('customOrderForm');
+const orderSuccess = document.getElementById('orderSuccess');
+const formStatus = document.getElementById('formStatus');
+const powerBtn = document.getElementById('powerBtn');
+const volumeBtn = document.getElementById('volumeBtn');
+const cartBtn = document.getElementById('cartBtn');
+const cartCount = document.getElementById('cartCount');
+const cartItemsList = document.getElementById('cartItems');
+const cartEmpty = document.getElementById('cartEmpty');
+const cartSubtotal = document.getElementById('cartSubtotal');
+const clearCartBtn = document.getElementById('clearCartBtn');
+const statusLive = document.getElementById('statusLive');
+const additionalYes = document.getElementById('additionalYes');
+const additionalNo = document.getElementById('additionalNo');
+const additionalSetCountGroup = document.getElementById('additionalSetCountGroup');
+const additionalSetCount = document.getElementById('additionalSetCount');
+
+const CART_STORAGE_KEY = 'retroTvCartItems';
+let formResetTimer = null;
+let isPoweredOn = true;
+let volumeLevel = 100;
+let touchStartX = 0;
+let touchEndX = 0;
+
+let cartItems = loadCart();
 
 function getAudioContext() {
     if (!window.AudioContext && !window.webkitAudioContext) {
@@ -45,72 +72,295 @@ function playClickSound() {
     }
 }
 
-// Channel Switching Functionality
-const channelSelector = document.getElementById('channelSelector');
-const channels = document.querySelectorAll('.channel');
+function announceStatus(message) {
+    if (statusLive) {
+        statusLive.textContent = message;
+    }
+}
 
-if (channelSelector) {
-    channelSelector.addEventListener('change', (e) => {
-        const selectedChannel = e.target.value;
+function setChannel(channelId, shouldPlaySound = false) {
+    if (!channels.length) return;
 
-        channels.forEach(channel => {
-            channel.classList.remove('active');
+    channels.forEach((channel) => {
+        const isActive = channel.id === channelId;
+        channel.classList.toggle('active', isActive);
+        channel.hidden = !isActive;
+        channel.setAttribute('aria-hidden', String(!isActive));
+    });
+
+    if (channelSelector && channelSelector.value !== channelId) {
+        channelSelector.value = channelId;
+    }
+
+    if (shouldPlaySound) {
+        playClickSound();
+    }
+}
+
+function formatCurrency(value) {
+    return `$${value.toFixed(2)}`;
+}
+
+function loadCart() {
+    try {
+        const raw = localStorage.getItem(CART_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('Failed to load cart from storage:', error);
+        return [];
+    }
+}
+
+function saveCart() {
+    try {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    } catch (error) {
+        console.warn('Failed to save cart to storage:', error);
+    }
+}
+
+function getCartCount() {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+function getCartSubtotal() {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+}
+
+function renderCart() {
+    if (!cartItemsList || !cartEmpty || !cartSubtotal || !cartCount) return;
+
+    cartItemsList.innerHTML = '';
+
+    cartItems.forEach((item) => {
+        const lineItem = document.createElement('li');
+        lineItem.className = 'cart-item';
+        lineItem.innerHTML = `
+            <div class="cart-item-details">
+                <h3>${item.name}</h3>
+                <p>${formatCurrency(item.price)} × ${item.quantity}</p>
+            </div>
+            <button
+                type="button"
+                class="remove-item-btn click-item"
+                data-action="remove-item"
+                data-product-id="${item.id}"
+                data-skip-click-sound="true"
+                aria-label="Remove ${item.name} from cart"
+            >
+                Remove
+            </button>
+        `;
+        cartItemsList.appendChild(lineItem);
+    });
+
+    const totalCount = getCartCount();
+    cartCount.textContent = String(totalCount);
+    cartEmpty.hidden = totalCount > 0;
+    cartItemsList.hidden = totalCount === 0;
+    cartSubtotal.textContent = formatCurrency(getCartSubtotal());
+
+    if (clearCartBtn) {
+        clearCartBtn.disabled = totalCount === 0;
+    }
+}
+
+function addItemToCart(productCard) {
+    if (!productCard) return;
+
+    const id = productCard.dataset.productId;
+    const name = productCard.dataset.productName;
+    const price = Number.parseFloat(productCard.dataset.productPrice || '0');
+
+    if (!id || !name || Number.isNaN(price)) return;
+
+    const existingItem = cartItems.find((item) => item.id === id);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cartItems.push({ id, name, price, quantity: 1 });
+    }
+
+    saveCart();
+    renderCart();
+    announceStatus(`${name} added to cart.`);
+}
+
+function removeItemFromCart(productId) {
+    const item = cartItems.find((entry) => entry.id === productId);
+    cartItems = cartItems.filter((entry) => entry.id !== productId);
+    saveCart();
+    renderCart();
+    if (item) {
+        announceStatus(`${item.name} removed from cart.`);
+    }
+}
+
+function clearCart() {
+    cartItems = [];
+    saveCart();
+    renderCart();
+    announceStatus('Cart cleared.');
+}
+
+function hideOrderSuccess() {
+    if (orderSuccess) {
+        orderSuccess.classList.add('hidden');
+    }
+}
+
+function updateAdditionalSetCountState() {
+    if (!additionalSetCountGroup || !additionalSetCount) return;
+
+    const shouldShow = !!(additionalYes && additionalYes.checked);
+    additionalSetCountGroup.hidden = !shouldShow;
+    additionalSetCountGroup.setAttribute('aria-hidden', String(!shouldShow));
+    additionalSetCount.disabled = !shouldShow;
+    additionalSetCount.required = shouldShow;
+
+    if (!shouldShow) {
+        additionalSetCount.value = '';
+        additionalSetCount.setCustomValidity('');
+    }
+}
+
+function setFormStatus(message, isError = false) {
+    if (!formStatus) return;
+    formStatus.textContent = message;
+    formStatus.classList.toggle('error', isError);
+    formStatus.classList.toggle('success', !isError && !!message);
+}
+
+function clearFormState() {
+    if (formResetTimer) {
+        clearTimeout(formResetTimer);
+        formResetTimer = null;
+    }
+
+    hideOrderSuccess();
+    setFormStatus('');
+}
+
+function setupCartInteractions() {
+    if (cartBtn) {
+        cartBtn.addEventListener('click', () => {
+            setChannel('cart', true);
         });
+    }
 
-        const targetChannel = document.getElementById(selectedChannel);
-        if (targetChannel) {
-            targetChannel.classList.add('active');
+    if (clearCartBtn) {
+        clearCartBtn.addEventListener('click', () => {
+            clearCart();
+            playClickSound();
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        const actionButton = event.target.closest('[data-action]');
+        if (!actionButton) return;
+
+        const action = actionButton.dataset.action;
+
+        if (action === 'add-to-cart') {
+            const productCard = actionButton.closest('.product-card');
+            addItemToCart(productCard);
+            playClickSound();
         }
 
+        if (action === 'remove-item') {
+            removeItemFromCart(actionButton.dataset.productId);
+            playClickSound();
+        }
+    });
+}
+
+function setupChannelSelector() {
+    if (!channelSelector) return;
+
+    channelSelector.addEventListener('change', (event) => {
+        setChannel(event.target.value, true);
+    });
+}
+
+function setupGlobalClickSound() {
+    document.addEventListener('click', (event) => {
+        const clickTarget = event.target.closest('.click-item');
+        if (!clickTarget) return;
+        if (clickTarget.dataset.skipClickSound === 'true') return;
         playClickSound();
     });
 }
 
-// Add click sound to all clickable items
-const clickItems = document.querySelectorAll('.click-item');
-clickItems.forEach(item => {
-    item.addEventListener('click', () => {
-        playClickSound();
+function setupCustomOrderForm() {
+    if (!customOrderForm) return;
+
+    if (additionalYes) {
+        additionalYes.addEventListener('change', updateAdditionalSetCountState);
+    }
+    if (additionalNo) {
+        additionalNo.addEventListener('change', updateAdditionalSetCountState);
+    }
+
+    customOrderForm.addEventListener('invalid', (event) => {
+        event.target.setAttribute('aria-invalid', 'true');
+        if (event.target.id === 'additionalSetCount') {
+            event.target.setCustomValidity('Please tell us how many additional sets you want.');
+        }
+        setFormStatus('Please complete the required fields highlighted by your browser.', true);
+    }, true);
+
+    customOrderForm.addEventListener('input', (event) => {
+        event.target.removeAttribute('aria-invalid');
+        event.target.setCustomValidity('');
+        clearFormState();
     });
-});
 
-// Form Submission
-const customOrderForm = document.getElementById('customOrderForm');
-const orderSuccess = document.getElementById('orderSuccess');
+    customOrderForm.addEventListener('reset', () => {
+        clearFormState();
+        setTimeout(() => {
+            updateAdditionalSetCountState();
+            if (customOrderForm) {
+                customOrderForm.style.display = 'block';
+            }
+        }, 0);
+    });
 
-if (customOrderForm) {
-    customOrderForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    customOrderForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        clearFormState();
+
+        if (!customOrderForm.checkValidity()) {
+            customOrderForm.reportValidity();
+            return;
+        }
 
         const formData = new FormData(customOrderForm);
         const data = Object.fromEntries(formData);
-
         console.log('Custom Order Submitted:', data);
 
         customOrderForm.style.display = 'none';
-
         if (orderSuccess) {
             orderSuccess.classList.remove('hidden');
         }
 
+        setFormStatus('Order submitted successfully.');
+        announceStatus('Custom order submitted successfully.');
         playClickSound();
 
-        setTimeout(() => {
+        formResetTimer = setTimeout(() => {
             customOrderForm.reset();
             customOrderForm.style.display = 'block';
-
-            if (orderSuccess) {
-                orderSuccess.classList.add('hidden');
-            }
         }, 3000);
     });
+
+    updateAdditionalSetCountState();
 }
 
-// Power Button Functionality
-const powerBtn = document.getElementById('powerBtn');
-let isPoweredOn = true;
+function setupPowerControl() {
+    if (!powerBtn) return;
 
-if (powerBtn) {
     powerBtn.addEventListener('click', () => {
         isPoweredOn = !isPoweredOn;
         const screenContent = document.getElementById('screenContent');
@@ -130,16 +380,12 @@ if (powerBtn) {
             powerBtn.style.background = 'linear-gradient(135deg, #da70d6 0%, #ff69b4 100%)';
             powerBtn.style.boxShadow = '0 5px 15px rgba(255, 105, 180, 0.4)';
         }
-
-        playClickSound();
     });
 }
 
-// Volume Button Functionality
-const volumeBtn = document.getElementById('volumeBtn');
-let volumeLevel = 100;
+function setupVolumeControl() {
+    if (!volumeBtn) return;
 
-if (volumeBtn) {
     volumeBtn.addEventListener('click', () => {
         volumeLevel = (volumeLevel + 25) % 125;
 
@@ -153,8 +399,6 @@ if (volumeBtn) {
             volumeBtn.textContent = '🔊';
         }
 
-        playClickSound();
-
         const randomPulse = Math.random() * 0.3 + 0.2;
         volumeBtn.style.transform = `scale(${1 + randomPulse})`;
         setTimeout(() => {
@@ -163,72 +407,35 @@ if (volumeBtn) {
     });
 }
 
-// Smooth Scrolling for content area
-const contentArea = document.querySelector('.content-area');
-if (contentArea) {
-    contentArea.addEventListener('wheel', () => {
-        // Smooth scroll behavior
-    }, { passive: true });
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (event) => {
+        if (!channelSelector) return;
+
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            const options = Array.from(channelSelector.options);
+            const currentIndex = channelSelector.selectedIndex;
+
+            if (event.key === 'ArrowUp' && currentIndex > 0) {
+                channelSelector.selectedIndex = currentIndex - 1;
+            } else if (event.key === 'ArrowDown' && currentIndex < options.length - 1) {
+                channelSelector.selectedIndex = currentIndex + 1;
+            }
+
+            channelSelector.dispatchEvent(new Event('change'));
+        }
+    });
 }
 
-// Add ripple effect on product cards
-const productCards = document.querySelectorAll('.product-card, .product-detail');
-productCards.forEach(card => {
-    card.addEventListener('mousemove', (e) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+function setupSwipeNavigation() {
+    const screenWrapper = document.querySelector('.screen-wrapper');
+    if (!screenWrapper) return;
 
-        card.style.backgroundPosition = `${x}px ${y}px`;
-    });
-});
-
-// Initialize page with home channel
-document.addEventListener('DOMContentLoaded', () => {
-    channels.forEach(channel => {
-        channel.classList.remove('active');
-    });
-
-    const homeChannel = document.getElementById('home');
-    if (homeChannel) {
-        homeChannel.classList.add('active');
-    }
-
-    if (channelSelector) {
-        channelSelector.value = 'home';
-    }
-});
-
-// Add keyboard navigation
-document.addEventListener('keydown', (e) => {
-    if (!channelSelector) return;
-
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        const options = Array.from(channelSelector.options);
-        const currentIndex = channelSelector.selectedIndex;
-
-        if (e.key === 'ArrowUp' && currentIndex > 0) {
-            channelSelector.selectedIndex = currentIndex - 1;
-        } else if (e.key === 'ArrowDown' && currentIndex < options.length - 1) {
-            channelSelector.selectedIndex = currentIndex + 1;
-        }
-
-        channelSelector.dispatchEvent(new Event('change'));
-    }
-});
-
-// Mobile touch support for better interaction
-let touchStartX = 0;
-let touchEndX = 0;
-
-const contentScreenContent = document.querySelector('.screen-wrapper');
-if (contentScreenContent) {
-    contentScreenContent.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
+    screenWrapper.addEventListener('touchstart', (event) => {
+        touchStartX = event.changedTouches[0].screenX;
     }, { passive: true });
 
-    contentScreenContent.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
+    screenWrapper.addEventListener('touchend', (event) => {
+        touchEndX = event.changedTouches[0].screenX;
         handleSwipe();
     }, { passive: true });
 }
@@ -253,10 +460,37 @@ function handleSwipe() {
     }
 }
 
-// Add some fun interactions
-console.log('%c📺 Welcome to Retro TV Shop! 📺', 'color: #00ff88; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #00ff88;');
-console.log('%cEnjoy your retro shopping experience! 🎨', 'color: #ff69b4; font-size: 14px;');
-
-if (clickSound) {
-    clickSound.volume = 0.2;
+function setupProductCardRipple() {
+    const productCards = document.querySelectorAll('.product-card, .product-detail');
+    productCards.forEach((card) => {
+        card.addEventListener('mousemove', (event) => {
+            const rect = card.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            card.style.backgroundPosition = `${x}px ${y}px`;
+        });
+    });
 }
+
+function initializePage() {
+    setChannel('home');
+    setupChannelSelector();
+    setupGlobalClickSound();
+    setupCartInteractions();
+    setupCustomOrderForm();
+    setupPowerControl();
+    setupVolumeControl();
+    setupKeyboardNavigation();
+    setupSwipeNavigation();
+    setupProductCardRipple();
+    renderCart();
+
+    if (clickSound) {
+        clickSound.volume = 0.2;
+    }
+
+    console.log('%c📺 Welcome to Retro TV Shop! 📺', 'color: #00ff88; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #00ff88;');
+    console.log('%cEnjoy your retro shopping experience! 🎨', 'color: #ff69b4; font-size: 14px;');
+}
+
+document.addEventListener('DOMContentLoaded', initializePage);

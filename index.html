@@ -21,19 +21,25 @@
                         
                         <!-- Navigation -->
                         <nav class="tv-nav">
-                            <select id="channelSelector" class="channel-selector">
+                            <label for="channelSelector" class="sr-only">Select TV channel</label>
+                            <select id="channelSelector" class="channel-selector" aria-label="Channel selector">
                                 <option value="home">📺 HOME</option>
                                 <option value="shop">🛍️ SHOP</option>
+                                <option value="cart">🛒 CART</option>
                                 <option value="summon">🔮 SUMMON US</option>
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
                                 <option value="about">ℹ️ ABOUT</option>
                             </select>
+                            <button type="button" id="cartBtn" class="cart-nav-btn click-item" aria-label="Open cart channel" data-skip-click-sound="true">
+                                🛒 Cart <span id="cartCount" class="cart-count-badge" aria-live="polite" aria-atomic="true">0</span>
+                            </button>
                         </nav>
+                        <div id="statusLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
                         <!-- Main Content Area -->
                         <main class="content-area">
                             <!-- Home Channel -->
-                            <section id="home" class="channel active">
+                            <section id="home" class="channel active" aria-hidden="false">
                                 <h1 class="glitch" data-text="WELCOME CULT LEADERS AND GHOULAID DRINKERS">WELCOME CULT LEADERS AND GHOULAID DRINKERS</h1>
                                 <p class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
                                 <div class="intro-text">
@@ -43,48 +49,72 @@
                             </section>
 
                             <!-- Shop Channel -->
-                            <section id="shop" class="channel">
+                            <section id="shop" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">SHOP CHANNEL</h1>
                                 <div class="shop-grid">
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="xl-wax-melts" data-product-name="Extra Large Wax Melts" data-product-price="24.00">
                                         <div class="product-image">🕯️</div>
                                         <h3>Extra Large Wax Melts</h3>
                                         <p class="product-desc">Hand-poured & hand-painted masterpieces. Pick your scent family!</p>
+                                        <p class="price">$24.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Extra Large Wax Melts to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="full-size-wax-melts" data-product-name="Full Size Wax Melts" data-product-price="18.00">
                                         <div class="product-image">🔥</div>
                                         <h3>Full Size Wax Melts</h3>
                                         <p class="product-desc">Spooky scents to haunt your space</p>
+                                        <p class="price">$18.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Full Size Wax Melts to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="mini-wax-melts" data-product-name="Mini Wax Melts" data-product-price="12.00">
                                         <div class="product-image">✨</div>
                                         <h3>Mini Wax Melts</h3>
                                         <p class="product-desc">Small but mighty creepy-cute designs</p>
+                                        <p class="price">$12.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Mini Wax Melts to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="book-accessories" data-product-name="Book Accessories" data-product-price="22.00">
                                         <div class="product-image">📚</div>
                                         <h3>Book Accessories</h3>
                                         <div class="subcategories">
                                             <p class="subcategory">🔥 Smut Exclusives</p>
                                             <p class="subcategory">🍷 Feeling Thirsty?</p>
                                         </div>
+                                        <p class="price">$22.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Book Accessories to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="headset-holder" data-product-name="Headset Holder" data-product-price="28.00">
                                         <div class="product-image">🎧</div>
                                         <h3>Headset Holder</h3>
                                         <p class="product-desc">3D Printed custom designs</p>
+                                        <p class="price">$28.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Headset Holder to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
-                                    <div class="product-card click-item">
+                                    <div class="product-card click-item" data-product-id="gift-boxes" data-product-name="Gift Boxes" data-product-price="32.00">
                                         <div class="product-image">🎁</div>
                                         <h3>Gift Boxes</h3>
                                         <p class="product-desc">Curated spooky collections</p>
+                                        <p class="price">$32.00</p>
+                                        <button type="button" class="add-to-cart-btn click-item" data-action="add-to-cart" aria-label="Add Gift Boxes to cart" data-skip-click-sound="true">Add to Cart</button>
                                     </div>
                                 </div>
                                 <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
                             </section>
 
+                            <section id="cart" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">CART CHANNEL</h1>
+                                <div id="cartPanel" class="cart-panel">
+                                    <ul id="cartItems" class="cart-items-list"></ul>
+                                    <p id="cartEmpty" class="cart-empty">Your cart is empty. Add spooky goodies from the Shop channel!</p>
+                                    <div class="cart-summary">
+                                        <p class="cart-subtotal">Subtotal: <span id="cartSubtotal">$0.00</span></p>
+                                        <button type="button" id="clearCartBtn" class="reset-btn click-item" aria-label="Clear all cart items" data-skip-click-sound="true">Clear Cart</button>
+                                    </div>
+                                </div>
+                            </section>
+
                             <!-- Summon Us Channel -->
-                            <section id="summon" class="channel">
+                            <section id="summon" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">SUMMON US</h1>
                                 <div class="summon-content">
                                     <p>👻 Have a question? Want to collaborate? Need to summon the chaos? 👻</p>
@@ -114,7 +144,7 @@
                             </section>
 
                             <!-- Custom Order Channel -->
-                            <section id="custom-order" class="channel">
+                            <section id="custom-order" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">CUSTOM ORDER</h1>
                                 
                                 <!-- Please Read Section -->
@@ -301,7 +331,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="form-group" id="additionalSetCountGroup" style="display: none;">
+                                    <div class="form-group" id="additionalSetCountGroup" hidden aria-hidden="true">
                                         <label for="additionalSetCount">How many additional sets?</label>
                                         <input type="number" id="additionalSetCount" name="additionalSetCount" min="1" max="10" placeholder="Number of additional sets">
                                     </div>
@@ -329,15 +359,16 @@
                                     <button type="submit" class="submit-btn click-item">📡 SUBMIT ORDER</button>
                                     <button type="reset" class="reset-btn click-item">🔄 CLEAR FORM</button>
                                 </form>
+                                <p id="formStatus" class="form-status" aria-live="polite"></p>
 
-                                <div id="orderSuccess" class="order-success hidden">
+                                <div id="orderSuccess" class="order-success hidden" aria-live="polite">
                                     <h2>✅ ORDER RECEIVED!</h2>
                                     <p>Thank you! We'll contact you soon to confirm your custom order.</p>
                                 </div>
                             </section>
 
                             <!-- About Channel -->
-                            <section id="about" class="channel">
+                            <section id="about" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">ABOUT SIP OF GHOULAID</h1>
                                 <div class="about-content">
                                     <div class="about-section">
@@ -369,8 +400,8 @@
 
                 <!-- TV Control Buttons -->
                 <div class="tv-controls">
-                    <button class="control-btn click-item" id="powerBtn">⏻</button>
-                    <button class="control-btn click-item" id="volumeBtn">🔊</button>
+                    <button class="control-btn click-item" id="powerBtn" aria-label="Toggle TV power">⏻</button>
+                    <button class="control-btn click-item" id="volumeBtn" aria-label="Adjust TV volume">🔊</button>
                 </div>
             </div>
         </div>
