@@ -1,117 +1,8 @@
 (function () {
     const DEFAULT_PRODUCTS_PATH = 'products.json';
     let idCounter = 0;
-    const DEFAULT_PAYMENT_METHODS = [
-        {
-            id: 'paypal',
-            name: 'PayPal',
-            enabled: true,
-            instructions: 'Send your payment through PayPal once your order total is confirmed.'
-        },
-        {
-            id: 'klarna',
-            name: 'Klarna',
-            enabled: true,
-            instructions: 'Ask for a Klarna-ready invoice after we confirm your spooky order details.'
-        },
-        {
-            id: 'afterpay',
-            name: 'Afterpay',
-            enabled: true,
-            instructions: 'Afterpay is available after we review and approve your final order total.'
-        },
-        {
-            id: 'zip',
-            name: 'Zip',
-            enabled: true,
-            instructions: 'Choose Zip if you want to split your payment after the order is confirmed.'
-        },
-        {
-            id: 'apple-pay',
-            name: 'Apple Pay',
-            enabled: true,
-            instructions: 'Apple Pay can be requested when we send your final payment request.'
-        }
-    ];
-    const resourceConfigs = {
-        products: {
-            storageKey: 'sip-of-ghoulaid-products',
-            eventName: 'sip-of-ghoulaid-products-updated',
-            getDefault: async () => normalizeProducts(await loadDefaultProducts())
-        },
-        orders: {
-            storageKey: 'sip-of-ghoulaid-orders',
-            eventName: 'sip-of-ghoulaid-orders-updated',
-            getDefault: async () => []
-        },
-        users: {
-            storageKey: 'sip-of-ghoulaid-users',
-            eventName: 'sip-of-ghoulaid-users-updated',
-            getDefault: async () => []
-        },
-        currentUser: {
-            storageKey: 'sip-of-ghoulaid-current-user',
-            eventName: 'sip-of-ghoulaid-current-user-updated',
-            getDefault: async () => ({})
-        },
-        wishlists: {
-            storageKey: 'sip-of-ghoulaid-wishlists',
-            eventName: 'sip-of-ghoulaid-wishlists-updated',
-            getDefault: async () => []
-        },
-        carts: {
-            storageKey: 'sip-of-ghoulaid-carts',
-            eventName: 'sip-of-ghoulaid-carts-updated',
-            getDefault: async () => []
-        },
-        paymentMethods: {
-            storageKey: 'sip-of-ghoulaid-payment-methods',
-            eventName: 'sip-of-ghoulaid-payment-methods-updated',
-            getDefault: async () => DEFAULT_PAYMENT_METHODS
-        },
-        discounts: {
-            storageKey: 'sip-of-ghoulaid-discounts',
-            eventName: 'sip-of-ghoulaid-discounts-updated',
-            getDefault: async () => []
-        },
-        marketing: {
-            storageKey: 'sip-of-ghoulaid-marketing',
-            eventName: 'sip-of-ghoulaid-marketing-updated',
-            getDefault: async () => ({
-                announcementTitle: 'Latest Broadcast',
-                announcementMessage: 'Fresh spooky drops are always brewing in the Sip of Ghoulaid shop.',
-                featuredTitle: 'Featured Fright',
-                featuredMessage: 'Use the admin panel to spotlight your newest creepy-cute obsession.'
-            })
-        },
-        settings: {
-            storageKey: 'sip-of-ghoulaid-settings',
-            eventName: 'sip-of-ghoulaid-settings-updated',
-            getDefault: async () => ({
-                shopName: 'Sip of Ghoulaid Shop',
-                homeHeadline: 'WELCOME CULT LEADERS AND GHOULAID DRINKERS',
-                homeTagline: 'CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED',
-                shopNote: 'Visit sipofghoulaid.com for the full collection and latest releases! 👻'
-            })
-        },
-        appCenter: {
-            storageKey: 'sip-of-ghoulaid-app-center',
-            eventName: 'sip-of-ghoulaid-app-center-updated',
-            getDefault: async () => ({
-                marketingEnabled: true,
-                discountsEnabled: true,
-                customOrdersEnabled: true
-            })
-        },
-        designer: {
-            storageKey: 'sip-of-ghoulaid-designer',
-            eventName: 'sip-of-ghoulaid-designer-updated',
-            getDefault: async () => ({
-                productCardSize: 'cozy',
-                staticEffect: true
-            })
-        }
-    };
+    const listeners = new Map();
+    const resourceCache = new Map();
 
     function createId(prefix = 'item') {
         idCounter += 1;
@@ -149,7 +40,7 @@
 
         if (typeof value === 'string') {
             return value
-                .split(/\r?\n|,/)
+                .split(/\r?\n|,/) 
                 .map(item => item.trim())
                 .filter(Boolean);
         }
@@ -257,7 +148,17 @@
             paymentNotes: normalizeText(order.paymentNotes),
             paymentReceivedAt: normalizeText(order.paymentReceivedAt),
             status: normalizeText(order.status, 'Pending'),
-            createdAt: normalizeText(order.createdAt, new Date().toISOString())
+            createdAt: normalizeText(order.createdAt, new Date().toISOString()),
+            updatedAt: normalizeText(order.updatedAt, new Date().toISOString()),
+            userId: normalizeText(order.userId),
+            totals: typeof order.totals === 'object' && order.totals
+                ? {
+                    subtotal: normalizeAmount(order.totals.subtotal),
+                    shipping: normalizeAmount(order.totals.shipping),
+                    tax: normalizeAmount(order.totals.tax),
+                    total: normalizeAmount(order.totals.total)
+                }
+                : { subtotal: 0, shipping: 0, tax: 0, total: 0 }
         };
     }
 
@@ -287,6 +188,8 @@
             shippingState: normalizeText(user.shippingState),
             shippingPostalCode: normalizeText(user.shippingPostalCode),
             shippingCountry: normalizeText(user.shippingCountry),
+            role: normalizeText(user.role, 'customer'),
+            emailVerified: normalizeBoolean(user.emailVerified),
             createdAt: normalizeText(user.createdAt, new Date().toISOString()),
             updatedAt: normalizeText(user.updatedAt, new Date().toISOString())
         };
@@ -385,7 +288,7 @@
 
     function normalizePaymentMethods(methods) {
         if (!Array.isArray(methods)) {
-            return normalizePaymentMethods(DEFAULT_PAYMENT_METHODS);
+            return [];
         }
 
         return methods
@@ -431,18 +334,6 @@
         };
     }
 
-    function getEmptyValue(resourceName) {
-        if (resourceName === 'products' || resourceName === 'orders' || resourceName === 'discounts') {
-            return [];
-        }
-
-        if (resourceName === 'users' || resourceName === 'wishlists' || resourceName === 'carts' || resourceName === 'paymentMethods') {
-            return [];
-        }
-
-        return {};
-    }
-
     const normalizers = {
         products: normalizeProducts,
         orders: normalizeOrders,
@@ -458,6 +349,47 @@
         designer: normalizeDesigner
     };
 
+    function normalizeResource(resourceName, value) {
+        return normalizers[resourceName](value);
+    }
+
+    function emit(resourceName, value) {
+        const normalizedValue = normalizeResource(resourceName, value);
+        resourceCache.set(resourceName, normalizedValue);
+        const resourceListeners = listeners.get(resourceName) || [];
+        resourceListeners.forEach(listener => listener(normalizedValue));
+    }
+
+    async function api(path, options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (!options.body || options.body instanceof FormData) {
+            headers.delete('Content-Type');
+        } else if (!headers.has('Content-Type')) {
+            headers.set('Content-Type', 'application/json');
+        }
+
+        const response = await fetch(path, {
+            credentials: 'same-origin',
+            ...options,
+            headers
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        let payload = null;
+        if (response.status !== 204) {
+            payload = contentType.includes('application/json') ? await response.json() : await response.text();
+        }
+
+        if (!response.ok) {
+            const error = new Error(payload?.error || response.statusText || 'Request failed');
+            error.status = response.status;
+            error.payload = payload;
+            throw error;
+        }
+
+        return payload;
+    }
+
     async function loadDefaultProducts() {
         const response = await fetch(DEFAULT_PRODUCTS_PATH, { cache: 'no-store' });
         if (!response.ok) {
@@ -467,84 +399,197 @@
         return await response.json();
     }
 
-    function getConfig(resourceName) {
-        const config = resourceConfigs[resourceName];
-        if (!config) {
-            throw new Error(`Unknown resource: ${resourceName}`);
-        }
-
-        return config;
-    }
-
-    function normalizeResource(resourceName, value) {
-        return normalizers[resourceName](value);
-    }
-
-    function readStoredResource(resourceName) {
-        const { storageKey } = getConfig(resourceName);
-        const rawValue = localStorage.getItem(storageKey);
-        if (!rawValue) {
-            return null;
-        }
-
-        return normalizeResource(resourceName, JSON.parse(rawValue));
-    }
-
-    function dispatchUpdate(resourceName, value) {
-        const { eventName } = getConfig(resourceName);
-        window.dispatchEvent(new CustomEvent(eventName, {
-            detail: normalizeResource(resourceName, value)
-        }));
-    }
-
     async function getResource(resourceName) {
-        try {
-            const storedValue = readStoredResource(resourceName);
-            if (storedValue !== null) {
-                return storedValue;
-            }
-        } catch (error) {
-            console.warn(`Stored ${resourceName} were invalid. Reloading defaults.`, error);
-        }
-
-        const defaultValue = await getConfig(resourceName).getDefault();
-        return saveResource(resourceName, defaultValue);
-    }
-
-    function saveResource(resourceName, value) {
-        const { storageKey } = getConfig(resourceName);
-        const normalizedValue = normalizeResource(resourceName, value);
-        localStorage.setItem(storageKey, JSON.stringify(normalizedValue));
-        dispatchUpdate(resourceName, normalizedValue);
+        const payload = await api(`/api/resources/${resourceName}`);
+        const normalizedValue = normalizeResource(resourceName, payload.value);
+        resourceCache.set(resourceName, normalizedValue);
         return normalizedValue;
     }
 
+    async function saveResource(resourceName, value) {
+        const payload = await api(`/api/resources/${resourceName}`, {
+            method: 'PUT',
+            body: JSON.stringify({ value })
+        });
+        emit(resourceName, payload.value);
+        return resourceCache.get(resourceName);
+    }
+
     async function resetResource(resourceName) {
-        const defaultValue = await getConfig(resourceName).getDefault();
-        return saveResource(resourceName, defaultValue);
+        const payload = await api(`/api/resources/${resourceName}/reset`, {
+            method: 'POST'
+        });
+        emit(resourceName, payload.value);
+        return resourceCache.get(resourceName);
     }
 
     function subscribe(resourceName, listener) {
-        const { storageKey, eventName } = getConfig(resourceName);
+        const resourceListeners = listeners.get(resourceName) || [];
+        resourceListeners.push(listener);
+        listeners.set(resourceName, resourceListeners);
+    }
 
-        window.addEventListener(eventName, event => {
-            listener(normalizeResource(resourceName, event.detail));
-        });
-
-        window.addEventListener('storage', event => {
-            if (event.key !== storageKey) {
-                return;
-            }
-
-            try {
-                const value = event.newValue
-                    ? normalizeResource(resourceName, JSON.parse(event.newValue))
-                    : normalizeResource(resourceName, getEmptyValue(resourceName));
-                listener(value);
-            } catch (error) {
-                console.warn(`Unable to parse updated stored ${resourceName}.`, error);
+    async function getPublicBootstrap() {
+        const payload = await api('/api/bootstrap/public');
+        Object.entries(payload).forEach(([resourceName, value]) => {
+            if (normalizers[resourceName]) {
+                resourceCache.set(resourceName, normalizeResource(resourceName, value));
             }
         });
+        return payload;
+    }
+
+    async function getAdminBootstrap() {
+        const payload = await api('/api/bootstrap/admin');
+        Object.entries(payload).forEach(([resourceName, value]) => {
+            if (normalizers[resourceName]) {
+                resourceCache.set(resourceName, normalizeResource(resourceName, value));
+            }
+        });
+        return payload;
+    }
+
+    async function getAccountBootstrap() {
+        const payload = await api('/api/bootstrap/account');
+        const user = payload.user ? normalizeUser(payload.user) : null;
+        const wishlist = user
+            ? normalizeWishlistEntry(payload.wishlist || { userId: user.id, productIds: [] })
+            : { productIds: [] };
+        const cart = user
+            ? normalizeCart(payload.cart || { userId: user.id, items: [] })
+            : { items: [] };
+
+        resourceCache.set('users', user ? [user] : []);
+        resourceCache.set('currentUser', normalizeCurrentUser(user ? { userId: user.id } : {}));
+        resourceCache.set('wishlists', user ? [wishlist] : []);
+        resourceCache.set('carts', user ? [cart] : []);
+
+        return { user, wishlist, cart };
+    }
+
+    async function signUp(payload) {
+        const response = await api('/api/auth/signup', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const user = normalizeUser(response.user);
+        resourceCache.set('users', [user]);
+        resourceCache.set('currentUser', normalizeCurrentUser({ userId: user.id }));
+        resourceCache.set('wishlists', [{ userId: user.id, productIds: [], updatedAt: new Date().toISOString() }]);
+        resourceCache.set('carts', [{ userId: user.id, items: [], updatedAt: new Date().toISOString() }]);
+        return { ...response, user };
+    }
+
+    async function signIn(payload) {
+        const response = await api('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const user = normalizeUser(response.user);
+        resourceCache.set('users', [user]);
+        resourceCache.set('currentUser', normalizeCurrentUser({ userId: user.id }));
+        return { ...response, user };
+    }
+
+    async function signOut() {
+        await api('/api/auth/logout', { method: 'POST' });
+        resourceCache.set('users', []);
+        resourceCache.set('currentUser', normalizeCurrentUser({ userId: '' }));
+        resourceCache.set('wishlists', []);
+        resourceCache.set('carts', []);
+        emit('currentUser', { userId: '' });
+        emit('users', []);
+        emit('wishlists', []);
+        emit('carts', []);
+    }
+
+    async function requestPasswordReset(email) {
+        return await api('/api/auth/request-password-reset', {
+            method: 'POST',
+            body: JSON.stringify({ email })
+        });
+    }
+
+    async function resetPassword(token, password) {
+        return await api('/api/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ token, password })
+        });
+    }
+
+    async function resendVerification() {
+        return await api('/api/auth/resend-verification', { method: 'POST' });
+    }
+
+    async function updateProfile(profile) {
+        const response = await api('/api/account/profile', {
+            method: 'POST',
+            body: JSON.stringify(profile)
+        });
+        const user = normalizeUser(response.user);
+        resourceCache.set('users', [user]);
+        emit('users', [user]);
+        return user;
+    }
+
+    async function updateShipping(shipping) {
+        const response = await api('/api/account/shipping', {
+            method: 'POST',
+            body: JSON.stringify(shipping)
+        });
+        const user = normalizeUser(response.user);
+        resourceCache.set('users', [user]);
+        emit('users', [user]);
+        return user;
+    }
+
+    async function saveWishlist(entry) {
+        const response = await api('/api/account/wishlist', {
+            method: 'PUT',
+            body: JSON.stringify({ productIds: entry.productIds })
+        });
+        const wishlist = normalizeWishlistEntry(response.wishlist);
+        resourceCache.set('wishlists', [wishlist]);
+        emit('wishlists', [wishlist]);
+        return wishlist;
+    }
+
+    async function saveCart(entry) {
+        const response = await api('/api/account/cart', {
+            method: 'PUT',
+            body: JSON.stringify({ items: entry.items })
+        });
+        const cart = normalizeCart(response.cart);
+        resourceCache.set('carts', [cart]);
+        emit('carts', [cart]);
+        return cart;
+    }
+
+    async function createCustomOrder(order) {
+        const response = await api('/api/orders/custom', {
+            method: 'POST',
+            body: JSON.stringify(order)
+        });
+        return normalizeOrder(response.order);
+    }
+
+    async function uploadMedia(files, kind) {
+        const formData = new FormData();
+        files.forEach(file => formData.append('files', file));
+        const response = await api(`/api/admin/uploads?kind=${encodeURIComponent(kind)}`, {
+            method: 'POST',
+            body: formData
+        });
+        return Array.isArray(response.files) ? response.files : [];
+    }
+
+    async function updateOrderPayment(orderId, payload) {
+        const response = await api(`/api/admin/payments/${encodeURIComponent(orderId)}`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        emit('orders', response.orders);
+        return normalizeOrders(response.orders);
     }
 
     const shopData = {
@@ -558,23 +603,69 @@
         normalizeSettings,
         normalizeAppCenter,
         normalizeDesigner,
+        normalizeUser,
+        normalizeCart,
+        normalizeWishlistEntry,
         getResource,
         saveResource,
         resetResource,
         subscribe,
+        getPublicBootstrap,
+        getAdminBootstrap,
+        getAccountBootstrap,
+        auth: {
+            signUp,
+            signIn,
+            signOut,
+            requestPasswordReset,
+            resetPassword,
+            resendVerification
+        },
+        account: {
+            updateProfile,
+            updateShipping,
+            saveWishlist,
+            saveCart
+        },
+        createCustomOrder,
+        uploadMedia,
+        updateOrderPayment,
         getProducts: () => getResource('products'),
         saveProducts: value => saveResource('products', value),
         resetProducts: () => resetResource('products'),
         getOrders: () => getResource('orders'),
         saveOrders: value => saveResource('orders', value),
-        getUsers: () => getResource('users'),
-        saveUsers: value => saveResource('users', value),
-        getCurrentUser: () => getResource('currentUser'),
-        saveCurrentUser: value => saveResource('currentUser', value),
-        getWishlists: () => getResource('wishlists'),
-        saveWishlists: value => saveResource('wishlists', value),
-        getCarts: () => getResource('carts'),
-        saveCarts: value => saveResource('carts', value),
+        getUsers: async () => resourceCache.get('users') || (await getAccountBootstrap(), resourceCache.get('users')),
+        saveUsers: async value => {
+            const firstUser = Array.isArray(value) ? value[0] : null;
+            if (!firstUser) {
+                throw new Error('Saving arbitrary user lists is not supported.');
+            }
+            return [await updateProfile(firstUser)];
+        },
+        getCurrentUser: async () => resourceCache.get('currentUser') || (await getAccountBootstrap(), resourceCache.get('currentUser')),
+        saveCurrentUser: async value => {
+            if (!value?.userId) {
+                await signOut();
+            }
+            return resourceCache.get('currentUser') || normalizeCurrentUser(value);
+        },
+        getWishlists: async () => resourceCache.get('wishlists') || (await getAccountBootstrap(), resourceCache.get('wishlists')),
+        saveWishlists: async value => {
+            const firstEntry = Array.isArray(value) ? value[0] : null;
+            if (!firstEntry) {
+                throw new Error('Saving arbitrary wishlists is not supported.');
+            }
+            return [await saveWishlist(firstEntry)];
+        },
+        getCarts: async () => resourceCache.get('carts') || (await getAccountBootstrap(), resourceCache.get('carts')),
+        saveCarts: async value => {
+            const firstEntry = Array.isArray(value) ? value[0] : null;
+            if (!firstEntry) {
+                throw new Error('Saving arbitrary carts is not supported.');
+            }
+            return [await saveCart(firstEntry)];
+        },
         getPaymentMethods: () => getResource('paymentMethods'),
         savePaymentMethods: value => saveResource('paymentMethods', value),
         resetPaymentMethods: () => resetResource('paymentMethods'),

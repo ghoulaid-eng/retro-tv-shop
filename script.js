@@ -18,17 +18,25 @@ const shopAccountGreeting = document.getElementById('shopAccountGreeting');
 const shopAccountSummary = document.getElementById('shopAccountSummary');
 const accountGreeting = document.getElementById('accountGreeting');
 const accountSummary = document.getElementById('accountSummary');
+const accountVerificationStatus = document.getElementById('accountVerificationStatus');
 const accountStatusMessage = document.getElementById('accountStatusMessage');
-const savedAccountSelect = document.getElementById('savedAccountSelect');
-const switchAccountButton = document.getElementById('switchAccountButton');
-const createAccountModeButton = document.getElementById('createAccountModeButton');
+const signInForm = document.getElementById('signInForm');
+const signInEmailInput = document.getElementById('signInEmail');
+const signInPasswordInput = document.getElementById('signInPassword');
+const signInStatusMessage = document.getElementById('signInStatusMessage');
+const requestPasswordResetButton = document.getElementById('requestPasswordResetButton');
 const signOutButton = document.getElementById('signOutButton');
 const accountProfileForm = document.getElementById('accountProfileForm');
+const accountFormTitle = document.getElementById('accountFormTitle');
 const accountNameInput = document.getElementById('accountName');
 const accountUsernameInput = document.getElementById('accountUsername');
 const accountEmailInput = document.getElementById('accountEmail');
 const accountContactMethodInput = document.getElementById('accountContactMethod');
 const accountContactInfoInput = document.getElementById('accountContactInfo');
+const accountPasswordInput = document.getElementById('accountPassword');
+const accountPasswordConfirmInput = document.getElementById('accountPasswordConfirm');
+const accountSubmitButton = document.getElementById('accountSubmitButton');
+const resendVerificationButton = document.getElementById('resendVerificationButton');
 const shippingProfileForm = document.getElementById('shippingProfileForm');
 const shippingFullNameInput = document.getElementById('shippingFullName');
 const shippingAddressLine1Input = document.getElementById('shippingAddressLine1');
@@ -65,6 +73,8 @@ let currentUserState = {};
 let wishlists = [];
 let carts = [];
 let currentSettings = {};
+let currentMarketingState = {};
+let currentAppCenterState = {};
 
 function playClickSound() {
     if (!audioContext) {
@@ -215,22 +225,43 @@ function renderSavedListMessage(target, message) {
     target.appendChild(emptyState);
 }
 
-async function saveUsersWithLatest(applyChange) {
-    const latestUsers = await window.ShopData.getUsers();
-    const nextUsers = applyChange(latestUsers);
-    window.ShopData.saveUsers(nextUsers);
+function syncAccountData(user, wishlist, cart) {
+    savedUsers = user ? [user] : [];
+    currentUserState = user ? { userId: user.id, updatedAt: user.updatedAt } : {};
+    wishlists = user ? [window.ShopData.normalizeWishlistEntry(wishlist || { userId: user.id, productIds: [] })] : [];
+    carts = user ? [window.ShopData.normalizeCart(cart || { userId: user.id, items: [] })] : [];
+}
+
+async function loadAccountSession() {
+    const { user, wishlist, cart } = await window.ShopData.getAccountBootstrap();
+    syncAccountData(user, wishlist, cart);
+    return user;
 }
 
 async function saveWishlistsWithLatest(applyChange) {
-    const latestWishlists = await window.ShopData.getWishlists();
-    const nextWishlists = applyChange(latestWishlists);
-    window.ShopData.saveWishlists(nextWishlists);
+    const activeUser = getActiveUser();
+    if (!activeUser) {
+        return;
+    }
+
+    const nextWishlists = applyChange([getWishlistEntry(activeUser.id)]);
+    const nextEntry = nextWishlists.find(entry => entry.userId === activeUser.id) || { userId: activeUser.id, productIds: [] };
+    const savedWishlist = await window.ShopData.account.saveWishlist(nextEntry);
+    syncAccountData(activeUser, savedWishlist, getCartEntry(activeUser.id));
+    renderAccountState();
 }
 
 async function saveCartsWithLatest(applyChange) {
-    const latestCarts = await window.ShopData.getCarts();
-    const nextCarts = applyChange(latestCarts);
-    window.ShopData.saveCarts(nextCarts);
+    const activeUser = getActiveUser();
+    if (!activeUser) {
+        return;
+    }
+
+    const nextCarts = applyChange([getCartEntry(activeUser.id)]);
+    const nextEntry = nextCarts.find(entry => entry.userId === activeUser.id) || { userId: activeUser.id, items: [] };
+    const savedCart = await window.ShopData.account.saveCart(nextEntry);
+    syncAccountData(activeUser, getWishlistEntry(activeUser.id), savedCart);
+    renderAccountState();
 }
 
 function ensureActiveUser(message) {
@@ -447,7 +478,7 @@ function createProductCard(product) {
     wishlistButton.textContent = wishlistIds.includes(product.id) ? '♥ Wishlisted' : '♡ Wishlist';
     wishlistButton.addEventListener('click', async event => {
         event.stopPropagation();
-        const user = ensureActiveUser('Create or switch to an account to save a wishlist.');
+        const user = ensureActiveUser('Create an account or sign in to save a wishlist.');
         if (!user) {
             return;
         }
@@ -483,7 +514,7 @@ function createProductCard(product) {
     cartButton.textContent = quantity ? `🛒 Add another (${quantity})` : '🛒 Save to cart';
     cartButton.addEventListener('click', async event => {
         event.stopPropagation();
-        const user = ensureActiveUser('Create or switch to an account to save a cart.');
+        const user = ensureActiveUser('Create an account or sign in to save a cart.');
         if (!user) {
             return;
         }
@@ -721,6 +752,7 @@ function applySettings(settings) {
 }
 
 function applyAppCenter(appCenter) {
+    currentAppCenterState = appCenter;
     const customOrderOption = channelSelector?.querySelector('option[value="custom-order"]');
     const customOrderSection = document.getElementById('custom-order');
 
@@ -810,14 +842,14 @@ function renderShopAccountBanner() {
 
     if (!activeUser) {
         setStatus(shopAccountGreeting, 'Browsing as guest');
-        setStatus(shopAccountSummary, 'Create a local account to save wishlists, carts, and shipping details on this device.');
+        setStatus(shopAccountSummary, 'Create an account or sign in to sync wishlists, carts, and shipping details.');
         return;
     }
 
     const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
     const cartItemCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
     setStatus(shopAccountGreeting, `Browsing as ${getUserDisplayName(activeUser)}`);
-    setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) saved on this device.`);
+    setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) synced to your account.`);
 }
 
 function loadAccountForms() {
@@ -826,6 +858,12 @@ function loadAccountForms() {
     if (!activeUser) {
         accountProfileForm?.reset();
         shippingProfileForm?.reset();
+        if (accountFormTitle) {
+            accountFormTitle.textContent = 'Create account';
+        }
+        if (accountSubmitButton) {
+            accountSubmitButton.textContent = 'Create account';
+        }
         return;
     }
 
@@ -841,13 +879,19 @@ function loadAccountForms() {
     shippingStateInput.value = activeUser.shippingState || '';
     shippingPostalCodeInput.value = activeUser.shippingPostalCode || '';
     shippingCountryInput.value = activeUser.shippingCountry || '';
+    if (accountFormTitle) {
+        accountFormTitle.textContent = 'Account profile';
+    }
+    if (accountSubmitButton) {
+        accountSubmitButton.textContent = 'Save account';
+    }
 }
 
 function renderWishlist() {
     const activeUser = getActiveUser();
 
     if (!activeUser) {
-        renderSavedListMessage(wishlistList, 'Create or switch to an account to save wishlist items.');
+        renderSavedListMessage(wishlistList, 'Create an account or sign in to save wishlist items.');
         return;
     }
 
@@ -950,9 +994,9 @@ function renderCart() {
 
     if (!activeUser) {
         if (cartSummaryMessage) {
-            cartSummaryMessage.textContent = 'Sign in to save a cart on this device.';
+            cartSummaryMessage.textContent = 'Sign in to sync a saved cart to your account.';
         }
-        renderSavedListMessage(cartList, 'Create or switch to an account to save cart items.');
+        renderSavedListMessage(cartList, 'Create an account or sign in to save cart items.');
         renderCartTotals({ items: [] });
         return;
     }
@@ -961,7 +1005,7 @@ function renderCart() {
     const totalItems = cart.items.reduce((total, item) => total + item.quantity, 0);
 
     if (cartSummaryMessage) {
-        cartSummaryMessage.textContent = `Your active account cart is saved automatically on this device. ${totalItems} item(s) saved right now.`;
+        cartSummaryMessage.textContent = `Your account cart is synced securely. ${totalItems} item(s) saved right now.`;
     }
 
     if (!cart.items.length) {
@@ -1075,12 +1119,14 @@ function renderAccountState() {
 
     if (!activeUser) {
         setStatus(accountGreeting, 'No account active');
-        setStatus(accountSummary, 'Create an account or switch to one saved on this device.');
+        setStatus(accountSummary, 'Create an account or sign in to manage your synced wishlist, cart, and shipping details.');
+        setStatus(accountVerificationStatus, '');
     } else {
         const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
         const cartCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
         setStatus(accountGreeting, `Welcome back, ${getUserDisplayName(activeUser)}`);
-        setStatus(accountSummary, `${wishlistCount} wishlist item(s), ${cartCount} saved cart item(s), and shipping details stored on this device.`);
+        setStatus(accountSummary, `${wishlistCount} wishlist item(s), ${cartCount} saved cart item(s), and shipping details synced to your account.`);
+        setStatus(accountVerificationStatus, activeUser.emailVerified ? 'Email verified.' : 'Email verification pending. Check your verification link or resend it below.');
     }
 
     renderSavedAccounts();
@@ -1093,34 +1139,20 @@ function renderAccountState() {
 }
 
 async function initializeShopData() {
-    const [products, discounts, marketing, settings, appCenter, designer, paymentMethods, users, currentUser, storedWishlists, storedCarts] = await Promise.all([
-        window.ShopData.getProducts(),
-        window.ShopData.getDiscounts(),
-        window.ShopData.getMarketing(),
-        window.ShopData.getSettings(),
-        window.ShopData.getAppCenter(),
-        window.ShopData.getDesigner(),
-        window.ShopData.getPaymentMethods(),
-        window.ShopData.getUsers(),
-        window.ShopData.getCurrentUser(),
-        window.ShopData.getWishlists(),
-        window.ShopData.getCarts()
-    ]);
+    const bootstrap = await window.ShopData.getPublicBootstrap();
+    await loadAccountSession();
 
-    savedUsers = users;
-    currentUserState = currentUser;
-    wishlists = storedWishlists;
-    carts = storedCarts;
-
-    renderShopProducts(products);
-    applySettings(settings);
-    applyAppCenter(appCenter);
-    applyDesigner(designer);
-    renderPaymentMethods(paymentMethods);
-    renderAnnouncement('homeAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
-    renderAnnouncement('shopAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
-    renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
-    renderDiscounts(discounts, appCenter.discountsEnabled);
+    currentMarketingState = bootstrap.marketing;
+    currentAppCenterState = bootstrap.appCenter;
+    renderShopProducts(bootstrap.products);
+    applySettings(bootstrap.settings);
+    applyAppCenter(bootstrap.appCenter);
+    applyDesigner(bootstrap.designer);
+    renderPaymentMethods(bootstrap.paymentMethods);
+    renderAnnouncement('homeAnnouncement', bootstrap.marketing.announcementTitle, bootstrap.marketing.announcementMessage, bootstrap.appCenter.marketingEnabled);
+    renderAnnouncement('shopAnnouncement', bootstrap.marketing.announcementTitle, bootstrap.marketing.announcementMessage, bootstrap.appCenter.marketingEnabled);
+    renderFeaturedBroadcast(bootstrap.marketing, bootstrap.appCenter.marketingEnabled);
+    renderDiscounts(bootstrap.discounts, bootstrap.appCenter.discountsEnabled);
     renderAccountState();
 
     window.ShopData.subscribe('products', renderShopProducts);
@@ -1129,10 +1161,6 @@ async function initializeShopData() {
     window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
     window.ShopData.subscribe('users', nextUsers => {
         savedUsers = nextUsers;
-        renderAccountState();
-    });
-    window.ShopData.subscribe('currentUser', nextCurrentUser => {
-        currentUserState = nextCurrentUser;
         renderAccountState();
     });
     window.ShopData.subscribe('wishlists', nextWishlists => {
@@ -1144,26 +1172,21 @@ async function initializeShopData() {
         renderAccountState();
     });
     window.ShopData.subscribe('discounts', nextDiscounts => {
-        window.ShopData.getAppCenter().then(currentAppCenter => {
-            renderDiscounts(nextDiscounts, currentAppCenter.discountsEnabled);
-        });
+        renderDiscounts(nextDiscounts, currentAppCenterState.discountsEnabled);
     });
     window.ShopData.subscribe('marketing', nextMarketing => {
-        window.ShopData.getAppCenter().then(currentAppCenter => {
-            renderAnnouncement('homeAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
-            renderAnnouncement('shopAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
-            renderFeaturedBroadcast(nextMarketing, currentAppCenter.marketingEnabled);
-        });
+        currentMarketingState = nextMarketing;
+        renderAnnouncement('homeAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenterState.marketingEnabled);
+        renderAnnouncement('shopAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenterState.marketingEnabled);
+        renderFeaturedBroadcast(nextMarketing, currentAppCenterState.marketingEnabled);
     });
     window.ShopData.subscribe('appCenter', nextAppCenter => {
         applyAppCenter(nextAppCenter);
-        window.ShopData.getMarketing().then(currentMarketing => {
-            renderAnnouncement('homeAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
-            renderAnnouncement('shopAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
-            renderFeaturedBroadcast(currentMarketing, nextAppCenter.marketingEnabled);
-        });
-        window.ShopData.getDiscounts().then(currentDiscounts => {
-            renderDiscounts(currentDiscounts, nextAppCenter.discountsEnabled);
+        renderAnnouncement('homeAnnouncement', currentMarketingState.announcementTitle, currentMarketingState.announcementMessage, nextAppCenter.marketingEnabled);
+        renderAnnouncement('shopAnnouncement', currentMarketingState.announcementTitle, currentMarketingState.announcementMessage, nextAppCenter.marketingEnabled);
+        renderFeaturedBroadcast(currentMarketingState, nextAppCenter.marketingEnabled);
+        window.ShopData.getDiscounts().then(nextDiscounts => {
+            renderDiscounts(nextDiscounts, nextAppCenter.discountsEnabled);
         });
     });
 }
@@ -1208,45 +1231,52 @@ if (accountProfileForm) {
             return;
         }
 
-        const latestUsers = await window.ShopData.getUsers();
-        const duplicateUser = latestUsers.find(user => user.id !== activeUser?.id && (
-            user.username.toLowerCase() === nextUsername.toLowerCase() ||
-            user.email.toLowerCase() === nextEmail.toLowerCase()
-        ));
+        try {
+            if (activeUser) {
+                const updatedUser = await window.ShopData.account.updateProfile({
+                    name: nextName,
+                    username: nextUsername,
+                    email: nextEmail,
+                    contactMethod: accountContactMethodInput.value,
+                    contactInfo: accountContactInfoInput.value.trim()
+                });
+                syncAccountData(updatedUser, getWishlistEntry(updatedUser.id), getCartEntry(updatedUser.id));
+                renderAccountState();
+                setStatus(accountStatusMessage, `Updated account for ${nextName}.`);
+                return;
+            }
 
-        if (duplicateUser) {
-            setStatus(accountStatusMessage, 'That username or email is already saved on this device.');
-            return;
-        }
+            const password = accountPasswordInput?.value || '';
+            const confirmPassword = accountPasswordConfirmInput?.value || '';
+            if (password.length < 8) {
+                setStatus(accountStatusMessage, 'Use a password with at least 8 characters.');
+                return;
+            }
+            if (password !== confirmPassword) {
+                setStatus(accountStatusMessage, 'Passwords do not match.');
+                return;
+            }
 
-        if (activeUser) {
-            await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
-                ...user,
+            const response = await window.ShopData.auth.signUp({
                 name: nextName,
                 username: nextUsername,
                 email: nextEmail,
+                password,
                 contactMethod: accountContactMethodInput.value,
-                contactInfo: accountContactInfoInput.value.trim(),
-                updatedAt: new Date().toISOString()
-            } : user));
-            setStatus(accountStatusMessage, `Updated account for ${nextName}.`);
-            return;
+                contactInfo: accountContactInfoInput.value.trim()
+            });
+            await loadAccountSession();
+            renderAccountState();
+            fillOrderProfileFromAccount();
+            setStatus(accountStatusMessage, response.verificationPreviewUrl
+                ? `Account created. Verify your email: ${response.verificationPreviewUrl}`
+                : `Account created for ${nextName}.`);
+            if (signInEmailInput) {
+                signInEmailInput.value = nextEmail;
+            }
+        } catch (error) {
+            setStatus(accountStatusMessage, error.message);
         }
-
-        const newUser = {
-            id: window.ShopData.createId('user'),
-            name: nextName,
-            username: nextUsername,
-            email: nextEmail,
-            contactMethod: accountContactMethodInput.value,
-            contactInfo: accountContactInfoInput.value.trim(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        await saveUsersWithLatest(currentUsers => [...currentUsers, newUser]);
-        window.ShopData.saveCurrentUser({ userId: newUser.id, updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, `Created local account for ${nextName}.`);
     });
 }
 
@@ -1254,60 +1284,99 @@ if (shippingProfileForm) {
     shippingProfileForm.addEventListener('submit', async event => {
         event.preventDefault();
 
-        const activeUser = ensureActiveUser('Create or switch to an account before saving shipping details.');
+        const activeUser = ensureActiveUser('Create an account or sign in before saving shipping details.');
         if (!activeUser) {
             return;
         }
 
-        await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
-            ...user,
-            shippingFullName: shippingFullNameInput.value.trim(),
-            shippingAddressLine1: shippingAddressLine1Input.value.trim(),
-            shippingAddressLine2: shippingAddressLine2Input.value.trim(),
-            shippingCity: shippingCityInput.value.trim(),
-            shippingState: shippingStateInput.value.trim(),
-            shippingPostalCode: shippingPostalCodeInput.value.trim(),
-            shippingCountry: shippingCountryInput.value.trim(),
-            updatedAt: new Date().toISOString()
-        } : user));
-
-        setStatus(shippingStatusMessage, 'Shipping details saved to your account.');
+        try {
+            const updatedUser = await window.ShopData.account.updateShipping({
+                shippingFullName: shippingFullNameInput.value.trim(),
+                shippingAddressLine1: shippingAddressLine1Input.value.trim(),
+                shippingAddressLine2: shippingAddressLine2Input.value.trim(),
+                shippingCity: shippingCityInput.value.trim(),
+                shippingState: shippingStateInput.value.trim(),
+                shippingPostalCode: shippingPostalCodeInput.value.trim(),
+                shippingCountry: shippingCountryInput.value.trim()
+            });
+            syncAccountData(updatedUser, getWishlistEntry(updatedUser.id), getCartEntry(updatedUser.id));
+            renderAccountState();
+            setStatus(shippingStatusMessage, 'Shipping details saved to your account.');
+        } catch (error) {
+            setStatus(shippingStatusMessage, error.message);
+        }
     });
 }
 
-if (switchAccountButton) {
-    switchAccountButton.addEventListener('click', () => {
-        if (!savedAccountSelect?.value) {
-            setStatus(accountStatusMessage, 'Choose an account to switch.');
+if (signInForm) {
+    signInForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            await window.ShopData.auth.signIn({
+                email: signInEmailInput.value.trim(),
+                password: signInPasswordInput.value
+            });
+            await loadAccountSession();
+            renderAccountState();
+            fillOrderProfileFromAccount();
+            setStatus(signInStatusMessage, 'Signed in.');
+            setStatus(accountStatusMessage, '');
+        } catch (error) {
+            setStatus(signInStatusMessage, error.message);
+        }
+    });
+}
+
+if (requestPasswordResetButton) {
+    requestPasswordResetButton.addEventListener('click', async () => {
+        const email = signInEmailInput?.value.trim() || accountEmailInput?.value.trim();
+        if (!email) {
+            setStatus(signInStatusMessage, 'Enter your email first.');
             return;
         }
-
-        window.ShopData.saveCurrentUser({ userId: savedAccountSelect.value, updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, 'Switched local account.');
-    });
-}
-
-if (createAccountModeButton) {
-    createAccountModeButton.addEventListener('click', () => {
-        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
-        accountProfileForm?.reset();
-        shippingProfileForm?.reset();
-        setStatus(accountStatusMessage, 'Enter account details to create a new local account.');
-        setStatus(shippingStatusMessage, '');
-        setStatus(cartStatusMessage, '');
+        try {
+            const response = await window.ShopData.auth.requestPasswordReset(email);
+            setStatus(signInStatusMessage, response.resetPreviewUrl
+                ? `Reset link: ${response.resetPreviewUrl}`
+                : response.message);
+        } catch (error) {
+            setStatus(signInStatusMessage, error.message);
+        }
     });
 }
 
 if (signOutButton) {
-    signOutButton.addEventListener('click', () => {
-        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, 'Signed out on this device.');
+    signOutButton.addEventListener('click', async () => {
+        await window.ShopData.auth.signOut();
+        syncAccountData(null);
+        renderAccountState();
+        accountProfileForm?.reset();
+        shippingProfileForm?.reset();
+        setStatus(signInStatusMessage, 'Signed out.');
+        setStatus(accountStatusMessage, '');
+    });
+}
+
+if (resendVerificationButton) {
+    resendVerificationButton.addEventListener('click', async () => {
+        const activeUser = ensureActiveUser('Sign in before requesting a verification link.');
+        if (!activeUser) {
+            return;
+        }
+        try {
+            const response = await window.ShopData.auth.resendVerification();
+            setStatus(accountVerificationStatus, response.verificationPreviewUrl
+                ? `Verification link: ${response.verificationPreviewUrl}`
+                : 'Verification email resent.');
+        } catch (error) {
+            setStatus(accountVerificationStatus, error.message);
+        }
     });
 }
 
 if (moveWishlistToCartButton) {
     moveWishlistToCartButton.addEventListener('click', async () => {
-        const activeUser = ensureActiveUser('Create or switch to an account before moving wishlist items.');
+        const activeUser = ensureActiveUser('Create an account or sign in before moving wishlist items.');
         if (!activeUser) {
             return;
         }
@@ -1348,7 +1417,7 @@ if (moveWishlistToCartButton) {
 
 if (clearCartButton) {
     clearCartButton.addEventListener('click', async () => {
-        const activeUser = ensureActiveUser('Create or switch to an account before clearing a cart.');
+        const activeUser = ensureActiveUser('Create an account or sign in before clearing a cart.');
         if (!activeUser) {
             return;
         }
@@ -1382,12 +1451,11 @@ if (customOrderForm) {
             status: 'Pending'
         }])[0];
 
-        const existingOrders = await window.ShopData.getOrders();
-        window.ShopData.saveOrders([order, ...existingOrders]);
+        const savedOrder = await window.ShopData.createCustomOrder(order);
 
         customOrderForm.style.display = 'none';
         orderSuccess.classList.remove('hidden');
-        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${order.fullName || 'ghoul'}! Your custom order has been saved. We’ll confirm your total and send ${availablePaymentMethods.find(method => method.id === order.paymentMethod)?.name || 'payment'} instructions soon.`;
+        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${savedOrder.fullName || 'ghoul'}! Your custom order has been saved. We’ll confirm your total and send ${availablePaymentMethods.find(method => method.id === savedOrder.paymentMethod)?.name || 'payment'} instructions soon.`;
         playClickSound();
 
         setTimeout(() => {
@@ -1470,6 +1538,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     updateAdditionalSetVisibility();
     await initializeShopData();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified') === '1') {
+        setActiveChannel('account');
+        setStatus(accountVerificationStatus, 'Email verified.');
+    }
+    if (params.get('resetToken')) {
+        setActiveChannel('account');
+        const nextPassword = window.prompt('Enter your new password (minimum 8 characters):');
+        if (nextPassword) {
+            try {
+                await window.ShopData.auth.resetPassword(params.get('resetToken'), nextPassword);
+                setStatus(signInStatusMessage, 'Password updated. You can sign in now.');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (error) {
+                setStatus(signInStatusMessage, error.message);
+            }
+        }
+    }
 });
 
 document.addEventListener('keydown', event => {

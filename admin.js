@@ -152,6 +152,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentsTableBody = document.getElementById('paymentsTableBody');
     const emptyPaymentsState = document.getElementById('emptyPaymentsState');
     const resetPaymentMethodsButton = document.getElementById('resetPaymentMethods');
+    const adminAuthGate = document.getElementById('adminAuthGate');
+    const adminShellContent = document.getElementById('adminShellContent');
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminLoginEmail = document.getElementById('adminLoginEmail');
+    const adminLoginPassword = document.getElementById('adminLoginPassword');
+    const adminAuthStatus = document.getElementById('adminAuthStatus');
+    const adminSignOutButton = document.getElementById('adminSignOutButton');
 
     let products = [];
     let orders = [];
@@ -306,13 +313,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function readFileAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = () => reject(reader.error || new Error(`Unable to read ${file.name}`));
-            reader.readAsDataURL(file);
-        });
+    function toggleAdminAccess(isAuthenticated) {
+        adminAuthGate?.classList.toggle('hidden', isAuthenticated);
+        adminShellContent?.classList.toggle('hidden', !isAuthenticated);
+        adminSignOutButton?.classList.toggle('hidden', !isAuthenticated);
     }
 
     async function appendMediaFiles(input, kind, maxItems) {
@@ -329,12 +333,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const dataUrls = await Promise.all(files.map(readFileAsDataUrl));
+        const uploadedFiles = await window.ShopData.uploadMedia(files, kind);
         if (kind === 'image') {
-            productImagesDraft = [...productImagesDraft, ...dataUrls].slice(0, maxItems);
+            productImagesDraft = [...productImagesDraft, ...uploadedFiles].slice(0, maxItems);
             renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
         } else {
-            productVideosDraft = [...productVideosDraft, ...dataUrls].slice(0, maxItems);
+            productVideosDraft = [...productVideosDraft, ...uploadedFiles].slice(0, maxItems);
             renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
         }
 
@@ -344,19 +348,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function saveProductsWithLatest(applyChange) {
         const latestProducts = await window.ShopData.getProducts();
         const nextProducts = applyChange(latestProducts);
-        window.ShopData.saveProducts(nextProducts);
+        await window.ShopData.saveProducts(nextProducts);
     }
 
     async function saveOrdersWithLatest(applyChange) {
         const latestOrders = await window.ShopData.getOrders();
         const nextOrders = applyChange(latestOrders);
-        window.ShopData.saveOrders(nextOrders);
+        await window.ShopData.saveOrders(nextOrders);
     }
 
     async function savePaymentMethodsWithLatest(applyChange) {
         const latestPaymentMethods = await window.ShopData.getPaymentMethods();
         const nextPaymentMethods = applyChange(latestPaymentMethods);
-        window.ShopData.savePaymentMethods(nextPaymentMethods);
+        await window.ShopData.savePaymentMethods(nextPaymentMethods);
     }
 
     function renderProducts(nextProducts) {
@@ -677,25 +681,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const nextStatus = paymentStatusSelect.value;
                 const nextAmount = Number.parseFloat(amountInput.value) || 0;
                 const nextReference = referenceInput.value.trim();
-                await saveOrdersWithLatest(currentOrders => currentOrders.map(item => {
-                    if (item.id !== order.id) {
-                        return item;
-                    }
-
-                    const wasPaid = item.paymentStatus === 'Paid';
-                    const isPaid = nextStatus === 'Paid';
-
-                    return {
-                        ...item,
-                        paymentMethod: methodSelect.value,
-                        paymentStatus: nextStatus,
-                        paymentAmount: nextAmount,
-                        paymentReference: nextReference,
-                        paymentReceivedAt: isPaid
-                            ? (wasPaid && item.paymentReceivedAt ? item.paymentReceivedAt : new Date().toISOString())
-                            : ''
-                    };
-                }));
+                await window.ShopData.updateOrderPayment(order.id, {
+                    paymentMethod: methodSelect.value,
+                    paymentStatus: nextStatus,
+                    paymentAmount: nextAmount,
+                    paymentReference: nextReference
+                });
                 setStatus(paymentManagerStatus, `Saved payment update for ${order.fullName || 'this order'}.`);
             };
             saveButton.addEventListener('click', savePaymentUpdate);
@@ -759,8 +750,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
             deleteButton.textContent = 'Delete';
-            deleteButton.addEventListener('click', () => {
-                window.ShopData.saveDiscounts(discounts.filter(item => item.id !== discount.id));
+            deleteButton.addEventListener('click', async () => {
+                await window.ShopData.saveDiscounts(discounts.filter(item => item.id !== discount.id));
                 setStatus(discountStatus, `${discount.code} removed.`);
             });
 
@@ -919,7 +910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(statusMessage, 'Default products restored from products.json.');
     });
 
-    discountForm.addEventListener('submit', event => {
+    discountForm.addEventListener('submit', async event => {
         event.preventDefault();
 
         const nextDiscounts = [...discounts, ...window.ShopData.normalizeDiscounts([{
@@ -928,14 +919,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             details: discountDetailsInput.value
         }])];
 
-        window.ShopData.saveDiscounts(nextDiscounts);
+        await window.ShopData.saveDiscounts(nextDiscounts);
         discountForm.reset();
         setStatus(discountStatus, 'Discount saved.');
     });
 
-    marketingForm.addEventListener('submit', event => {
+    marketingForm.addEventListener('submit', async event => {
         event.preventDefault();
-        window.ShopData.saveMarketing({
+        await window.ShopData.saveMarketing({
             announcementTitle: marketingAnnouncementTitle.value,
             announcementMessage: marketingAnnouncementMessage.value,
             featuredTitle: marketingFeaturedTitle.value,
@@ -944,9 +935,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(marketingStatus, 'Marketing broadcast saved.');
     });
 
-    settingsForm.addEventListener('submit', event => {
+    settingsForm.addEventListener('submit', async event => {
         event.preventDefault();
-        window.ShopData.saveSettings({
+        await window.ShopData.saveSettings({
             shopName: settingsShopName.value,
             homeHeadline: settingsHomeHeadline.value,
             homeTagline: settingsHomeTagline.value,
@@ -957,9 +948,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(settingsStatus, 'Shop settings saved.');
     });
 
-    appCenterForm.addEventListener('submit', event => {
+    appCenterForm.addEventListener('submit', async event => {
         event.preventDefault();
-        window.ShopData.saveAppCenter({
+        await window.ShopData.saveAppCenter({
             marketingEnabled: appMarketingEnabled.checked,
             discountsEnabled: appDiscountsEnabled.checked,
             customOrdersEnabled: appCustomOrdersEnabled.checked
@@ -967,9 +958,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(appCenterStatus, 'App center settings saved.');
     });
 
-    designerForm.addEventListener('submit', event => {
+    designerForm.addEventListener('submit', async event => {
         event.preventDefault();
-        window.ShopData.saveDesigner({
+        await window.ShopData.saveDesigner({
             productCardSize: designerProductCardSize.value,
             staticEffect: designerStaticEffect.checked
         });
@@ -997,18 +988,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    try {
-        [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer] = await Promise.all([
-            window.ShopData.getProducts(),
-            window.ShopData.getOrders(),
-            window.ShopData.getPaymentMethods(),
-            window.ShopData.getDiscounts(),
-            window.ShopData.getMarketing(),
-            window.ShopData.getSettings(),
-            window.ShopData.getAppCenter(),
-            window.ShopData.getDesigner()
-        ]);
+    let subscriptionsRegistered = false;
 
+    async function initializeAdminPanel() {
+        const bootstrap = await window.ShopData.getAdminBootstrap();
+        products = bootstrap.products;
+        orders = bootstrap.orders;
+        paymentMethods = bootstrap.paymentMethods;
+        discounts = bootstrap.discounts;
+        marketing = bootstrap.marketing;
+        settings = bootstrap.settings;
+        appCenter = bootstrap.appCenter;
+        designer = bootstrap.designer;
+
+        toggleAdminAccess(true);
         renderProducts(products);
         renderOrders(orders);
         renderPaymentMethods(paymentMethods);
@@ -1030,30 +1023,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(paymentMethodsStatus, 'Manage PayPal, Klarna, Afterpay, Zip, and Apple Pay here.');
         setStatus(paymentManagerStatus, 'Monitor payments received for each custom order here.');
 
-        window.ShopData.subscribe('products', renderProducts);
-        window.ShopData.subscribe('orders', renderOrders);
-        window.ShopData.subscribe('orders', renderPayments);
-        window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
-        window.ShopData.subscribe('discounts', renderDiscounts);
-        window.ShopData.subscribe('marketing', nextMarketing => {
-            marketing = nextMarketing;
-            loadMarketingForm();
-        });
-        window.ShopData.subscribe('settings', nextSettings => {
-            settings = nextSettings;
-            loadSettingsForm();
-        });
-        window.ShopData.subscribe('appCenter', nextAppCenter => {
-            appCenter = nextAppCenter;
-            loadAppCenterForm();
-        });
-        window.ShopData.subscribe('designer', nextDesigner => {
-            designer = nextDesigner;
-            loadDesignerForm();
-        });
+        if (!subscriptionsRegistered) {
+            window.ShopData.subscribe('products', renderProducts);
+            window.ShopData.subscribe('orders', renderOrders);
+            window.ShopData.subscribe('orders', renderPayments);
+            window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
+            window.ShopData.subscribe('discounts', renderDiscounts);
+            window.ShopData.subscribe('marketing', nextMarketing => {
+                marketing = nextMarketing;
+                loadMarketingForm();
+            });
+            window.ShopData.subscribe('settings', nextSettings => {
+                settings = nextSettings;
+                loadSettingsForm();
+            });
+            window.ShopData.subscribe('appCenter', nextAppCenter => {
+                appCenter = nextAppCenter;
+                loadAppCenterForm();
+            });
+            window.ShopData.subscribe('designer', nextDesigner => {
+                designer = nextDesigner;
+                loadDesignerForm();
+            });
+            subscriptionsRegistered = true;
+        }
+    }
+
+    adminLoginForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            await window.ShopData.auth.signIn({
+                email: adminLoginEmail.value,
+                password: adminLoginPassword.value
+            });
+            setStatus(adminAuthStatus, '');
+            adminLoginForm.reset();
+            await initializeAdminPanel();
+        } catch (error) {
+            setStatus(adminAuthStatus, error.message);
+        }
+    });
+
+    adminSignOutButton?.addEventListener('click', async () => {
+        await window.ShopData.auth.signOut();
+        toggleAdminAccess(false);
+        setStatus(adminAuthStatus, 'Signed out.');
+    });
+
+    try {
+        await initializeAdminPanel();
     } catch (error) {
         console.error('Unable to initialize product admin panel.', error);
+        toggleAdminAccess(false);
         activateSection('products');
-        setStatus(statusMessage, `Unable to load product admin data: ${error.message}`);
+        setStatus(adminAuthStatus, error.status === 401 || error.status === 403
+            ? 'Sign in with an admin account to open the owner portal.'
+            : `Unable to load product admin data: ${error.message}`);
+        setStatus(statusMessage, error.status === 401 || error.status === 403 ? '' : `Unable to load product admin data: ${error.message}`);
     }
 });

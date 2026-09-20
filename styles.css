@@ -1114,9 +1114,21 @@ input[type="checkbox"] {
     gap: 10px;
 }
 
+.admin-header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
 .admin-simple-form {
     display: grid;
     gap: 12px;
+}
+
+.admin-auth-gate {
+    max-width: 520px;
+    margin: 0 auto 24px;
 }
 
 .admin-helper-text {

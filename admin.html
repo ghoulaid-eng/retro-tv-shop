@@ -20,10 +20,30 @@
                                         <h1 id="adminShopName" class="channel-title">SIP OF GHOULAID SHOP ADMIN</h1>
                                         <p id="adminShopSubtitle" class="channel-intro">A spooky control panel for sip of ghoulaid shop, products, and storefront tools.</p>
                                     </div>
-                                    <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
+                                    <div class="admin-header-actions">
+                                        <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
+                                        <button type="button" class="table-action-btn click-item hidden" id="adminSignOutButton">Sign out</button>
+                                    </div>
                                 </div>
 
-                                <div class="admin-shell">
+                                <div id="adminAuthGate" class="admin-panel-card admin-auth-gate hidden">
+                                    <h2>Owner sign in required</h2>
+                                    <p>Use an admin account to manage products, orders, payments, and storefront settings.</p>
+                                    <form id="adminLoginForm" class="admin-simple-form">
+                                        <div class="form-group">
+                                            <label for="adminLoginEmail">Email</label>
+                                            <input type="email" id="adminLoginEmail" placeholder="owner@example.com" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adminLoginPassword">Password</label>
+                                            <input type="password" id="adminLoginPassword" placeholder="••••••••" required>
+                                        </div>
+                                        <button type="submit" class="submit-btn click-item">Unlock Admin</button>
+                                    </form>
+                                    <p id="adminAuthStatus" class="admin-status" aria-live="polite"></p>
+                                </div>
+
+                                <div id="adminShellContent" class="admin-shell">
                                     <aside class="admin-sidebar admin-panel-card">
                                         <h2>Admin Console</h2>
                                         <nav class="admin-sidebar-nav" aria-label="Admin navigation">
@@ -83,7 +103,7 @@
                                                 </div>
                                                 <div class="admin-info-card">
                                                     <h3>Shop status</h3>
-                                                    <p>Products, settings, discounts, payment methods, designer options, and custom orders all save locally and update the storefront immediately.</p>
+                                                    <p>Products, settings, discounts, payment methods, designer options, and custom orders now save through the backend and persist centrally.</p>
                                                 </div>
                                                 <div class="admin-info-card">
                                                     <h3>Now functional</h3>

@@ -1,0 +1,25 @@
+{
+  "name": "retro-tv-shop",
+  "version": "1.0.0",
+  "description": "Sip of Ghoulaid launch-ready storefront and admin",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/ghoulaid-eng/retro-tv-shop"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0"
+  }
+}
