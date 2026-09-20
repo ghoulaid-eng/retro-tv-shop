@@ -7,6 +7,8 @@ const customOrderForm = document.getElementById('customOrderForm');
 const orderSuccess = document.getElementById('orderSuccess');
 const formStatus = document.getElementById('formStatus');
 const statusLive = document.getElementById('statusLive');
+const tvBootOverlay = document.getElementById('tvBootOverlay');
+const channelIndicator = document.getElementById('channelIndicator');
 const powerBtn = document.getElementById('powerBtn');
 const volumeBtn = document.getElementById('volumeBtn');
 const staticOverlay = document.getElementById('staticOverlay');
@@ -77,6 +79,14 @@ let commerceCapabilities = {
 let catalogSource = 'browser-local';
 const MAX_CART_LINE_QUANTITY = 10;
 const MAX_CART_LINES = 50;
+const CHANNEL_NUMBERS = {
+    home: '01',
+    shop: '02',
+    account: '03',
+    'custom-order': '04',
+    summon: '06',
+    about: '07'
+};
 
 async function commerceRequest(path, options = {}) {
     const controller = new AbortController();
@@ -290,10 +300,21 @@ function activateChannel(channelName, shouldPlaySound = false) {
     });
 
     channelSelector.value = targetChannel?.id || 'home';
+    const activeChannel = targetChannel?.id || 'home';
+    const activeLabel = channelSelector.selectedOptions[0]?.textContent
+        ?.replace(/^[^\p{L}\p{N}]+/u, '')
+        .trim() || 'HOME';
+
+    if (channelIndicator) {
+        channelIndicator.textContent = `CH ${CHANNEL_NUMBERS[activeChannel] || '--'} · ${activeLabel}`;
+    }
 
     if (shouldPlaySound) {
         playClickSound();
         announceStatus(`${targetChannel?.querySelector('h1')?.textContent || 'Home'} channel selected.`);
+        const url = new URL(window.location.href);
+        url.searchParams.set('channel', activeChannel);
+        window.history.replaceState(null, '', url);
     }
 }
 
@@ -1319,6 +1340,14 @@ if (channelSelector && channels.length) {
     });
 }
 
+document.addEventListener('click', event => {
+    const channelTarget = event.target.closest('[data-channel-target]');
+    if (!channelTarget) {
+        return;
+    }
+    activateChannel(channelTarget.dataset.channelTarget, true);
+});
+
 if (openAccountFromShopButton) {
     openAccountFromShopButton.addEventListener('click', () => {
         setActiveChannel('account');
@@ -1676,7 +1705,9 @@ if (volumeBtn) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    activateChannel('home');
+    const requestedChannel = new URLSearchParams(window.location.search).get('channel');
+    const availableChannels = new Set(Array.from(channelSelector?.options || []).map(option => option.value));
+    activateChannel(availableChannels.has(requestedChannel) ? requestedChannel : 'home');
 
     bindClickSound();
     bindProductCardEffects();
@@ -1684,6 +1715,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         radio.addEventListener('change', updateAdditionalSetVisibility);
     });
     updateAdditionalSetVisibility();
+
+    if (tvBootOverlay) {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.setTimeout(() => {
+            tvBootOverlay.classList.add('boot-complete');
+        }, reducedMotion ? 0 : 2000);
+    }
+
     await initializeShopData();
 
     const checkoutResult = new URLSearchParams(window.location.search).get('checkout');

@@ -164,6 +164,83 @@ textarea:focus-visible {
     background: radial-gradient(circle at center, rgba(0, 255, 136, 0.12), rgba(0, 0, 0, 0.6) 78%);
 }
 
+.tv-boot-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 18px;
+    background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 4px),
+        radial-gradient(circle, #162a25, #020404 72%);
+    color: var(--mint);
+    text-align: center;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.tv-boot-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 45%, rgba(0, 255, 136, 0.17) 50%, transparent 55%);
+    animation: bootScan 0.8s linear infinite;
+}
+
+.tv-boot-overlay.boot-complete {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.boot-logo {
+    color: var(--pink);
+    font-family: 'Press Start 2P', cursive;
+    font-size: clamp(1.3rem, 4vw, 3.5rem);
+    line-height: 1.35;
+    text-shadow: -3px 0 var(--cyan), 3px 0 var(--mint), 0 0 26px var(--pink);
+    animation: bootGlitch 0.3s steps(2, end) infinite;
+}
+
+.tv-boot-overlay p {
+    color: var(--mint);
+    font-size: 18px;
+    letter-spacing: 4px;
+}
+
+.boot-progress {
+    width: min(320px, 65vw);
+    height: 12px;
+    overflow: hidden;
+    border: 2px solid var(--mint);
+    background: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.6);
+}
+
+.boot-progress span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--mint), var(--cyan), var(--pink));
+    animation: bootLoad 1.8s ease-out forwards;
+}
+
+@keyframes bootLoad {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes bootScan {
+    from { transform: translateY(-55%); }
+    to { transform: translateY(55%); }
+}
+
+@keyframes bootGlitch {
+    0%, 90%, 100% { transform: translate(0); }
+    92% { transform: translate(-3px, 2px); }
+    96% { transform: translate(3px, -2px); }
+}
+
 .screen-content {
     position: relative;
     width: 100%;
@@ -361,6 +438,127 @@ p, label {
 .intro-text p {
     text-align: center;
     margin-bottom: 10px;
+}
+
+.tv-guide {
+    max-width: 980px;
+    margin: 28px auto 0;
+    border: 2px solid rgba(0, 255, 136, 0.65);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(3, 16, 13, 0.82);
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.14), inset 0 0 30px rgba(0, 0, 0, 0.7);
+}
+
+.tv-guide-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.4);
+    background: linear-gradient(90deg, rgba(0, 255, 136, 0.2), rgba(255, 105, 180, 0.12));
+    color: var(--mint);
+    letter-spacing: 2px;
+}
+
+.tv-guide-heading span {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 13px;
+}
+
+.tv-guide-heading small {
+    color: var(--purple-soft);
+    font-size: 13px;
+}
+
+.tv-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: rgba(0, 255, 136, 0.22);
+}
+
+.guide-card {
+    min-height: 112px;
+    padding: 16px;
+    border: 0;
+    background: linear-gradient(145deg, rgba(13, 25, 28, 0.98), rgba(34, 17, 43, 0.98));
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.guide-card:hover,
+.guide-card:focus-visible {
+    z-index: 1;
+    background: linear-gradient(145deg, rgba(0, 255, 136, 0.2), rgba(255, 105, 180, 0.2));
+    box-shadow: inset 0 0 22px rgba(0, 255, 136, 0.3);
+}
+
+.guide-number {
+    display: block;
+    margin-bottom: 11px;
+    color: var(--mint);
+    font-size: 12px;
+    letter-spacing: 2px;
+}
+
+.guide-card strong,
+.guide-card small {
+    display: block;
+}
+
+.guide-card strong {
+    margin-bottom: 5px;
+    color: white;
+    font-size: 18px;
+}
+
+.guide-card small {
+    color: var(--purple-soft);
+    font-size: 13px;
+}
+
+.tv-footer-nav {
+    position: absolute;
+    right: 20px;
+    bottom: 14px;
+    left: 20px;
+    z-index: 12;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 255, 136, 0.5);
+    border-radius: 8px;
+    background: rgba(2, 8, 10, 0.92);
+    box-shadow: 0 0 16px rgba(0, 255, 136, 0.18);
+}
+
+.tv-footer-nav button {
+    border: 0;
+    background: transparent;
+    color: var(--mint);
+    cursor: pointer;
+    font: inherit;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.tv-footer-nav button:hover {
+    color: var(--pink);
+    text-shadow: 0 0 8px var(--pink);
+}
+
+.tv-footer-nav span {
+    overflow: hidden;
+    color: var(--purple-soft);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .about-content p {
@@ -1449,6 +1647,16 @@ input[type="checkbox"] {
         gap: 15px;
     }
 
+    .tv-guide-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tv-footer-nav {
+        right: 10px;
+        bottom: 8px;
+        left: 10px;
+    }
+
     .admin-header,
     .admin-panel-header {
         flex-direction: column;
@@ -1490,5 +1698,9 @@ input[type="checkbox"] {
     .screen-wrapper::after,
     .static {
         opacity: 0.08;
+    }
+
+    .tv-boot-overlay {
+        display: none;
     }
 }

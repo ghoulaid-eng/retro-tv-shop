@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sip of Ghoulaid Shop</title>
-    <link rel="stylesheet" href="styles.css?v=20260920">
+    <link rel="stylesheet" href="styles.css?v=20260920-guide">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -15,6 +15,11 @@
             <div class="tv-bezel">
                 <!-- Screen -->
                 <div class="screen-wrapper">
+                    <div class="tv-boot-overlay" id="tvBootOverlay" aria-hidden="true">
+                        <div class="boot-logo">SIP OF<br>GHOULAID</div>
+                        <p>ACQUIRING SIGNAL...</p>
+                        <div class="boot-progress"><span></span></div>
+                    </div>
                     <div class="screen-content" id="screenContent">
                         <!-- Static Effect -->
                         <div class="static" id="staticOverlay"></div>
@@ -42,7 +47,45 @@
                                 <div id="homeAnnouncement" class="broadcast-banner hidden"></div>
                                 <div class="intro-text">
                                     <p>From hand-poured & hand-painted wax melts to custom creations designed from scratch, everything here is made with a little darkness, a lot of creativity, and just the right amount of chaos.</p>
-                                    <p>Change the channel to have a look around.</p>
+                                    <p>Choose a transmission from the TV Guide.</p>
+                                </div>
+                                <div class="tv-guide" aria-label="TV Guide">
+                                    <div class="tv-guide-heading">
+                                        <span>TV GUIDE</span>
+                                        <small>SELECT A CHANNEL</small>
+                                    </div>
+                                    <div class="tv-guide-grid">
+                                        <button type="button" class="guide-card" data-channel-target="shop">
+                                            <span class="guide-number">CH 02</span>
+                                            <strong>🛍️ Shop</strong>
+                                            <small>Browse the latest drops</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="account">
+                                            <span class="guide-number">CH 03</span>
+                                            <strong>🛒 Cart</strong>
+                                            <small>Review your saved cart</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="custom-order">
+                                            <span class="guide-number">CH 04</span>
+                                            <strong>✨ Custom Order</strong>
+                                            <small>Summon something unique</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="account">
+                                            <span class="guide-number">CH 05</span>
+                                            <strong>💚 Saved Drops</strong>
+                                            <small>Open your wishlist</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="summon">
+                                            <span class="guide-number">CH 06</span>
+                                            <strong>🔮 Summon Us</strong>
+                                            <small>Contact the ghoul lab</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="about">
+                                            <span class="guide-number">CH 07</span>
+                                            <strong>ℹ️ About</strong>
+                                            <small>Meet the maker</small>
+                                        </button>
+                                    </div>
                                 </div>
                             </section>
 
@@ -490,6 +533,11 @@
                                 </div>
                             </section>
                         </main>
+                        <nav class="tv-footer-nav" aria-label="Persistent channel navigation">
+                            <button type="button" class="footer-home-btn" data-channel-target="home">← HOME</button>
+                            <span id="channelIndicator">CH 01 · HOME</span>
+                            <button type="button" class="footer-guide-btn" data-channel-target="home">TV GUIDE</button>
+                        </nav>
                     </div>
                 </div>
 
@@ -507,7 +555,7 @@
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
-    <script src="products.js?v=20260920"></script>
-    <script src="script.js?v=20260920"></script>
+    <script src="products.js?v=20260920-commerce"></script>
+    <script src="script.js?v=20260920-guide"></script>
 </body>
 </html>
