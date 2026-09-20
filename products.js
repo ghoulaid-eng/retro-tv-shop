@@ -89,7 +89,7 @@
             eventName: 'sip-of-ghoulaid-settings-updated',
             getDefault: async () => ({
                 shopName: 'Sip of Ghoulaid Shop',
-                homeHeadline: 'WELCOME CULT LEADERS AND GHOULAID DRINKERS',
+                homeHeadline: 'SIP OF GHOULAID',
                 homeTagline: 'CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED',
                 shopNote: 'Visit sipofghoulaid.com for the full collection and latest releases! 👻'
             })
@@ -405,9 +405,13 @@
     }
 
     function normalizeSettings(settings) {
+        const homeHeadline = normalizeText(settings.homeHeadline, 'SIP OF GHOULAID');
+
         return {
             shopName: normalizeText(settings.shopName, 'Sip of Ghoulaid Shop'),
-            homeHeadline: normalizeText(settings.homeHeadline, 'WELCOME CULT LEADERS AND GHOULAID DRINKERS'),
+            homeHeadline: homeHeadline === 'WELCOME CULT LEADERS AND GHOULAID DRINKERS'
+                ? 'SIP OF GHOULAID'
+                : homeHeadline,
             homeTagline: normalizeText(settings.homeTagline, 'CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED'),
             shopNote: normalizeText(settings.shopNote, 'Visit sipofghoulaid.com for the full collection and latest releases! 👻'),
             salesTaxRate: normalizeAmount(settings.salesTaxRate, 8.25),
