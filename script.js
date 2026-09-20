@@ -1720,7 +1720,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         window.setTimeout(() => {
             tvBootOverlay.classList.add('boot-complete');
-        }, reducedMotion ? 0 : 2000);
+        }, reducedMotion ? 0 : 2600);
     }
 
     await initializeShopData();
