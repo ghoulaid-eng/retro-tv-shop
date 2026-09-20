@@ -227,10 +227,10 @@ function updateAdditionalSetCountState() {
     additionalSetCountGroup.setAttribute('aria-hidden', String(!shouldShow));
     additionalSetCount.disabled = !shouldShow;
     additionalSetCount.required = shouldShow;
+    additionalSetCount.setCustomValidity('');
 
     if (!shouldShow) {
         additionalSetCount.value = '';
-        additionalSetCount.setCustomValidity('');
     }
 }
 
@@ -316,9 +316,6 @@ function setupCustomOrderForm() {
         if (!(field instanceof HTMLElement) || typeof field.setAttribute !== 'function') return;
 
         field.setAttribute('aria-invalid', 'true');
-        if ('setCustomValidity' in field && field.id === 'additionalSetCount') {
-            field.setCustomValidity('Please tell us how many additional sets you want.');
-        }
         setFormStatus('Please complete the required fields highlighted by your browser.', true);
     }, true);
 
@@ -429,6 +426,7 @@ function setupKeyboardNavigation() {
         if (document.activeElement !== channelSelector) return;
 
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault();
             const options = Array.from(channelSelector.options);
             const currentIndex = channelSelector.selectedIndex;
 
