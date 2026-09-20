@@ -1,0 +1,80 @@
+[
+    {
+        "id": "extra-large-wax-melts",
+        "name": "Extra Large Wax Melts",
+        "emoji": "🕯️",
+        "description": "Hand-poured & hand-painted masterpieces. Pick your scent family!",
+        "subcategories": [],
+        "listingPrice": 18,
+        "shippingPrice": 5.99,
+        "variants": [
+            "Sweet",
+            "Fruity",
+            "Spooky"
+        ]
+    },
+    {
+        "id": "full-size-wax-melts",
+        "name": "Full Size Wax Melts",
+        "emoji": "🔥",
+        "description": "Spooky scents to haunt your space",
+        "subcategories": [],
+        "listingPrice": 12,
+        "shippingPrice": 4.99
+    },
+    {
+        "id": "mini-wax-melts",
+        "name": "Mini Wax Melts",
+        "emoji": "✨",
+        "description": "Small but mighty creepy-cute designs",
+        "subcategories": [],
+        "listingPrice": 8,
+        "shippingPrice": 3.99,
+        "onSale": true,
+        "salePrice": 6.5
+    },
+    {
+        "id": "book-accessories",
+        "name": "Book Accessories",
+        "emoji": "📚",
+        "description": "Smut Exclusives & Feeling Thirsty? collections",
+        "subcategories": [
+            "Smut Exclusives",
+            "Feeling Thirsty?"
+        ],
+        "listingPrice": 16,
+        "shippingPrice": 4.99,
+        "variants": [
+            "Smut Exclusives",
+            "Feeling Thirsty?"
+        ]
+    },
+    {
+        "id": "headset-holder",
+        "name": "Headset Holder",
+        "emoji": "🎧",
+        "description": "3D Printed custom designs",
+        "subcategories": [],
+        "listingPrice": 24,
+        "shippingPrice": 7.99,
+        "variants": [
+            "Black",
+            "Pink",
+            "Glow Green"
+        ]
+    },
+    {
+        "id": "gift-boxes",
+        "name": "Gift Boxes",
+        "emoji": "🎁",
+        "description": "Curated spooky collections",
+        "subcategories": [],
+        "listingPrice": 28,
+        "shippingPrice": 8.99,
+        "variants": [
+            "Mini Box",
+            "Full Box",
+            "Deluxe Box"
+        ]
+    }
+]

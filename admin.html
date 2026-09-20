@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sip of Ghoulaid Shop Admin</title>
+    <link rel="stylesheet" href="styles.css?v=20260920">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="tv-container admin-page">
+        <div class="tv-frame">
+            <div class="tv-bezel">
+                <div class="screen-wrapper">
+                    <div class="screen-content admin-screen">
+                        <main class="content-area admin-content">
+                            <section class="channel active admin-channel">
+                                <div class="admin-header">
+                                    <div>
+                                        <h1 id="adminShopName" class="channel-title">SIP OF GHOULAID SHOP ADMIN</h1>
+                                        <p id="adminShopSubtitle" class="channel-intro">A spooky control panel for sip of ghoulaid shop, products, and storefront tools.</p>
+                                    </div>
+                                    <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
+                                </div>
+
+                                <div class="admin-shell">
+                                    <aside class="admin-sidebar admin-panel-card">
+                                        <h2>Admin Console</h2>
+                                        <nav class="admin-sidebar-nav" aria-label="Admin navigation">
+                                            <button type="button" class="admin-nav-item admin-nav-item-active click-item" data-section-target="dashboard">📊 Dashboard</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="orders">📦 Orders</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="payments">💳 Payments</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="products">🛍️ Products</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="discounts">🏷️ Discounts</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="marketing">📣 Marketing</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="app-center">🧩 App center</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="settings">⚙️ Settings</button>
+                                            <button type="button" class="admin-nav-item click-item" data-section-target="shop-designer">🎨 Shop designer</button>
+                                        </nav>
+                                    </aside>
+
+                                    <div class="admin-main">
+                                        <section class="admin-panel-card admin-section-panel" data-section-panel="dashboard">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Overview</p>
+                                                    <h2>Dashboard</h2>
+                                                </div>
+                                            </div>
+
+                                            <div class="admin-stat-grid">
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Products</span>
+                                                    <strong id="productCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Subcategories</span>
+                                                    <strong id="subcategoryCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Orders</span>
+                                                    <strong id="orderCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Paid Orders</span>
+                                                    <strong id="paidOrderCountStat" class="admin-stat-value">0</strong>
+                                                </div>
+                                                <div class="admin-stat-card">
+                                                    <span class="admin-stat-label">Payment Received</span>
+                                                    <strong id="paymentReceivedStat" class="admin-stat-value admin-stat-text">$0.00</strong>
+                                                </div>
+                                            </div>
+
+                                            <div class="admin-section-grid">
+                                                <div class="admin-info-card">
+                                                    <h3>Quick actions</h3>
+                                                    <div class="admin-quick-actions">
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="products">Open products</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="orders">Open orders</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="payments">Open payments</button>
+                                                        <button type="button" class="table-action-btn click-item" data-open-section="settings">Open settings</button>
+                                                    </div>
+                                                </div>
+                                                <div class="admin-info-card">
+                                                    <h3>Shop status</h3>
+                                                    <p>Products, settings, discounts, payment methods, designer options, and custom orders all save locally and update the storefront immediately.</p>
+                                                </div>
+                                                <div class="admin-info-card">
+                                                    <h3>Now functional</h3>
+                                                    <p>Every sidebar section now has working controls instead of placeholder text only.</p>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="orders">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Sales</p>
+                                                    <h2>Orders</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-table-wrap">
+                                                <table class="admin-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Customer</th>
+                                                            <th>Request</th>
+                                                            <th>Contact</th>
+                                                            <th>Status</th>
+                                                            <th>Payment</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="ordersTableBody"></tbody>
+                                                </table>
+                                                <p id="emptyOrdersState" class="empty-products-message hidden">No custom orders yet.</p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="payments">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Money</p>
+                                                    <h2>Payment manager</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-grid admin-grid-equal">
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Accepted Payment Methods</h3>
+                                                    <form id="paymentMethodsForm" class="admin-simple-form">
+                                                        <div id="paymentMethodsAdminList" class="admin-stack"></div>
+                                                        <button type="submit" class="submit-btn click-item">Save Payment Methods</button>
+                                                        <button type="button" class="reset-btn click-item" id="resetPaymentMethods">Restore Default Payment Methods</button>
+                                                    </form>
+                                                    <p id="paymentMethodsStatus" class="admin-status"></p>
+                                                </div>
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Payments Received</h3>
+                                                    <div id="paymentSummaryCards" class="admin-section-grid"></div>
+                                                    <p id="paymentManagerStatus" class="admin-status"></p>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <h3>Order Payments</h3>
+                                                <div class="admin-table-wrap">
+                                                    <table class="admin-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Customer</th>
+                                                                <th>Method</th>
+                                                                <th>Payment Status</th>
+                                                                <th>Amount</th>
+                                                                <th>Reference</th>
+                                                                <th>Received</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="paymentsTableBody"></tbody>
+                                                    </table>
+                                                    <p id="emptyPaymentsState" class="empty-products-message hidden">No orders are ready for payment tracking yet.</p>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="products">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Catalog</p>
+                                                    <h2>Products</h2>
+                                                </div>
+                                                <button type="button" class="table-action-btn click-item" id="newProductShortcut">➕ New product</button>
+                                            </div>
+
+                                            <div class="admin-grid">
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3 id="formTitle">Add New Product</h3>
+                                                    <form id="productForm" class="custom-order-form admin-form">
+                                                        <input type="hidden" id="productId" name="productId">
+
+                                                        <div class="form-group">
+                                                            <label for="productName">Product Name</label>
+                                                            <input type="text" id="productName" name="productName" placeholder="Extra Large Wax Melts" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productEmoji">Product Emoji/Icon</label>
+                                                            <input type="text" id="productEmoji" name="productEmoji" placeholder="🕯️" maxlength="8" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productDescription">Description</label>
+                                                            <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
+                                                        </div>
+
+                                                        <div class="form-row">
+                                                            <div class="form-group">
+                                                                <label for="productListingPrice">Listing Price</label>
+                                                                <input type="number" id="productListingPrice" name="productListingPrice" min="0" step="0.01" placeholder="18.00" required>
+                                                            </div>
+
+                                                            <div class="form-group">
+                                                                <label for="productShippingPrice">Shipping Charge</label>
+                                                                <input type="number" id="productShippingPrice" name="productShippingPrice" min="0" step="0.01" placeholder="4.99">
+                                                            </div>
+                                                        </div>
+
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="productOnSale" name="productOnSale">
+                                                            <span>On sale</span>
+                                                        </label>
+
+                                                        <div class="form-group">
+                                                            <label for="productSalePrice">Sale Price</label>
+                                                            <input type="number" id="productSalePrice" name="productSalePrice" min="0" step="0.01" placeholder="12.00">
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productSubcategories">Subcategories (optional)</label>
+                                                            <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productVariants">Variants (one per line)</label>
+                                                            <textarea id="productVariants" name="productVariants" placeholder="Pink Drip&#10;Black Glitter&#10;Green Glow" rows="4"></textarea>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productImages">Product Images (up to 10)</label>
+                                                            <input type="file" id="productImages" name="productImages" accept="image/*" multiple>
+                                                            <p class="admin-helper-text">Upload up to 10 images. Existing uploads stay saved until you clear or replace them.</p>
+                                                            <div id="productImagesPreview" class="admin-media-preview-grid"></div>
+                                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductImages">Clear images</button>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productVideos">Product Videos (up to 3)</label>
+                                                            <input type="file" id="productVideos" name="productVideos" accept="video/*" multiple>
+                                                            <p class="admin-helper-text">Upload up to 3 videos. Existing uploads stay saved until you clear or replace them.</p>
+                                                            <div id="productVideosPreview" class="admin-media-preview-grid"></div>
+                                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductVideos">Clear videos</button>
+                                                        </div>
+
+                                                        <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
+                                                        <button type="button" class="reset-btn click-item hidden" id="cancelEdit">❌ Cancel Edit</button>
+                                                        <button type="button" class="reset-btn click-item" id="resetProducts">🔄 Restore Default Products</button>
+                                                    </form>
+                                                    <p id="statusMessage" class="admin-status" aria-live="polite"></p>
+                                                </div>
+
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Current Product Lineup</h3>
+                                                    <div class="admin-table-wrap">
+                                                        <table class="admin-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Product</th>
+                                                                    <th>Pricing</th>
+                                                                    <th>Subcategories</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="productTableBody"></tbody>
+                                                        </table>
+                                                        <p id="emptyProductsState" class="empty-products-message hidden">No products saved yet.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <h3>Live Shop Preview</h3>
+                                                <div id="adminPreviewGrid" class="shop-grid card-size-cozy" aria-live="polite"></div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="discounts">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Promotions</p>
+                                                    <h2>Discounts</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-grid admin-grid-equal">
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Add Discount</h3>
+                                                    <form id="discountForm" class="admin-simple-form">
+                                                        <div class="form-group">
+                                                            <label for="discountCode">Discount Code</label>
+                                                            <input type="text" id="discountCode" placeholder="GHOUL10" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="discountDescription">Description</label>
+                                                            <input type="text" id="discountDescription" placeholder="10% off spooky bundles" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="discountDetails">Extra Details</label>
+                                                            <textarea id="discountDetails" rows="3" placeholder="Optional details or expiry note"></textarea>
+                                                        </div>
+                                                        <button type="submit" class="submit-btn click-item">Save Discount</button>
+                                                    </form>
+                                                    <p id="discountStatus" class="admin-status"></p>
+                                                </div>
+                                                <div class="admin-panel-card admin-nested-panel">
+                                                    <h3>Active Discounts</h3>
+                                                    <div id="discountList"></div>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="marketing">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Reach</p>
+                                                    <h2>Marketing</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <form id="marketingForm" class="admin-simple-form">
+                                                    <div class="form-group">
+                                                        <label for="marketingAnnouncementTitle">Announcement Title</label>
+                                                        <input type="text" id="marketingAnnouncementTitle" placeholder="Latest Broadcast">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="marketingAnnouncementMessage">Announcement Message</label>
+                                                        <textarea id="marketingAnnouncementMessage" rows="3" placeholder="Tell visitors what's new"></textarea>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="marketingFeaturedTitle">Featured Block Title</label>
+                                                        <input type="text" id="marketingFeaturedTitle" placeholder="Featured Fright">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="marketingFeaturedMessage">Featured Block Message</label>
+                                                        <textarea id="marketingFeaturedMessage" rows="3" placeholder="Highlight a collection or launch"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="submit-btn click-item">Save Marketing</button>
+                                                </form>
+                                                <p id="marketingStatus" class="admin-status"></p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="app-center">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Tools</p>
+                                                    <h2>App center</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <form id="appCenterForm" class="admin-simple-form">
+                                                    <div class="admin-toggle-list">
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="appMarketingEnabled">
+                                                            <span>Enable marketing banners on the shop</span>
+                                                        </label>
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="appDiscountsEnabled">
+                                                            <span>Enable discounts block on the shop</span>
+                                                        </label>
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="appCustomOrdersEnabled">
+                                                            <span>Enable the custom order channel</span>
+                                                        </label>
+                                                    </div>
+                                                    <button type="submit" class="submit-btn click-item">Save App Center</button>
+                                                </form>
+                                                <p id="appCenterStatus" class="admin-status"></p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="settings">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Store controls</p>
+                                                    <h2>Settings</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <form id="settingsForm" class="admin-simple-form">
+                                                    <div class="form-group">
+                                                        <label for="settingsShopName">Shop Name</label>
+                                                        <input type="text" id="settingsShopName" placeholder="Sip of Ghoulaid Shop">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="settingsHomeHeadline">Home Headline</label>
+                                                        <input type="text" id="settingsHomeHeadline" placeholder="WELCOME CULT LEADERS AND GHOULAID DRINKERS">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="settingsHomeTagline">Home Tagline</label>
+                                                        <input type="text" id="settingsHomeTagline" placeholder="CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="settingsShopNote">Shop Note</label>
+                                                        <textarea id="settingsShopNote" rows="3" placeholder="Visit sipofghoulaid.com for the full collection and latest releases! 👻"></textarea>
+                                                    </div>
+                                                    <div class="form-row">
+                                                        <div class="form-group">
+                                                            <label for="settingsSalesTaxRate">Sales Tax Rate (%)</label>
+                                                            <input type="number" id="settingsSalesTaxRate" min="0" step="0.01" placeholder="8.25">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="settingsShippingBaseRate">Base Shipping ($)</label>
+                                                            <input type="number" id="settingsShippingBaseRate" min="0" step="0.01" placeholder="4.99">
+                                                        </div>
+                                                    </div>
+                                                    <button type="submit" class="submit-btn click-item">Save Settings</button>
+                                                </form>
+                                                <p id="settingsStatus" class="admin-status"></p>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-panel-card admin-section-panel hidden" data-section-panel="shop-designer">
+                                            <div class="admin-panel-header">
+                                                <div>
+                                                    <p class="admin-eyebrow">Presentation</p>
+                                                    <h2>Shop designer</h2>
+                                                </div>
+                                            </div>
+                                            <div class="admin-panel-card admin-nested-panel">
+                                                <form id="designerForm" class="admin-simple-form">
+                                                    <div class="form-group">
+                                                        <label for="designerProductCardSize">Product Card Size</label>
+                                                        <select id="designerProductCardSize">
+                                                            <option value="compact">Compact</option>
+                                                            <option value="cozy">Cozy</option>
+                                                            <option value="showcase">Showcase</option>
+                                                        </select>
+                                                    </div>
+                                                    <label class="admin-toggle-item">
+                                                        <input type="checkbox" id="designerStaticEffect">
+                                                        <span>Keep the static TV overlay effect</span>
+                                                    </label>
+                                                    <button type="submit" class="submit-btn click-item">Save Designer</button>
+                                                </form>
+                                                <p id="designerStatus" class="admin-status"></p>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </div>
+                            </section>
+                        </main>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="clickSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+    </audio>
+
+    <script src="products.js?v=20260920"></script>
+    <script src="admin.js?v=20260920"></script>
+</body>
+</html>
