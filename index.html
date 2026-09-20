@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sip of Ghoulaid</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="tv-container">
+        <!-- TV Frame -->
+        <div class="tv-frame">
+            <!-- TV Bezel/Border -->
+            <div class="tv-bezel">
+                <!-- Screen -->
+                <div class="screen-wrapper">
+                    <div class="screen-content" id="screenContent">
+                        <!-- Static Effect -->
+                        <div class="static"></div>
+                        
+                        <!-- Navigation -->
+                        <nav class="tv-nav">
+                            <select id="channelSelector" class="channel-selector">
+                                <option value="home">📺 HOME</option>
+                                <option value="shop">🛍️ SHOP</option>
+                                <option value="summon">🔮 SUMMON US</option>
+                                <option value="custom-order">✨ CUSTOM ORDER</option>
+                                <option value="about">ℹ️ ABOUT</option>
+                            </select>
+                        </nav>
+
+                        <!-- Main Content Area -->
+                        <main class="content-area">
+                            <!-- Home Channel -->
+                            <section id="home" class="channel active">
+                                <h1 class="glitch" data-text="WELCOME CULT LEADERS AND GHOULAID DRINKERS">WELCOME CULT LEADERS AND GHOULAID DRINKERS</h1>
+                                <p class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
+                                <div class="intro-text">
+                                    <p>From hand-poured & hand-painted wax melts to custom creations designed from scratch, everything here is made with a little darkness, a lot of creativity, and just the right amount of chaos.</p>
+                                    <p>Change the channel to have a look around.</p>
+                                </div>
+                            </section>
+
+                            <!-- Shop Channel -->
+                            <section id="shop" class="channel">
+                                <h1 class="channel-title">SHOP CHANNEL</h1>
+                                <div class="shop-grid">
+                                    <div class="product-card click-item">
+                                        <div class="product-image">🕯️</div>
+                                        <h3>Extra Large Wax Melts</h3>
+                                        <p class="product-desc">Hand-poured & hand-painted masterpieces. Pick your scent family!</p>
+                                    </div>
+                                    <div class="product-card click-item">
+                                        <div class="product-image">🔥</div>
+                                        <h3>Full Size Wax Melts</h3>
+                                        <p class="product-desc">Spooky scents to haunt your space</p>
+                                    </div>
+                                    <div class="product-card click-item">
+                                        <div class="product-image">✨</div>
+                                        <h3>Mini Wax Melts</h3>
+                                        <p class="product-desc">Small but mighty creepy-cute designs</p>
+                                    </div>
+                                    <div class="product-card click-item">
+                                        <div class="product-image">📚</div>
+                                        <h3>Book Accessories</h3>
+                                        <div class="subcategories">
+                                            <p class="subcategory">🔥 Smut Exclusives</p>
+                                            <p class="subcategory">🍷 Feeling Thirsty?</p>
+                                        </div>
+                                    </div>
+                                    <div class="product-card click-item">
+                                        <div class="product-image">🎧</div>
+                                        <h3>Headset Holder</h3>
+                                        <p class="product-desc">3D Printed custom designs</p>
+                                    </div>
+                                    <div class="product-card click-item">
+                                        <div class="product-image">🎁</div>
+                                        <h3>Gift Boxes</h3>
+                                        <p class="product-desc">Curated spooky collections</p>
+                                    </div>
+                                </div>
+                                <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
+                            </section>
+
+                            <!-- Summon Us Channel -->
+                            <section id="summon" class="channel">
+                                <h1 class="channel-title">SUMMON US</h1>
+                                <div class="summon-content">
+                                    <p>👻 Have a question? Want to collaborate? Need to summon the chaos? 👻</p>
+                                    <div class="summon-grid">
+                                        <div class="summon-card click-item">
+                                            <h3>📷 Instagram</h3>
+                                            <p>@sipofghoulaid</p>
+                                            <p class="desc">DMs open for spooky talk</p>
+                                        </div>
+                                        <div class="summon-card click-item">
+                                            <h3>💬 Discord</h3>
+                                            <p>Join our community</p>
+                                            <p class="desc">Exclusive peeks & ghoul chat</p>
+                                        </div>
+                                        <div class="summon-card click-item">
+                                            <h3>📧 Email</h3>
+                                            <p>sipofghoulaid@gmail.com</p>
+                                            <p class="desc">For business inquiries</p>
+                                        </div>
+                                        <div class="summon-card click-item">
+                                            <h3>🛒 Shop</h3>
+                                            <p>sipofghoulaid.com</p>
+                                            <p class="desc">Browse the full spooky collection</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Custom Order Channel -->
+                            <section id="custom-order" class="channel">
+                                <h1 class="channel-title">CUSTOM ORDER</h1>
+                                
+                                <!-- Please Read Section -->
+                                <div class="please-read-section">
+                                    <h3>📖 PLEASE READ</h3>
+                                    <p>Custom orders require extensive behind-the-scenes work. Your piece may involve creating a custom mold, hand-pouring silicone, hand-painting the wax, allowing it to properly set, and individually hand-painting the finished piece. Because each order is unique and requires custom mold creation or silicone-reusable handwork, all orders are subject to discussion with you before we begin. For One-of-a-Kind orders, the mold is retired after your order is fulfilled.</p>
+                                </div>
+
+                                <form id="customOrderForm" class="custom-order-form">
+                                    <!-- SECTION 1: YOUR INFO -->
+                                    <h3 class="form-section-title">👤 YOUR INFO</h3>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fullName">Name</label>
+                                            <input type="text" id="fullName" name="fullName" placeholder="Your name" required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="username">Username</label>
+                                            <input type="text" id="username" name="username" placeholder="Your username" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="contactMethod">Best Way to Contact</label>
+                                            <select id="contactMethod" name="contactMethod" required>
+                                                <option value="">Choose contact method...</option>
+                                                <option value="email">📧 Email</option>
+                                                <option value="phone">📱 Phone</option>
+                                                <option value="instagram">📷 Instagram DM</option>
+                                                <option value="discord">💬 Discord</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="contactInfo">Contact Info</label>
+                                            <input type="text" id="contactInfo" name="contactInfo" placeholder="Email, phone, or handle" required>
+                                        </div>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 2: CUSTOMIZATION LEVEL -->
+                                    <h3 class="form-section-title">✨ CUSTOMIZATION LEVEL</h3>
+
+                                    <div class="form-group">
+                                        <label>Choose your customization level:</label>
+                                        <div class="customization-options">
+                                            <div class="customization-option click-item">
+                                                <input type="radio" id="minimal" name="customizationLevel" value="minimal" required>
+                                                <label for="minimal" class="option-label">
+                                                    <span class="option-title">Minimal</span>
+                                                    <span class="option-desc">Simpler custom design, minimal hand-painted details, 4-6 XL melts</span>
+                                                </label>
+                                            </div>
+
+                                            <div class="customization-option click-item">
+                                                <input type="radio" id="detailed" name="customizationLevel" value="detailed" required>
+                                                <label for="detailed" class="option-label">
+                                                    <span class="option-title">Detailed</span>
+                                                    <span class="option-desc">More intricate design, complex mold/master with detailed hand painting, 4-6 melts</span>
+                                                </label>
+                                            </div>
+
+                                            <div class="customization-option click-item">
+                                                <input type="radio" id="exclusive" name="customizationLevel" value="exclusive" required>
+                                                <label for="exclusive" class="option-label">
+                                                    <span class="option-title">One-of-a-Kind Exclusive</span>
+                                                    <span class="option-desc">Fully custom design, 4-6 melts, and mold is retired after your order</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 3: TELL ME WHAT WE ARE SUMMONING -->
+                                    <h3 class="form-section-title">🔮 TELL ME WHAT WE ARE SUMMONING</h3>
+
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <textarea id="description" name="description" placeholder="Describe your custom design, concept, theme, vibe, inspiration..." rows="4" required></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="refImages">Reference Images (URLs, Descriptions, Links)</label>
+                                        <textarea id="refImages" name="refImages" placeholder="Paste links to images or describe reference images you'd like us to draw from..." rows="3"></textarea>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 4: COLORS AND DETAILS -->
+                                    <h3 class="form-section-title">🎨 COLORS AND DETAILS</h3>
+
+                                    <div class="form-group">
+                                        <label for="colors">Colors</label>
+                                        <textarea id="colors" name="colors" placeholder="Describe your color preferences (pastel pink, mint green, black, etc.)" rows="2"></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="handPaintedDetails">Hand-Painted Details</label>
+                                        <textarea id="handPaintedDetails" name="handPaintedDetails" placeholder="Any specific hand-painted details or embellishments you'd like?" rows="2"></textarea>
+                                    </div>
+
+                                    <div class="form-group checkbox-group">
+                                        <label>Special Effects:</label>
+                                        <div class="checkbox-row">
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="glitter" name="glitter" value="yes">
+                                                <label for="glitter">✨ Glitter</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="glow" name="glow" value="yes">
+                                                <label for="glow">🌙 Glow in the Dark</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 5: FRAGRANCE -->
+                                    <h3 class="form-section-title">👃 FRAGRANCE</h3>
+
+                                    <div class="form-group">
+                                        <label>Requested Scent - Choose one or more:</label>
+                                        <div class="scent-family-options">
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="sweet" name="scent" value="sweet">
+                                                <label for="sweet">🍯 Sweet</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="fruity" name="scent" value="fruity">
+                                                <label for="fruity">🍓 Fruity</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="floral" name="scent" value="floral">
+                                                <label for="floral">🌸 Floral</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="fresh" name="scent" value="fresh">
+                                                <label for="fresh">🌬️ Fresh</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="citrus" name="scent" value="citrus">
+                                                <label for="citrus">🍋 Citrus</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="spooky" name="scent" value="spooky">
+                                                <label for="spooky">👻 Spooky/Woodsy</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="checkbox" id="surprise" name="scent" value="surprise">
+                                                <label for="surprise">🎲 Surprise Me!</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 6: YOUR CUSTOM SET -->
+                                    <h3 class="form-section-title">🧪 YOUR CUSTOM SET</h3>
+
+                                    <div class="form-group">
+                                        <label>Would you like additional sets from this mold?</label>
+                                        <div class="yes-no-option">
+                                            <div class="form-group checkbox">
+                                                <input type="radio" id="additionalYes" name="additionalSets" value="yes">
+                                                <label for="additionalYes">Yes</label>
+                                            </div>
+
+                                            <div class="form-group checkbox">
+                                                <input type="radio" id="additionalNo" name="additionalSets" value="no">
+                                                <label for="additionalNo">No</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" id="additionalSetCountGroup" style="display: none;">
+                                        <label for="additionalSetCount">How many additional sets?</label>
+                                        <input type="number" id="additionalSetCount" name="additionalSetCount" min="1" max="10" placeholder="Number of additional sets">
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <!-- SECTION 7: FINAL DETAILS -->
+                                    <h3 class="form-section-title">📅 FINAL DETAILS</h3>
+
+                                    <div class="form-group">
+                                        <label for="deadline">Specific Date Needed By</label>
+                                        <input type="date" id="deadline" name="deadline">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="additionalInfo">Anything Else I Should Know?</label>
+                                        <textarea id="additionalInfo" name="additionalInfo" placeholder="Any other special requests, notes, or important information..." rows="3"></textarea>
+                                    </div>
+
+                                    <div class="form-group checkbox">
+                                        <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                                        <label for="agreeTerms">I agree to the terms & conditions</label>
+                                    </div>
+
+                                    <button type="submit" class="submit-btn click-item">📡 SUBMIT ORDER</button>
+                                    <button type="reset" class="reset-btn click-item">🔄 CLEAR FORM</button>
+                                </form>
+
+                                <div id="orderSuccess" class="order-success hidden">
+                                    <h2>✅ ORDER RECEIVED!</h2>
+                                    <p>Thank you! We'll contact you soon to confirm your custom order.</p>
+                                </div>
+                            </section>
+
+                            <!-- About Channel -->
+                            <section id="about" class="channel">
+                                <h1 class="channel-title">ABOUT SIP OF GHOULAID</h1>
+                                <div class="about-content">
+                                    <div class="about-section">
+                                        <h2>Hi, I'm the ghoul behind the Ghoulaid.</h2>
+                                        <p>Sip of Ghoulaid was born from my love of all things spooky, weird, creative, and a little unhinged—and the inability to leave a perfectly strange idea living only inside my head.</p>
+                                        <p>What started with creativity and a love for making things has turned into my own little spooky laboratory, where I get to design, experiment, and bring creepy-cute creations to life.</p>
+                                        <p>A lot of what you see here starts completely from scratch. I design pieces, 3D print masters, create molds, hand-pour wax, and hand-paint the tiny details that give each creation its personality.</p>
+                                        <p>I especially love creating things that make you stop and think:</p>
+                                        <p class="quote">"Okay... that's weird. I need it."</p>
+                                        <p>And if the thing living inside your head doesn't exist yet? That's where custom orders come in. Give me your strange, spooky, adorable, or completely chaotic idea, and I'll see what kind of monster we can create together.</p>
+                                    </div>
+
+                                    <hr class="form-divider">
+
+                                    <div class="about-section">
+                                        <h2>Why Sip of Ghoulaid?</h2>
+                                        <p>Sip of Ghoulaid isn't about perfectly mass-produced products.</p>
+                                        <p>It's about handmade weirdness, creativity, personality, and making things that are a little different from everything else.</p>
+                                        <p>Thanks for supporting my little spooky corner of the world and allowing me to keep making weird shit.</p>
+                                        <p>Stay spooky. Stay weird.</p>
+                                        <p>And remember...</p>
+                                        <p class="warning">DON'T DRINK THE GHOULAID.</p>
+                                    </div>
+                                </div>
+                            </section>
+                        </main>
+                    </div>
+                </div>
+
+                <!-- TV Control Buttons -->
+                <div class="tv-controls">
+                    <button class="control-btn click-item" id="powerBtn">⏻</button>
+                    <button class="control-btn click-item" id="volumeBtn">🔊</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden audio element for click sound -->
+    <audio id="clickSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+    </audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
