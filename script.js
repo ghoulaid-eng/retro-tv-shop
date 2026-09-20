@@ -80,6 +80,8 @@ function announceStatus(message) {
 
 function setChannel(channelId, shouldPlaySound = false) {
     if (!channels.length) return;
+    const targetChannel = channels.find((channel) => channel.id === channelId);
+    if (!targetChannel) return;
 
     channels.forEach((channel) => {
         const isActive = channel.id === channelId;
@@ -155,8 +157,8 @@ function renderCart() {
         removeButton.dataset.action = 'remove-item';
         removeButton.dataset.productId = item.id;
         removeButton.dataset.skipClickSound = 'true';
-        removeButton.setAttribute('aria-label', `Remove ${item.name} from cart`);
-        removeButton.textContent = 'Remove';
+        removeButton.setAttribute('aria-label', `Remove all ${item.name} items from cart`);
+        removeButton.textContent = 'Remove All';
 
         lineItem.append(details, removeButton);
         cartItemsList.appendChild(lineItem);
@@ -416,6 +418,7 @@ function setupVolumeControl() {
 function setupKeyboardNavigation() {
     document.addEventListener('keydown', (event) => {
         if (!channelSelector) return;
+        if (document.activeElement !== channelSelector) return;
 
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             const options = Array.from(channelSelector.options);
