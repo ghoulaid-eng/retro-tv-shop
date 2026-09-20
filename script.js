@@ -323,8 +323,7 @@ function setupCustomOrderForm() {
         const field = event.target;
         if (!(field instanceof HTMLElement) || typeof field.setAttribute !== 'function') return;
 
-        const isValidField = !('checkValidity' in field) || field.checkValidity();
-        field.setAttribute('aria-invalid', String(!isValidField));
+        field.setAttribute('aria-invalid', 'false');
         if ('setCustomValidity' in field) {
             field.setCustomValidity('');
         }
