@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const orderCountStat = document.getElementById('orderCountStat');
     const paidOrderCountStat = document.getElementById('paidOrderCountStat');
     const paymentReceivedStat = document.getElementById('paymentReceivedStat');
-    const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
+    const adminSectionSelect = document.getElementById('adminSectionSelect');
     const sectionPanels = Array.from(document.querySelectorAll('[data-section-panel]'));
     const quickSectionButtons = Array.from(document.querySelectorAll('[data-open-section]'));
     const newProductShortcut = document.getElementById('newProductShortcut');
@@ -215,11 +215,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function activateSection(sectionName) {
-        navButtons.forEach(button => {
-            const isActive = button.dataset.sectionTarget === sectionName;
-            button.classList.toggle('admin-nav-item-active', isActive);
-            button.setAttribute('aria-current', isActive ? 'page' : 'false');
-        });
+        if (adminSectionSelect) {
+            adminSectionSelect.value = sectionName;
+        }
 
         sectionPanels.forEach(panel => {
             panel.classList.toggle('hidden', panel.dataset.sectionPanel !== sectionName);
@@ -976,11 +974,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(designerStatus, 'Designer settings saved.');
     });
 
-    navButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            activateSection(button.dataset.sectionTarget);
+    if (adminSectionSelect) {
+        adminSectionSelect.addEventListener('change', () => {
+            activateSection(adminSectionSelect.value);
+            playClickSound();
         });
-    });
+    }
 
     quickSectionButtons.forEach(button => {
         button.addEventListener('click', () => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sip of Ghoulaid Shop Admin</title>
-    <link rel="stylesheet" href="styles.css?v=20260920-power-on">
+    <link rel="stylesheet" href="styles.css?v=20260920-admin-dropdown">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -25,20 +25,20 @@
                                 </div>
 
                                 <div class="admin-shell">
-                                    <aside class="admin-sidebar admin-panel-card">
-                                        <h2>Admin Console</h2>
-                                        <nav class="admin-sidebar-nav" aria-label="Admin navigation">
-                                            <button type="button" class="admin-nav-item admin-nav-item-active click-item" data-section-target="dashboard">📊 Dashboard</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="orders">📦 Orders</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="payments">💳 Payments</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="products">🛍️ Products</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="discounts">🏷️ Discounts</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="marketing">📣 Marketing</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="app-center">🧩 App center</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="settings">⚙️ Settings</button>
-                                            <button type="button" class="admin-nav-item click-item" data-section-target="shop-designer">🎨 Shop designer</button>
-                                        </nav>
-                                    </aside>
+                                    <div class="admin-section-picker admin-panel-card">
+                                        <label for="adminSectionSelect">Admin Console</label>
+                                        <select id="adminSectionSelect" aria-label="Choose an admin section">
+                                            <option value="dashboard">📊 Dashboard</option>
+                                            <option value="orders">📦 Orders</option>
+                                            <option value="payments">💳 Payments</option>
+                                            <option value="products">🛍️ Products</option>
+                                            <option value="discounts">🏷️ Discounts</option>
+                                            <option value="marketing">📣 Marketing</option>
+                                            <option value="app-center">🧩 App center</option>
+                                            <option value="settings">⚙️ Settings</option>
+                                            <option value="shop-designer">🎨 Shop designer</option>
+                                        </select>
+                                    </div>
 
                                     <div class="admin-main">
                                         <section class="admin-panel-card admin-section-panel" data-section-panel="dashboard">
@@ -449,6 +449,6 @@
     </audio>
 
     <script src="products.js?v=20260920-brand"></script>
-    <script src="admin.js?v=20260920"></script>
+    <script src="admin.js?v=20260920-dropdown"></script>
 </body>
 </html>

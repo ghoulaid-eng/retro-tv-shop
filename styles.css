@@ -1365,19 +1365,29 @@ input[type="checkbox"] {
 
 .admin-shell {
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
 }
 
-.admin-sidebar {
-    position: sticky;
-    top: 0;
-    align-self: start;
+.admin-section-picker {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
 }
 
-.admin-sidebar-nav {
-    display: grid;
-    gap: 10px;
+.admin-section-picker label {
+    flex: 0 0 auto;
+    margin: 0;
+    color: #ff69b4;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 12px;
+    text-shadow: 0 0 8px rgba(255, 105, 180, 0.5);
+}
+
+.admin-section-picker select {
+    width: min(100%, 440px);
+    margin: 0;
 }
 
 .admin-main {
@@ -1421,8 +1431,7 @@ input[type="checkbox"] {
     text-shadow: 0 0 8px rgba(255, 105, 180, 0.5);
 }
 
-.admin-panel-header h2,
-.admin-sidebar h2 {
+.admin-panel-header h2 {
     text-align: left;
     margin-bottom: 0;
 }
@@ -1767,9 +1776,14 @@ input[type="checkbox"] {
     }
 
     .admin-header,
-    .admin-panel-header {
+    .admin-panel-header,
+    .admin-section-picker {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .admin-section-picker select {
+        width: 100%;
     }
 
     .admin-grid-equal,
