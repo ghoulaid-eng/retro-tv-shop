@@ -217,7 +217,9 @@
             shippingPrice: normalizeAmount(product.shippingPrice),
             variants: normalizeStringMatrix(product.variants),
             images: normalizeMediaList(product.images, 10),
-            videos: normalizeMediaList(product.videos, 3)
+            videos: normalizeMediaList(product.videos, 3),
+            available: product.available !== false,
+            priceSource: normalizeText(product.priceSource, 'browser-local')
         };
     }
 

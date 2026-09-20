@@ -1,0 +1,34 @@
+{
+  "name": "sip-of-ghoulaid-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Retro storefront with an Express, Prisma, PostgreSQL, and Stripe commerce service.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "test": "node --test",
+    "check": "npm test",
+    "check:database": "npm run db:generate && prisma validate && npm test"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "stripe": "^18.5.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.16.2"
+  }
+}

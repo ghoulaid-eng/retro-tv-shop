@@ -51,6 +51,8 @@ const cartSubtotalValue = document.getElementById('cartSubtotalValue');
 const cartTaxValue = document.getElementById('cartTaxValue');
 const cartShippingValue = document.getElementById('cartShippingValue');
 const cartTotalValue = document.getElementById('cartTotalValue');
+const checkoutButton = document.getElementById('checkoutButton');
+const commerceModeMessage = document.getElementById('commerceModeMessage');
 const fullNameInput = document.getElementById('fullName');
 const usernameInput = document.getElementById('username');
 const contactMethodInput = document.getElementById('contactMethod');
@@ -67,6 +69,59 @@ let currentUserState = {};
 let wishlists = [];
 let carts = [];
 let currentSettings = {};
+let commerceCapabilities = {
+    catalogAvailable: false,
+    customOrdersAvailable: false,
+    checkoutAvailable: false
+};
+let catalogSource = 'browser-local';
+const MAX_CART_LINE_QUANTITY = 10;
+const MAX_CART_LINES = 50;
+
+async function commerceRequest(path, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const response = await fetch(path, {
+            ...options,
+            headers: {
+                Accept: 'application/json',
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                ...(options.headers || {})
+            },
+            signal: controller.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const error = new Error(payload.message || `Request failed (${response.status}).`);
+            error.status = response.status;
+            error.code = payload.error;
+            throw error;
+        }
+        return payload;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function loadCommerceCapabilities() {
+    try {
+        commerceCapabilities = await commerceRequest('/api/commerce/config');
+    } catch {
+        commerceCapabilities = {
+            catalogAvailable: false,
+            customOrdersAvailable: false,
+            checkoutAvailable: false
+        };
+    }
+    if (commerceModeMessage) {
+        commerceModeMessage.textContent = commerceCapabilities.checkoutAvailable
+            ? 'Secure checkout is enabled. Prices and stock are server-verified; shipping and the final total are calculated in Stripe.'
+            : 'Demo/browser-local cart only. Hosted checkout is unavailable; no payment or hosted order will be created.';
+        commerceModeMessage.classList.toggle('success', commerceCapabilities.checkoutAvailable);
+        commerceModeMessage.classList.toggle('error', !commerceCapabilities.checkoutAvailable);
+    }
+}
 
 function getAudioContext() {
     if (!AudioContextClass) {
@@ -412,9 +467,10 @@ function renderCartTotals(cart) {
     const totals = calculateCartTotals(cart);
     cartTotalsPanel.classList.remove('hidden');
     cartSubtotalValue.textContent = formatMoney(totals.subtotal);
-    cartTaxValue.textContent = formatMoney(totals.tax);
-    cartShippingValue.textContent = formatMoney(totals.shipping);
-    cartTotalValue.textContent = formatMoney(totals.total);
+    const hostedCheckout = commerceCapabilities.checkoutAvailable && catalogSource === 'hosted';
+    cartTaxValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.tax);
+    cartShippingValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.shipping);
+    cartTotalValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.total);
 }
 
 function createProductCard(product) {
@@ -438,7 +494,9 @@ function createProductCard(product) {
 
     const shippingText = document.createElement('p');
     shippingText.className = 'product-meta-text';
-    shippingText.textContent = `Shipping: ${formatMoney(product.shippingPrice)}`;
+    shippingText.textContent = catalogSource === 'hosted'
+        ? 'Shipping calculated at secure checkout'
+        : `Shipping: ${formatMoney(product.shippingPrice)}`;
     card.appendChild(shippingText);
 
     if (product.subcategories.length) {
@@ -524,6 +582,12 @@ function createProductCard(product) {
     cartButton.className = 'table-action-btn click-item';
     const quantity = getCartQuantity(product.id);
     cartButton.textContent = quantity ? `🛒 Add another (${quantity})` : '🛒 Save to cart';
+    cartButton.disabled = product.available === false || quantity >= MAX_CART_LINE_QUANTITY;
+    if (product.available === false) {
+        cartButton.textContent = 'Sold out';
+    } else if (quantity >= MAX_CART_LINE_QUANTITY) {
+        cartButton.textContent = `Cart limit reached (${MAX_CART_LINE_QUANTITY})`;
+    }
     cartButton.addEventListener('click', async event => {
         event.stopPropagation();
         const user = ensureActiveUser('Create or switch to an account to save a cart.');
@@ -538,11 +602,17 @@ function createProductCard(product) {
             const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant));
 
             if (existingItemIndex >= 0) {
+                if (items[existingItemIndex].quantity >= MAX_CART_LINE_QUANTITY) {
+                    return currentCarts;
+                }
                 items[existingItemIndex] = {
                     ...items[existingItemIndex],
                     quantity: items[existingItemIndex].quantity + 1
                 };
             } else {
+                if (items.length >= MAX_CART_LINES) {
+                    return currentCarts;
+                }
                 items.push({ productId: product.id, variant, quantity: 1 });
             }
 
@@ -956,11 +1026,17 @@ function renderWishlist() {
                 const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, defaultVariant));
 
                 if (existingItemIndex >= 0) {
+                    if (items[existingItemIndex].quantity >= MAX_CART_LINE_QUANTITY) {
+                        return currentCarts;
+                    }
                     items[existingItemIndex] = {
                         ...items[existingItemIndex],
                         quantity: items[existingItemIndex].quantity + 1
                     };
                 } else {
+                    if (items.length >= MAX_CART_LINES) {
+                        return currentCarts;
+                    }
                     items.push({ productId: product.id, variant: defaultVariant, quantity: 1 });
                 }
 
@@ -1146,7 +1222,8 @@ function renderAccountState() {
 }
 
 async function initializeShopData() {
-    const [products, discounts, marketing, settings, appCenter, designer, paymentMethods, users, currentUser, storedWishlists, storedCarts] = await Promise.all([
+    await loadCommerceCapabilities();
+    const [localProducts, discounts, marketing, settings, appCenter, designer, paymentMethods, users, currentUser, storedWishlists, storedCarts] = await Promise.all([
         window.ShopData.getProducts(),
         window.ShopData.getDiscounts(),
         window.ShopData.getMarketing(),
@@ -1165,6 +1242,17 @@ async function initializeShopData() {
     wishlists = storedWishlists;
     carts = storedCarts;
 
+    let products = localProducts;
+    if (commerceCapabilities.catalogAvailable) {
+        try {
+            const catalog = await commerceRequest('/api/catalog');
+            products = window.ShopData.normalizeProducts(catalog.products);
+            catalogSource = 'hosted';
+        } catch (error) {
+            console.warn('Hosted catalog unavailable; using browser-local catalog.', error);
+            catalogSource = 'browser-local';
+        }
+    }
     renderShopProducts(products);
     applySettings(settings);
     applyAppCenter(appCenter);
@@ -1176,7 +1264,11 @@ async function initializeShopData() {
     renderDiscounts(discounts, appCenter.discountsEnabled);
     renderAccountState();
 
-    window.ShopData.subscribe('products', renderShopProducts);
+    window.ShopData.subscribe('products', nextProducts => {
+        if (catalogSource === 'browser-local') {
+            renderShopProducts(nextProducts);
+        }
+    });
     window.ShopData.subscribe('settings', applySettings);
     window.ShopData.subscribe('designer', applyDesigner);
     window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
@@ -1366,11 +1458,13 @@ if (moveWishlistToCartButton) {
                 const variant = product ? getDefaultVariant(product) : '';
                 const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(productId, variant));
                 if (existingItemIndex >= 0) {
-                    items[existingItemIndex] = {
-                        ...items[existingItemIndex],
-                        quantity: items[existingItemIndex].quantity + 1
-                    };
-                } else {
+                    if (items[existingItemIndex].quantity < MAX_CART_LINE_QUANTITY) {
+                        items[existingItemIndex] = {
+                            ...items[existingItemIndex],
+                            quantity: items[existingItemIndex].quantity + 1
+                        };
+                    }
+                } else if (items.length < MAX_CART_LINES) {
                     items.push({ productId, variant, quantity: 1 });
                 }
             });
@@ -1397,6 +1491,48 @@ if (clearCartButton) {
             { userId: activeUser.id, items: [], updatedAt: new Date().toISOString() }
         ]);
         setStatus(cartStatusMessage, 'Cleared your saved cart.');
+    });
+}
+
+if (checkoutButton) {
+    checkoutButton.addEventListener('click', async () => {
+        const activeUser = ensureActiveUser('Create or switch to an account before checking out.');
+        if (!activeUser) return;
+        const cart = getCartEntry(activeUser.id);
+        if (!cart.items.length) {
+            setStatus(cartStatusMessage, 'Your cart is empty.');
+            return;
+        }
+        if (!commerceCapabilities.checkoutAvailable || catalogSource !== 'hosted') {
+            setStatus(cartStatusMessage, 'Secure hosted checkout is unavailable. This cart is browser-local; no order or payment was created.');
+            return;
+        }
+        if (cart.items.length > MAX_CART_LINES
+            || cart.items.some(item => item.quantity > MAX_CART_LINE_QUANTITY)) {
+            setStatus(cartStatusMessage, 'Update the cart so it has at most 50 variants and no more than 10 of each before checkout.');
+            return;
+        }
+
+        checkoutButton.disabled = true;
+        setStatus(cartStatusMessage, 'Validating stock and opening secure Stripe Checkout…');
+        try {
+            const result = await commerceRequest('/api/commerce/checkout-sessions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    items: cart.items,
+                    email: activeUser.email || undefined
+                })
+            });
+            if (!result.url || !result.url.startsWith('https://checkout.stripe.com/')) {
+                throw new Error('The checkout service returned an invalid redirect.');
+            }
+            window.location.assign(result.url);
+        } catch (error) {
+            setStatus(cartStatusMessage, error.status === 503
+                ? 'Secure hosted checkout is unavailable. No order or payment was created.'
+                : `Checkout could not start: ${error.message}`);
+            checkoutButton.disabled = false;
+        }
     });
 }
 
@@ -1435,12 +1571,6 @@ if (customOrderForm) {
         setStatus(formStatus, '');
         formStatus?.classList.remove('error');
 
-        if (!availablePaymentMethods.length) {
-            document.getElementById('orderSuccessMessage').textContent = 'Payment methods are unavailable right now. Please try again later.';
-            orderSuccess.classList.remove('hidden');
-            return;
-        }
-
         const formData = new FormData(customOrderForm);
         const rawData = Object.fromEntries(formData);
         const order = window.ShopData.normalizeOrders([{
@@ -1452,12 +1582,30 @@ if (customOrderForm) {
             status: 'Pending'
         }])[0];
 
-        const existingOrders = await window.ShopData.getOrders();
-        window.ShopData.saveOrders([order, ...existingOrders]);
+        let successMessage;
+        try {
+            const result = await commerceRequest('/api/custom-orders', {
+                method: 'POST',
+                body: JSON.stringify(order)
+            });
+            successMessage = `Thank you, ${order.fullName || 'ghoul'}! Your request ${result.request.id} was securely saved for review. We’ll contact you with next steps.`;
+        } catch (error) {
+            if (error.status && ![404, 405, 503].includes(error.status)) {
+                setStatus(formStatus, `Request could not be submitted: ${error.message}`);
+                formStatus?.classList.add('error');
+                return;
+            }
+            const existingOrders = await window.ShopData.getOrders();
+            window.ShopData.saveOrders([order, ...existingOrders]);
+            setStatus(formStatus, 'Demo/browser-local only: this request was saved on this device because hosted storage is unavailable. It was not submitted to the shop.');
+            formStatus?.classList.add('error');
+            orderSuccess.classList.add('hidden');
+            return;
+        }
 
         customOrderForm.style.display = 'none';
         orderSuccess.classList.remove('hidden');
-        document.getElementById('orderSuccessMessage').textContent = `Thank you, ${order.fullName || 'ghoul'}! Your custom order has been saved. We’ll confirm your total and send ${availablePaymentMethods.find(method => method.id === order.paymentMethod)?.name || 'payment'} instructions soon.`;
+        document.getElementById('orderSuccessMessage').textContent = successMessage;
         playClickSound();
 
         setTimeout(() => {
@@ -1537,6 +1685,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     updateAdditionalSetVisibility();
     await initializeShopData();
+
+    const checkoutResult = new URLSearchParams(window.location.search).get('checkout');
+    if (checkoutResult === 'success') {
+        setStatus(cartStatusMessage, 'Stripe received your checkout. Payment and inventory are finalized by the signed webhook.');
+        announceStatus('Checkout completed. Payment confirmation is processing.');
+    } else if (checkoutResult === 'cancelled') {
+        setStatus(cartStatusMessage, 'Checkout was cancelled. Your browser-local cart is unchanged.');
+    }
 });
 
 document.addEventListener('keydown', event => {

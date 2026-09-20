@@ -61,7 +61,7 @@
                                 </div>
                                 <div id="shopGrid" class="shop-grid card-size-cozy" aria-live="polite"></div>
                                 <p id="shopNote" class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
-                                <p class="shop-admin-link"><a href="admin.html">🛠️ Open Product Admin Panel</a></p>
+                                <p class="shop-admin-link"><a href="admin.html">🛠️ Open Local-Only Admin Panel</a></p>
                             </section>
 
                             <section id="account" class="channel" aria-hidden="true" hidden>
@@ -175,12 +175,14 @@
                                                 <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearCartButton">Clear cart</button>
                                             </div>
                                             <div id="cartList" class="account-saved-list"></div>
+                                            <p id="commerceModeMessage" class="form-status" aria-live="polite">Checking secure checkout availability…</p>
                                             <div id="cartTotalsPanel" class="account-panel hidden">
                                                 <h3>Cart totals</h3>
                                                 <div class="cart-totals-row"><span>Subtotal</span><strong id="cartSubtotalValue">$0.00</strong></div>
                                                 <div class="cart-totals-row"><span>Sales tax</span><strong id="cartTaxValue">$0.00</strong></div>
                                                 <div class="cart-totals-row"><span>Shipping</span><strong id="cartShippingValue">$0.00</strong></div>
                                                 <div class="cart-totals-row cart-totals-row-total"><span>Total</span><strong id="cartTotalValue">$0.00</strong></div>
+                                                <button type="button" class="submit-btn click-item" id="checkoutButton">Proceed to Secure Checkout</button>
                                             </div>
                                             <p id="cartStatusMessage" class="admin-status" aria-live="polite"></p>
                                         </div>

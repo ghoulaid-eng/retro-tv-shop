@@ -29,10 +29,15 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Stage browser-only site
+        run: |
+          mkdir pages-dist
+          cp index.html admin.html script.js admin.js products.js products.json styles.css pages-dist/
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: pages-dist
 
       - name: Deploy to GitHub Pages
         id: deployment
