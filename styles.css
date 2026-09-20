@@ -1,19 +1,50 @@
+:root {
+    --bg-deep: #1a1a2e;
+    --bg-panel: #2d2d44;
+    --purple-soft: #dda0dd;
+    --purple-strong: #da70d6;
+    --mint: #00ff88;
+    --cyan: #00d4ff;
+    --pink: #ff69b4;
+    --text: #ffffff;
+    --shadow-glow: rgba(200, 100, 255, 0.4);
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: 'VT323', monospace;
-    background: #1a1a2e;
-    color: #fff;
-    overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text);
+    overflow-x: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    min-height: 100dvh;
     padding: 20px;
+}
+
+button,
+select,
+input,
+textarea {
+    font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid #fff5a5;
+    outline-offset: 3px;
 }
 
 /* TV Container & Frame */
@@ -22,7 +53,7 @@ body {
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 100vh;
+    min-height: 100dvh;
 }
 
 .tv-frame {
@@ -30,10 +61,10 @@ body {
     width: 90%;
     max-width: 1200px;
     aspect-ratio: 16 / 9;
-    background: radial-gradient(ellipse at center, #2d2d44 0%, #1a1a2e 100%);
+    background: radial-gradient(ellipse at center, var(--bg-panel) 0%, var(--bg-deep) 100%);
     border-radius: 40px;
     padding: 35px;
-    box-shadow: 
+    box-shadow:
         0 0 60px rgba(200, 100, 255, 0.4),
         inset 0 0 60px rgba(200, 100, 255, 0.1),
         0 20px 60px rgba(0, 0, 0, 0.8);
@@ -41,8 +72,12 @@ body {
 }
 
 @keyframes tvGlow {
-    0%, 100% { box-shadow: 0 0 60px rgba(200, 100, 255, 0.4), inset 0 0 60px rgba(200, 100, 255, 0.1), 0 20px 60px rgba(0, 0, 0, 0.8); }
-    50% { box-shadow: 0 0 80px rgba(200, 100, 255, 0.6), inset 0 0 80px rgba(200, 100, 255, 0.15), 0 20px 60px rgba(0, 0, 0, 0.8); }
+    0%, 100% {
+        box-shadow: 0 0 60px rgba(200, 100, 255, 0.4), inset 0 0 60px rgba(200, 100, 255, 0.1), 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 80px rgba(200, 100, 255, 0.6), inset 0 0 80px rgba(200, 100, 255, 0.15), 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
 }
 
 /* TV Bezel (Purple Pastel Border) */
@@ -53,7 +88,7 @@ body {
     background: linear-gradient(135deg, #d8bfd8 0%, #dda0dd 50%, #da70d6 100%);
     border-radius: 25px;
     padding: 20px;
-    box-shadow: 
+    box-shadow:
         inset 0 2px 5px rgba(255, 255, 255, 0.3),
         inset 0 -2px 5px rgba(0, 0, 0, 0.3),
         0 8px 16px rgba(0, 0, 0, 0.4);
@@ -90,7 +125,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         repeating-linear-gradient(
             0deg,
             rgba(255, 255, 255, 0.01),
@@ -122,9 +157,9 @@ body {
     font-family: 'VT323', monospace;
     font-size: 16px;
     padding: 12px 20px;
-    background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+    background: linear-gradient(135deg, var(--cyan) 0%, #0099ff 100%);
     color: #000;
-    border: 3px solid #00ff88;
+    border: 3px solid var(--mint);
     border-radius: 10px;
     cursor: pointer;
     font-weight: bold;
@@ -144,7 +179,7 @@ body {
 
 .channel-selector option {
     background: #1a1a2e;
-    color: #00ff88;
+    color: var(--mint);
     font-family: 'VT323', monospace;
 }
 
@@ -168,7 +203,7 @@ body {
 }
 
 .content-area::-webkit-scrollbar-thumb {
-    background: #00ff88;
+    background: var(--mint);
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
@@ -200,13 +235,13 @@ body {
 /* Headings */
 h1 {
     font-family: 'Press Start 2P', cursive;
-    font-size: 28px;
+    font-size: clamp(1.2rem, 2vw, 2.2rem);
     margin-bottom: 20px;
     text-align: center;
-    color: #ff69b4;
-    text-shadow: 
-        0 0 10px #ff69b4,
-        0 0 20px #da70d6,
+    color: var(--pink);
+    text-shadow:
+        0 0 10px var(--pink),
+        0 0 20px var(--purple-strong),
         2px 2px 0px #000;
     letter-spacing: 3px;
 }
@@ -218,36 +253,36 @@ h1 {
 
 @keyframes glitch {
     0%, 100% {
-        text-shadow: 
-            0 0 10px #ff69b4,
-            0 0 20px #da70d6,
+        text-shadow:
+            0 0 10px var(--pink),
+            0 0 20px var(--purple-strong),
             2px 2px 0px #000;
     }
     50% {
-        text-shadow: 
-            -2px 0 #00ff88,
-            2px 2px #ff69b4,
-            0 0 10px #da70d6;
+        text-shadow:
+            -2px 0 var(--mint),
+            2px 2px var(--pink),
+            0 0 10px var(--purple-strong);
     }
 }
 
 .channel-title {
-    font-size: 24px;
+    font-size: clamp(1rem, 1.7vw, 1.5rem);
     margin-bottom: 25px;
-    color: #00ff88;
-    text-shadow: 0 0 10px #00ff88;
+    color: var(--mint);
+    text-shadow: 0 0 10px var(--mint);
 }
 
 .channel-intro {
     text-align: center;
     font-size: 18px;
-    color: #dda0dd;
+    color: var(--purple-soft);
     margin-bottom: 15px;
     text-shadow: 0 0 5px rgba(221, 160, 221, 0.6);
 }
 
 h3 {
-    color: #ff69b4;
+    color: var(--pink);
     margin-bottom: 10px;
     font-size: 16px;
     text-shadow: 0 0 8px rgba(255, 105, 180, 0.6);
@@ -257,7 +292,7 @@ h3 {
 p, label {
     font-size: 14px;
     line-height: 1.6;
-    color: #dda0dd;
+    color: var(--purple-soft);
 }
 
 .intro-text p {
@@ -280,7 +315,7 @@ p, label {
 
 .product-card {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(221, 160, 221, 0.1));
-    border: 3px solid #00ff88;
+    border: 3px solid var(--mint);
     border-radius: 10px;
     padding: 20px;
     text-align: center;
@@ -301,7 +336,7 @@ p, label {
 }
 
 .price {
-    color: #00ff88;
+    color: var(--mint);
     font-size: 18px;
     font-weight: bold;
     text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
@@ -317,7 +352,7 @@ p, label {
 
 .product-detail {
     background: linear-gradient(135deg, rgba(255, 105, 180, 0.1), rgba(0, 255, 136, 0.1));
-    border: 2px dashed #ff69b4;
+    border: 2px dashed var(--pink);
     border-radius: 8px;
     padding: 20px;
     cursor: pointer;
@@ -338,20 +373,19 @@ p, label {
 
 .cart-empty {
     font-size: 20px;
-    color: #ff69b4;
+    color: var(--pink);
     margin-bottom: 15px;
 }
 
 .cart-info {
-    color: #00ff88;
+    color: var(--mint);
     font-size: 16px;
 }
 
 /* ========== CUSTOM ORDER FORM STYLES ========== */
-
 .custom-order-form {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(221, 160, 221, 0.05));
-    border: 2px solid #00ff88;
+    border: 2px solid var(--mint);
     border-radius: 10px;
     padding: 30px;
     max-width: 700px;
@@ -379,7 +413,7 @@ label {
     margin-bottom: 8px;
     font-size: 14px;
     font-weight: bold;
-    color: #ff69b4;
+    color: var(--pink);
     text-shadow: 0 0 5px rgba(255, 105, 180, 0.6);
 }
 
@@ -393,9 +427,9 @@ select {
     width: 100%;
     padding: 10px 12px;
     background: rgba(0, 0, 0, 0.5);
-    border: 2px solid #00ff88;
+    border: 2px solid var(--mint);
     border-radius: 5px;
-    color: #dda0dd;
+    color: var(--purple-soft);
     font-family: 'VT323', monospace;
     font-size: 14px;
     transition: all 0.3s ease;
@@ -410,8 +444,8 @@ input[type="date"]:focus,
 textarea:focus,
 select:focus {
     outline: none;
-    border-color: #ff69b4;
-    box-shadow: 
+    border-color: var(--pink);
+    box-shadow:
         inset 0 0 5px rgba(0, 255, 136, 0.3),
         0 0 15px rgba(255, 105, 180, 0.5);
     background: rgba(0, 0, 0, 0.7);
@@ -422,7 +456,7 @@ input[type="email"]::placeholder,
 input[type="tel"]::placeholder,
 input[type="number"]::placeholder,
 textarea::placeholder {
-    color: #00ff88;
+    color: var(--mint);
     opacity: 0.6;
 }
 
@@ -437,20 +471,20 @@ select {
 
 select option {
     background: #1a1a2e;
-    color: #dda0dd;
+    color: var(--purple-soft);
 }
 
 /* Form Divider */
 .form-divider {
     border: none;
-    border-top: 2px dashed #ff69b4;
+    border-top: 2px dashed var(--pink);
     margin: 30px 0;
     opacity: 0.6;
 }
 
 .form-section-title {
     font-size: 16px;
-    color: #00ff88;
+    color: var(--mint);
     text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
     margin-bottom: 20px;
     text-align: center;
@@ -468,12 +502,12 @@ input[type="checkbox"] {
     height: 20px;
     margin-right: 12px;
     cursor: pointer;
-    accent-color: #00ff88;
+    accent-color: var(--mint);
 }
 
 .form-group.checkbox label {
     margin-bottom: 0;
-    color: #dda0dd;
+    color: var(--purple-soft);
 }
 
 /* Buttons */
@@ -493,9 +527,9 @@ input[type="checkbox"] {
 }
 
 .submit-btn {
-    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+    background: linear-gradient(135deg, var(--mint) 0%, var(--cyan) 100%);
     color: #000;
-    border-color: #00ff88;
+    border-color: var(--mint);
     width: 100%;
     margin-bottom: 15px;
     box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
@@ -511,9 +545,9 @@ input[type="checkbox"] {
 }
 
 .reset-btn {
-    background: linear-gradient(135deg, #ff69b4 0%, #da70d6 100%);
+    background: linear-gradient(135deg, var(--pink) 0%, var(--purple-strong) 100%);
     color: #000;
-    border-color: #ff69b4;
+    border-color: var(--pink);
     width: 100%;
     box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
 }
@@ -530,7 +564,7 @@ input[type="checkbox"] {
 /* Order Success Message */
 .order-success {
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 0, 0, 0.5));
-    border: 3px solid #00ff88;
+    border: 3px solid var(--mint);
     border-radius: 10px;
     padding: 30px;
     text-align: center;
@@ -543,14 +577,14 @@ input[type="checkbox"] {
 }
 
 .order-success h2 {
-    color: #00ff88;
+    color: var(--mint);
     font-size: 20px;
     margin-bottom: 15px;
     text-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
 }
 
 .order-success p {
-    color: #dda0dd;
+    color: var(--purple-soft);
     font-size: 14px;
 }
 
@@ -566,7 +600,6 @@ input[type="checkbox"] {
 }
 
 /* ========== TV CONTROLS ========== */
-
 .tv-controls {
     position: absolute;
     bottom: 20px;
@@ -577,9 +610,9 @@ input[type="checkbox"] {
 }
 
 .control-btn {
-    background: #da70d6;
+    background: var(--purple-strong);
     color: #000;
-    border-color: #ff69b4;
+    border-color: var(--pink);
     width: 50px;
     height: 50px;
     padding: 0;
@@ -589,6 +622,7 @@ input[type="checkbox"] {
     align-items: center;
     font-size: 20px;
     box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+    user-select: none;
 }
 
 .control-btn:hover {
@@ -639,11 +673,11 @@ input[type="checkbox"] {
     }
 
     h1 {
-        font-size: 20px;
+        font-size: clamp(1rem, 2vw, 1.8rem);
     }
 
     .channel-title {
-        font-size: 18px;
+        font-size: clamp(0.9rem, 1.7vw, 1.3rem);
     }
 
     .custom-order-form {
@@ -676,14 +710,6 @@ input[type="checkbox"] {
         padding: 15px;
     }
 
-    h1 {
-        font-size: 16px;
-    }
-
-    .channel-title {
-        font-size: 14px;
-    }
-
     .channel-selector {
         font-size: 12px;
         padding: 8px 12px;
@@ -707,5 +733,14 @@ input[type="checkbox"] {
         width: 40px;
         height: 40px;
         font-size: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
