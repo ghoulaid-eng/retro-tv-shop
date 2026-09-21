@@ -1553,6 +1553,22 @@ input[type="checkbox"] {
     padding: 16px;
 }
 
+.admin-stat-link {
+    width: 100%;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.admin-stat-link:hover,
+.admin-stat-link:focus-visible {
+    border-color: var(--pink);
+    box-shadow: 0 0 16px rgba(255, 105, 180, 0.28);
+    transform: translateY(-2px);
+}
+
 .admin-stat-label {
     display: block;
     color: #00ff88;
