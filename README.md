@@ -17,6 +17,9 @@ Node.js, Express, Prisma/PostgreSQL, and Stripe Checkout.
 - `admin.html` is deliberately **local-only and unauthenticated**. It cannot
   mutate production data. A production admin API must be added only with
   server-side authentication and authorization; there is no hardcoded password.
+  Its product editor supports local gallery images, URL handles, formatted
+  descriptions, sale pricing, stock fields, shipping details, categories, and
+  per-variant prices and quantities for storefront prototyping.
 
 ## Local setup
 

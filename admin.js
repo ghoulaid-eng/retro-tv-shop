@@ -52,6 +52,13 @@ function createProductSummary(product, onEdit) {
     }
     details.appendChild(title);
 
+    if (product.handle) {
+        const handle = document.createElement('p');
+        handle.className = 'admin-helper-text';
+        handle.textContent = `/product/${product.handle}`;
+        details.appendChild(handle);
+    }
+
     if (product.description) {
         const description = document.createElement('p');
         description.textContent = product.description;
@@ -77,6 +84,16 @@ function createProductSummary(product, onEdit) {
         details.appendChild(subcategories);
     }
 
+    if (product.trackInventory) {
+        const inventory = document.createElement('p');
+        inventory.className = 'admin-helper-text';
+        const totalVariantStock = product.variantDetails?.reduce((total, variant) => total + Number(variant.stock || 0), 0);
+        inventory.textContent = product.variantDetails?.length
+            ? `${totalVariantStock} total variant stock`
+            : `${product.stock} in stock`;
+        details.appendChild(inventory);
+    }
+
     productSummary.appendChild(details);
     return productSummary;
 }
@@ -86,15 +103,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const productForm = document.getElementById('productForm');
     const productIdInput = document.getElementById('productId');
     const productNameInput = document.getElementById('productName');
+    const productHandleInput = document.getElementById('productHandle');
     const productEmojiInput = document.getElementById('productEmoji');
     const productDescriptionInput = document.getElementById('productDescription');
+    const productDescriptionEditor = document.getElementById('productDescriptionEditor');
+    const descriptionFormatButtons = Array.from(document.querySelectorAll('[data-format-command]'));
     const productSubcategoriesInput = document.getElementById('productSubcategories');
     const productListingPriceInput = document.getElementById('productListingPrice');
     const productShippingPriceInput = document.getElementById('productShippingPrice');
+    const productShippingWeightInput = document.getElementById('productShippingWeight');
+    const productShippingWeightUnitInput = document.getElementById('productShippingWeightUnit');
+    const productPackageSizeInput = document.getElementById('productPackageSize');
+    const productMustShipAloneInput = document.getElementById('productMustShipAlone');
     const productOnSaleInput = document.getElementById('productOnSale');
     const productSalePriceInput = document.getElementById('productSalePrice');
-    const productVariantsInput = document.getElementById('productVariants');
+    const productInventoryModeInput = document.getElementById('productInventoryMode');
+    const productStockInput = document.getElementById('productStock');
+    const productStockGroup = document.getElementById('productStockGroup');
+    const productVariantGroupInput = document.getElementById('productVariantGroup');
+    const productVariantsEditor = document.getElementById('productVariantsEditor');
+    const addProductVariantButton = document.getElementById('addProductVariant');
     const productImagesInput = document.getElementById('productImages');
+    const productImageCount = document.getElementById('productImageCount');
     const productVideosInput = document.getElementById('productVideos');
     const productImagesPreview = document.getElementById('productImagesPreview');
     const productVideosPreview = document.getElementById('productVideosPreview');
@@ -170,6 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let designer = {};
     let productImagesDraft = [];
     let productVideosDraft = [];
+    let handleManuallyEdited = false;
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioContext = AudioContextClass ? new AudioContextClass() : null;
@@ -242,16 +273,143 @@ document.addEventListener('DOMContentLoaded', async () => {
         adminPreviewGrid.classList.add(`card-size-${designer.productCardSize || 'cozy'}`);
     }
 
+    function slugify(value) {
+        return String(value || '')
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 80);
+    }
+
+    function sanitizeDescriptionHtml(html) {
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV']);
+        const source = document.createElement('template');
+        source.innerHTML = html;
+
+        function copySafeNode(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return document.createTextNode(node.textContent || '');
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return document.createDocumentFragment();
+            }
+
+            const target = allowedTags.has(node.tagName)
+                ? document.createElement(node.tagName.toLowerCase())
+                : document.createDocumentFragment();
+            Array.from(node.childNodes).forEach(child => target.appendChild(copySafeNode(child)));
+            return target;
+        }
+
+        const output = document.createElement('div');
+        Array.from(source.content.childNodes).forEach(node => output.appendChild(copySafeNode(node)));
+        return output.innerHTML;
+    }
+
+    function syncDescriptionValue() {
+        productDescriptionInput.value = productDescriptionEditor.textContent.trim();
+    }
+
+    function createVariantEditorRow(variant = {}) {
+        const row = document.createElement('div');
+        row.className = 'variant-editor-row';
+        row.dataset.variantId = variant.id || `variant-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        const nameGroup = document.createElement('label');
+        nameGroup.textContent = 'Variant';
+        const name = document.createElement('input');
+        name.type = 'text';
+        name.className = 'variant-name';
+        name.placeholder = 'Pink';
+        name.maxLength = 80;
+        name.value = variant.name || '';
+        nameGroup.appendChild(name);
+
+        const priceGroup = document.createElement('label');
+        priceGroup.textContent = 'Price';
+        const price = document.createElement('input');
+        price.type = 'number';
+        price.className = 'variant-price';
+        price.min = '0';
+        price.step = '0.01';
+        price.placeholder = productListingPriceInput.value || '0.00';
+        price.value = Number.isFinite(Number(variant.price)) ? variant.price : '';
+        priceGroup.appendChild(price);
+
+        const stockGroup = document.createElement('label');
+        stockGroup.textContent = 'Stock';
+        const stock = document.createElement('input');
+        stock.type = 'number';
+        stock.className = 'variant-stock';
+        stock.min = '0';
+        stock.step = '1';
+        stock.value = variant.stock === null || typeof variant.stock === 'undefined' ? '' : variant.stock;
+        stockGroup.appendChild(stock);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'table-action-btn table-action-btn-danger click-item';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => row.remove());
+
+        row.append(nameGroup, priceGroup, stockGroup, remove);
+        productVariantsEditor.appendChild(row);
+        bindClickSound(row);
+        syncInventoryFields();
+    }
+
+    function renderVariantEditor(variants = []) {
+        productVariantsEditor.replaceChildren();
+        variants.forEach(variant => createVariantEditorRow(variant));
+    }
+
+    function readVariantDetails() {
+        return Array.from(productVariantsEditor.querySelectorAll('.variant-editor-row'))
+            .map(row => {
+                const name = row.querySelector('.variant-name').value.trim();
+                if (!name) {
+                    return null;
+                }
+
+                return {
+                    id: row.dataset.variantId,
+                    name,
+                    price: row.querySelector('.variant-price').value || productListingPriceInput.value,
+                    stock: productInventoryModeInput.value === 'tracked'
+                        ? (row.querySelector('.variant-stock').value || 0)
+                        : null
+                };
+            })
+            .filter(Boolean);
+    }
+
+    function syncInventoryFields() {
+        const tracksInventory = productInventoryModeInput.value === 'tracked';
+        productStockGroup.classList.toggle('hidden', !tracksInventory);
+        productVariantsEditor.querySelectorAll('.variant-stock').forEach(input => {
+            input.disabled = !tracksInventory;
+        });
+    }
+
     function resetProductForm() {
         productForm.reset();
         productIdInput.value = '';
+        productDescriptionEditor.replaceChildren();
         productListingPriceInput.value = '';
         productShippingPriceInput.value = '';
         productSalePriceInput.value = '';
-        productVariantsInput.value = '';
+        productStockInput.value = '0';
+        productInventoryModeInput.value = 'unlimited';
+        productShippingWeightUnitInput.value = 'oz';
+        productVariantGroupInput.value = '';
         productOnSaleInput.checked = false;
         productImagesDraft = [];
         productVideosDraft = [];
+        handleManuallyEdited = false;
+        renderVariantEditor();
         renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
         renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
         formTitle.textContent = 'Add New Product';
@@ -259,6 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelEditButton.classList.add('hidden');
         deleteProductButton.classList.add('hidden');
         syncSalePriceField();
+        syncInventoryFields();
     }
 
     function renderDashboardStats() {
@@ -278,6 +437,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderMediaPreview(target, items, kind) {
         target.replaceChildren();
+        if (kind === 'image') {
+            productImageCount.textContent = `${items.length}/25`;
+        }
 
         if (!items.length) {
             const empty = document.createElement('p');
@@ -306,9 +468,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             label.className = 'admin-helper-text';
             label.textContent = `${kind === 'image' ? 'Image' : 'Video'} ${index + 1}`;
 
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'table-action-btn table-action-btn-danger click-item';
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', () => {
+                if (kind === 'image') {
+                    productImagesDraft.splice(index, 1);
+                    renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+                } else {
+                    productVideosDraft.splice(index, 1);
+                    renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
+                }
+            });
+
             card.appendChild(media);
             card.appendChild(label);
+            card.appendChild(remove);
             target.appendChild(card);
+            bindClickSound(card);
         });
     }
 
@@ -368,14 +546,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     function editProduct(product) {
         productIdInput.value = product.id;
         productNameInput.value = product.name;
+        productHandleInput.value = product.handle || slugify(product.name);
+        handleManuallyEdited = true;
         productEmojiInput.value = product.emoji;
         productDescriptionInput.value = product.description;
+        productDescriptionEditor.innerHTML = sanitizeDescriptionHtml(product.descriptionHtml || '');
+        if (!productDescriptionEditor.textContent.trim() && product.description) {
+            productDescriptionEditor.textContent = product.description;
+        }
         productListingPriceInput.value = product.listingPrice || '';
         productShippingPriceInput.value = product.shippingPrice || '';
+        productShippingWeightInput.value = product.shippingWeight || '';
+        productShippingWeightUnitInput.value = product.shippingWeightUnit || 'oz';
+        productPackageSizeInput.value = product.packageSize || '';
+        productMustShipAloneInput.checked = Boolean(product.mustShipAlone);
         productOnSaleInput.checked = Boolean(product.onSale);
         productSalePriceInput.value = product.salePrice || '';
         productSubcategoriesInput.value = product.subcategories.join('\n');
-        productVariantsInput.value = product.variants.join('\n');
+        productInventoryModeInput.value = product.trackInventory ? 'tracked' : 'unlimited';
+        productStockInput.value = product.stock ?? 0;
+        productVariantGroupInput.value = product.variantGroupName || '';
+        renderVariantEditor(product.variantDetails || product.variants.map(name => ({
+            name,
+            price: product.listingPrice,
+            stock: null
+        })));
         productImagesDraft = [...product.images];
         productVideosDraft = [...product.videos];
         renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
@@ -385,6 +580,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         submitLabel.textContent = '💾 Update Product';
         cancelEditButton.classList.remove('hidden');
         deleteProductButton.classList.remove('hidden');
+        syncInventoryFields();
         activateSection('products');
         setStatus(statusMessage, `Editing ${product.name}.`);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -839,10 +1035,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     productOnSaleInput.addEventListener('change', syncSalePriceField);
+    productInventoryModeInput.addEventListener('change', syncInventoryFields);
+
+    productNameInput.addEventListener('input', () => {
+        if (!handleManuallyEdited) {
+            productHandleInput.value = slugify(productNameInput.value);
+        }
+    });
+
+    productHandleInput.addEventListener('input', () => {
+        productHandleInput.value = slugify(productHandleInput.value);
+        handleManuallyEdited = Boolean(productHandleInput.value);
+    });
+
+    descriptionFormatButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            productDescriptionEditor.focus();
+            document.execCommand(button.dataset.formatCommand, false);
+            syncDescriptionValue();
+        });
+    });
+
+    productDescriptionEditor.addEventListener('input', syncDescriptionValue);
+    addProductVariantButton.addEventListener('click', () => createVariantEditorRow());
 
     productImagesInput.addEventListener('change', async () => {
         try {
-            await appendMediaFiles(productImagesInput, 'image', 10);
+            await appendMediaFiles(productImagesInput, 'image', 25);
         } catch (error) {
             console.error('Unable to load image files.', error);
             setStatus(statusMessage, `Unable to load images: ${error.message}`);
@@ -874,18 +1093,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     productForm.addEventListener('submit', async event => {
         event.preventDefault();
+        syncDescriptionValue();
+        const descriptionHtml = sanitizeDescriptionHtml(productDescriptionEditor.innerHTML);
+        const variantDetails = readVariantDetails();
 
         const normalizedProduct = window.ShopData.normalizeProducts([{
             id: productIdInput.value || undefined,
             name: productNameInput.value,
+            handle: productHandleInput.value,
             emoji: productEmojiInput.value,
             description: productDescriptionInput.value,
+            descriptionHtml,
             listingPrice: productListingPriceInput.value,
             shippingPrice: productShippingPriceInput.value,
+            shippingWeight: productShippingWeightInput.value,
+            shippingWeightUnit: productShippingWeightUnitInput.value,
+            packageSize: productPackageSizeInput.value,
+            mustShipAlone: productMustShipAloneInput.checked,
             onSale: productOnSaleInput.checked,
             salePrice: productSalePriceInput.value,
+            trackInventory: productInventoryModeInput.value === 'tracked',
+            stock: productStockInput.value,
             subcategories: productSubcategoriesInput.value,
-            variants: productVariantsInput.value,
+            categories: productSubcategoriesInput.value,
+            variantGroupName: productVariantGroupInput.value,
+            variantDetails,
+            variants: variantDetails.map(variant => variant.name),
             images: productImagesDraft,
             videos: productVideosDraft
         }])[0];
@@ -900,8 +1133,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        if (!normalizedProduct.description) {
+            setStatus(statusMessage, 'Add a product description before saving.');
+            return;
+        }
+
         if (normalizedProduct.onSale && normalizedProduct.salePrice <= 0) {
             setStatus(statusMessage, 'Add a sale price greater than zero when the on-sale box is checked.');
+            return;
+        }
+
+        if (products.some(product => product.handle === normalizedProduct.handle && product.id !== normalizedProduct.id)) {
+            setStatus(statusMessage, 'Choose a unique URL handle for this product.');
+            return;
+        }
+
+        const normalizedVariantNames = normalizedProduct.variants.map(name => name.toLowerCase());
+        if (new Set(normalizedVariantNames).size !== normalizedVariantNames.length) {
+            setStatus(statusMessage, 'Each variant must have a unique name.');
             return;
         }
 

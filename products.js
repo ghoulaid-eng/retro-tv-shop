@@ -175,6 +175,26 @@
         return numericValue;
     }
 
+    function normalizeStock(value, fallback = 0) {
+        const numericValue = Number.parseInt(value, 10);
+        if (!Number.isFinite(numericValue) || numericValue < 0) {
+            return fallback;
+        }
+
+        return numericValue;
+    }
+
+    function normalizeHandle(value, name) {
+        const source = normalizeText(value, name);
+        return source
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 80);
+    }
+
     function normalizeStringMatrix(value) {
         if (Array.isArray(value)) {
             return value
@@ -200,25 +220,69 @@
             .slice(0, maxItems);
     }
 
+    function normalizeVariantDetails(value, legacyVariants, listingPrice) {
+        const source = Array.isArray(value) && value.length
+            ? value
+            : normalizeStringMatrix(legacyVariants).map(name => ({ name }));
+
+        return source
+            .map((variant, index) => {
+                const item = typeof variant === 'string' ? { name: variant } : variant;
+                const name = normalizeText(item.name);
+                if (!name) {
+                    return null;
+                }
+
+                return {
+                    id: normalizeText(item.id, `variant-${index + 1}`),
+                    name,
+                    price: normalizeAmount(item.price, listingPrice),
+                    stock: item.stock === null || item.stock === '' || typeof item.stock === 'undefined'
+                        ? null
+                        : normalizeStock(item.stock)
+                };
+            })
+            .filter(Boolean);
+    }
+
     function normalizeProduct(product) {
         const listingPrice = normalizeAmount(product.listingPrice);
         const onSale = normalizeBoolean(product.onSale);
         const salePrice = normalizeAmount(product.salePrice);
+        const trackInventory = normalizeBoolean(product.trackInventory);
+        const categories = normalizeStringArray(product.categories || product.subcategories);
+        const variantDetails = normalizeVariantDetails(product.variantDetails, product.variants, listingPrice);
+        const stock = trackInventory ? normalizeStock(product.stock) : null;
+        const hasAvailableVariant = variantDetails.some(variant => variant.stock === null || variant.stock > 0);
 
         return {
             id: normalizeText(product.id, createId('product')),
             name: normalizeText(product.name),
+            handle: normalizeHandle(product.handle, product.name),
             emoji: normalizeText(product.emoji, '🛍️'),
             description: normalizeText(product.description),
-            subcategories: normalizeStringArray(product.subcategories),
+            descriptionHtml: normalizeText(product.descriptionHtml),
+            categories,
+            subcategories: categories,
             listingPrice,
             onSale,
             salePrice: onSale && salePrice > 0 ? salePrice : 0,
             shippingPrice: normalizeAmount(product.shippingPrice),
-            variants: normalizeStringMatrix(product.variants),
-            images: normalizeMediaList(product.images, 10),
+            shippingWeight: normalizeAmount(product.shippingWeight),
+            shippingWeightUnit: ['oz', 'g', 'kg', 'lb'].includes(product.shippingWeightUnit)
+                ? product.shippingWeightUnit
+                : 'oz',
+            packageSize: normalizeText(product.packageSize),
+            mustShipAlone: normalizeBoolean(product.mustShipAlone),
+            trackInventory,
+            stock,
+            variantGroupName: normalizeText(product.variantGroupName, 'Options'),
+            variantDetails,
+            variants: variantDetails.map(variant => variant.name),
+            images: normalizeMediaList(product.images, 25),
             videos: normalizeMediaList(product.videos, 3),
-            available: product.available !== false,
+            available: product.available !== false
+                && (!trackInventory || (variantDetails.length ? hasAvailableVariant : stock > 0)),
             priceSource: normalizeText(product.priceSource, 'browser-local')
         };
     }

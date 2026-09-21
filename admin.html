@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sip of Ghoulaid Shop Admin</title>
-    <link rel="stylesheet" href="styles.css?v=20260921-dashboard-links">
+    <link rel="stylesheet" href="styles.css?v=20260921-product-editor">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -54,7 +54,7 @@
                                                     <strong id="productCountStat" class="admin-stat-value">0</strong>
                                                 </button>
                                                 <button type="button" class="admin-stat-card admin-stat-link click-item" data-open-section="products">
-                                                    <span class="admin-stat-label">Subcategories</span>
+                                                    <span class="admin-stat-label">Categories</span>
                                                     <strong id="subcategoryCountStat" class="admin-stat-value">0</strong>
                                                 </button>
                                                 <button type="button" class="admin-stat-card admin-stat-link click-item" data-open-section="orders">
@@ -177,9 +177,33 @@
                                                     <form id="productForm" class="custom-order-form admin-form">
                                                         <input type="hidden" id="productId" name="productId">
 
+                                                        <div class="product-editor-section">
+                                                            <div class="product-editor-heading">
+                                                                <h4>Image gallery</h4>
+                                                                <span id="productImageCount">0/25</span>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label for="productImages">Product images</label>
+                                                                <input type="file" id="productImages" name="productImages" accept="image/*" multiple>
+                                                                <p class="admin-helper-text">Upload up to 25 images. Existing uploads stay saved until you clear or replace them.</p>
+                                                                <div id="productImagesPreview" class="admin-media-preview-grid"></div>
+                                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductImages">Clear images</button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="product-editor-section">
+                                                            <h4>Product info</h4>
                                                         <div class="form-group">
                                                             <label for="productName">Product Name</label>
                                                             <input type="text" id="productName" name="productName" placeholder="Extra Large Wax Melts" required>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="productHandle">URL handle</label>
+                                                            <div class="url-handle-field">
+                                                                <span>/product/</span>
+                                                                <input type="text" id="productHandle" name="productHandle" placeholder="extra-large-wax-melts" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="80">
+                                                            </div>
                                                         </div>
 
                                                         <div class="form-group">
@@ -188,25 +212,32 @@
                                                         </div>
 
                                                         <div class="form-group">
-                                                            <label for="productDescription">Description</label>
-                                                            <textarea id="productDescription" name="productDescription" placeholder="Hand-poured & hand-painted masterpieces." rows="3" required></textarea>
+                                                            <label for="productDescriptionEditor">Product description</label>
+                                                            <div class="rich-text-toolbar" role="toolbar" aria-label="Description formatting">
+                                                                <button type="button" class="click-item" data-format-command="bold" aria-label="Bold"><strong>B</strong></button>
+                                                                <button type="button" class="click-item" data-format-command="italic" aria-label="Italic"><em>I</em></button>
+                                                                <button type="button" class="click-item" data-format-command="strikeThrough" aria-label="Strikethrough"><s>S</s></button>
+                                                                <button type="button" class="click-item" data-format-command="insertOrderedList" aria-label="Numbered list">1.</button>
+                                                                <button type="button" class="click-item" data-format-command="insertUnorderedList" aria-label="Bulleted list">•</button>
+                                                                <button type="button" class="click-item" data-format-command="removeFormat" aria-label="Clear formatting">Clear</button>
+                                                            </div>
+                                                            <div id="productDescriptionEditor" class="rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Hand-poured &amp; hand-painted masterpieces."></div>
+                                                            <textarea id="productDescription" name="productDescription" class="hidden" tabindex="-1" aria-hidden="true"></textarea>
+                                                        </div>
                                                         </div>
 
+                                                        <div class="product-editor-section">
+                                                        <h4>Price and stock</h4>
                                                         <div class="form-row">
                                                             <div class="form-group">
-                                                                <label for="productListingPrice">Listing Price</label>
+                                                                <label for="productListingPrice">Price</label>
                                                                 <input type="number" id="productListingPrice" name="productListingPrice" min="0" step="0.01" placeholder="18.00" required>
-                                                            </div>
-
-                                                            <div class="form-group">
-                                                                <label for="productShippingPrice">Shipping Charge</label>
-                                                                <input type="number" id="productShippingPrice" name="productShippingPrice" min="0" step="0.01" placeholder="4.99">
                                                             </div>
                                                         </div>
 
                                                         <label class="admin-toggle-item">
                                                             <input type="checkbox" id="productOnSale" name="productOnSale">
-                                                            <span>On sale</span>
+                                                            <span>This product is on sale</span>
                                                         </label>
 
                                                         <div class="form-group">
@@ -215,29 +246,87 @@
                                                         </div>
 
                                                         <div class="form-group">
-                                                            <label for="productSubcategories">Subcategories (optional)</label>
-                                                            <textarea id="productSubcategories" name="productSubcategories" placeholder="One subcategory per line&#10;Smut Exclusives&#10;Feeling Thirsty?" rows="4"></textarea>
+                                                            <label for="productInventoryMode">Track how many you have in stock?</label>
+                                                            <select id="productInventoryMode" name="productInventoryMode">
+                                                                <option value="unlimited">No limit</option>
+                                                                <option value="tracked">Track inventory in this local catalog</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="form-group" id="productStockGroup">
+                                                            <label for="productStock">Stock</label>
+                                                            <input type="number" id="productStock" name="productStock" min="0" step="1" value="0">
+                                                            <p class="admin-helper-text">Products with variants use the stock entered for each variant.</p>
+                                                        </div>
+                                                        </div>
+
+                                                        <div class="product-editor-section">
+                                                        <h4>Shipping</h4>
+                                                        <div class="form-row">
+                                                            <div class="form-group">
+                                                                <label for="productShippingPrice">Flat shipping charge</label>
+                                                                <input type="number" id="productShippingPrice" name="productShippingPrice" min="0" step="0.01" placeholder="4.99">
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label for="productShippingWeight">Weight</label>
+                                                                <div class="shipping-weight-field">
+                                                                    <input type="number" id="productShippingWeight" name="productShippingWeight" min="0" step="0.01" placeholder="0">
+                                                                    <select id="productShippingWeightUnit" name="productShippingWeightUnit" aria-label="Weight unit">
+                                                                        <option value="oz">oz</option>
+                                                                        <option value="g">g</option>
+                                                                        <option value="kg">kg</option>
+                                                                        <option value="lb">lb</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
                                                         </div>
 
                                                         <div class="form-group">
-                                                            <label for="productVariants">Variants (one per line)</label>
-                                                            <textarea id="productVariants" name="productVariants" placeholder="Pink Drip&#10;Black Glitter&#10;Green Glow" rows="4"></textarea>
+                                                            <label for="productPackageSize">What size box does your item fit in?</label>
+                                                            <select id="productPackageSize" name="productPackageSize">
+                                                                <option value="">Select a package size</option>
+                                                                <option value="extra-small">Extra small — jewelry or wax melt</option>
+                                                                <option value="small">Small — up to 8 × 6 × 4 in</option>
+                                                                <option value="medium">Medium — up to 12 × 10 × 6 in</option>
+                                                                <option value="large">Large — up to 18 × 14 × 10 in</option>
+                                                                <option value="custom">Custom package</option>
+                                                            </select>
+                                                            <p class="admin-helper-text">Select the smallest package that could fit your item. An estimate is all that is needed.</p>
                                                         </div>
 
+                                                        <label class="admin-toggle-item">
+                                                            <input type="checkbox" id="productMustShipAlone" name="productMustShipAlone">
+                                                            <span>This product must ship alone</span>
+                                                        </label>
+                                                        </div>
+
+                                                        <div class="product-editor-section">
+                                                        <h4>Categories</h4>
                                                         <div class="form-group">
-                                                            <label for="productImages">Product Images (up to 10)</label>
-                                                            <input type="file" id="productImages" name="productImages" accept="image/*" multiple>
-                                                            <p class="admin-helper-text">Upload up to 10 images. Existing uploads stay saved until you clear or replace them.</p>
-                                                            <div id="productImagesPreview" class="admin-media-preview-grid"></div>
-                                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductImages">Clear images</button>
+                                                            <label for="productSubcategories">Categories</label>
+                                                            <textarea id="productSubcategories" name="productSubcategories" placeholder="One category per line&#10;Holders/Planters&#10;Wax Melts" rows="4"></textarea>
+                                                        </div>
                                                         </div>
 
+                                                        <div class="product-editor-section">
+                                                        <h4>Variants</h4>
+                                                        <div class="form-group">
+                                                            <label for="productVariantGroup">Group by</label>
+                                                            <input type="text" id="productVariantGroup" name="productVariantGroup" placeholder="Colors" maxlength="40">
+                                                        </div>
+                                                        <div id="productVariantsEditor" class="variant-editor-list"></div>
+                                                        <button type="button" class="table-action-btn click-item" id="addProductVariant">➕ Add variant</button>
+                                                        </div>
+
+                                                        <div class="product-editor-section">
+                                                        <h4>Videos</h4>
                                                         <div class="form-group">
                                                             <label for="productVideos">Product Videos (up to 3)</label>
                                                             <input type="file" id="productVideos" name="productVideos" accept="video/*" multiple>
                                                             <p class="admin-helper-text">Upload up to 3 videos. Existing uploads stay saved until you clear or replace them.</p>
                                                             <div id="productVideosPreview" class="admin-media-preview-grid"></div>
                                                             <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearProductVideos">Clear videos</button>
+                                                        </div>
                                                         </div>
 
                                                         <button type="submit" class="submit-btn click-item" id="submitLabel">📼 Save Product</button>
@@ -256,7 +345,7 @@
                                                                 <tr>
                                                                     <th>Product</th>
                                                                     <th>Pricing</th>
-                                                                    <th>Subcategories</th>
+                                                                    <th>Categories</th>
                                                                     <th>Actions</th>
                                                                 </tr>
                                                             </thead>
@@ -448,7 +537,7 @@
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
-    <script src="products.js?v=20260920-brand"></script>
-    <script src="admin.js?v=20260921-delete-product"></script>
+    <script src="products.js?v=20260921-product-editor"></script>
+    <script src="admin.js?v=20260921-product-editor"></script>
 </body>
 </html>

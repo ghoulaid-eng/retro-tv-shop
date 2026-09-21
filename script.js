@@ -225,8 +225,17 @@ function formatMoney(amount) {
     return `$${Number(amount || 0).toFixed(2)}`;
 }
 
-function getEffectivePrice(product) {
-    return product.onSale && product.salePrice > 0 ? product.salePrice : product.listingPrice;
+function getVariantDetail(product, variantName) {
+    return product.variantDetails?.find(variant => variant.name === variantName) || null;
+}
+
+function getEffectivePrice(product, variantName = '') {
+    if (product.onSale && product.salePrice > 0) {
+        return product.salePrice;
+    }
+
+    const variant = getVariantDetail(product, variantName);
+    return variant?.price > 0 ? variant.price : product.listingPrice;
 }
 
 function getActiveUser() {
@@ -454,6 +463,30 @@ function createProductMedia(product) {
     return viewport;
 }
 
+function appendSanitizedRichText(target, html) {
+    const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV']);
+    const source = document.createElement('template');
+    source.innerHTML = html;
+
+    function copySafeNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return document.createTextNode(node.textContent || '');
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+            return document.createDocumentFragment();
+        }
+
+        const output = allowedTags.has(node.tagName)
+            ? document.createElement(node.tagName.toLowerCase())
+            : document.createDocumentFragment();
+        Array.from(node.childNodes).forEach(child => output.appendChild(copySafeNode(child)));
+        return output;
+    }
+
+    Array.from(source.content.childNodes).forEach(node => target.appendChild(copySafeNode(node)));
+}
+
 function calculateCartTotals(cart) {
     const baseShipping = Number(currentSettings.shippingBaseRate || 0);
     const salesTaxRate = Number(currentSettings.salesTaxRate || 0);
@@ -464,7 +497,7 @@ function calculateCartTotals(cart) {
             return totals;
         }
 
-        const unitPrice = getEffectivePrice(product);
+        const unitPrice = getEffectivePrice(product, item.variant);
         totals.subtotal += unitPrice * item.quantity;
         totals.shipping += Number(product.shippingPrice || 0) * item.quantity;
         totals.items += item.quantity;
@@ -514,9 +547,13 @@ function createProductCard(product) {
     card.appendChild(title);
 
     if (product.description) {
-        const description = document.createElement('p');
+        const description = document.createElement('div');
         description.className = 'product-desc';
-        description.textContent = product.description;
+        if (product.descriptionHtml) {
+            appendSanitizedRichText(description, product.descriptionHtml);
+        } else {
+            description.textContent = product.description;
+        }
         card.appendChild(description);
     }
 
@@ -528,6 +565,16 @@ function createProductCard(product) {
         ? 'Shipping calculated at secure checkout'
         : `Shipping: ${formatMoney(product.shippingPrice)}`;
     card.appendChild(shippingText);
+
+    if (product.trackInventory) {
+        const stockText = document.createElement('p');
+        stockText.className = 'product-meta-text';
+        const totalStock = product.variantDetails?.length
+            ? product.variantDetails.reduce((total, variant) => total + Number(variant.stock || 0), 0)
+            : product.stock;
+        stockText.textContent = `${totalStock} in stock`;
+        card.appendChild(stockText);
+    }
 
     if (product.subcategories.length) {
         const subcategories = document.createElement('div');
@@ -556,12 +603,23 @@ function createProductCard(product) {
         variantSelect = document.createElement('select');
         variantSelect.className = 'product-variant-select';
 
-        product.variants.forEach(variant => {
+        const variantDetails = product.variantDetails?.length
+            ? product.variantDetails
+            : product.variants.map(name => ({ name, price: product.listingPrice, stock: null }));
+
+        variantDetails.forEach(variant => {
             const option = document.createElement('option');
-            option.value = variant;
-            option.textContent = variant;
+            option.value = variant.name;
+            const stockLabel = variant.stock === null ? '' : ` · ${variant.stock} in stock`;
+            option.textContent = `${variant.name} — ${formatMoney(variant.price)}${stockLabel}`;
+            option.disabled = variant.stock !== null && variant.stock <= 0;
             variantSelect.appendChild(option);
         });
+
+        const firstAvailable = variantDetails.find(variant => variant.stock === null || variant.stock > 0);
+        if (firstAvailable) {
+            variantSelect.value = firstAvailable.name;
+        }
 
         variantGroup.appendChild(variantSelect);
         card.appendChild(variantGroup);
@@ -626,6 +684,16 @@ function createProductCard(product) {
         }
 
         const variant = getSelectedVariant(variantSelect, product);
+        const variantDetail = getVariantDetail(product, variant);
+        const stockLimit = variantDetail?.stock ?? (product.trackInventory ? product.stock : null);
+        const variantQuantity = getCartEntry(user.id).items
+            .filter(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant))
+            .reduce((total, item) => total + item.quantity, 0);
+        if (stockLimit !== null && variantQuantity >= stockLimit) {
+            setStatus(cartStatusMessage, `${product.name} has no more stock available for this option.`);
+            return;
+        }
+
         await saveCartsWithLatest(currentCarts => {
             const existingEntry = currentCarts.find(entry => entry.userId === user.id);
             const items = [...(existingEntry?.items || [])];
@@ -1298,7 +1366,7 @@ function renderCart() {
         card.appendChild(quantityText);
 
         const priceText = document.createElement('p');
-        priceText.textContent = `Item total: ${formatMoney(getEffectivePrice(product) * item.quantity)}`;
+        priceText.textContent = `Item total: ${formatMoney(getEffectivePrice(product, item.variant) * item.quantity)}`;
         card.appendChild(priceText);
 
         const shippingText = document.createElement('p');
