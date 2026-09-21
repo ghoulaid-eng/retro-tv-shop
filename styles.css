@@ -1691,6 +1691,27 @@ input[type="checkbox"] {
     align-items: flex-start;
 }
 
+.admin-product-edit-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pink);
+    cursor: pointer;
+    font: inherit;
+    font-weight: bold;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 105, 180, 0.55);
+    text-underline-offset: 3px;
+}
+
+.admin-product-edit-link:hover,
+.admin-product-edit-link:focus-visible {
+    color: var(--mint);
+    text-decoration-color: var(--mint);
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.55);
+}
+
 .admin-product-summary p {
     margin-top: 5px;
 }

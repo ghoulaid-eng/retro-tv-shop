@@ -32,7 +32,7 @@ function createProductPricing(product) {
     return wrapper;
 }
 
-function createProductSummary(product) {
+function createProductSummary(product, onEdit) {
     const productSummary = document.createElement('div');
     productSummary.className = 'admin-product-summary';
 
@@ -42,8 +42,14 @@ function createProductSummary(product) {
     productSummary.appendChild(emoji);
 
     const details = document.createElement('div');
-    const title = document.createElement('strong');
+    const title = document.createElement(onEdit ? 'button' : 'strong');
     title.textContent = product.name;
+    if (onEdit) {
+        title.type = 'button';
+        title.className = 'admin-product-edit-link click-item';
+        title.setAttribute('aria-label', `Edit ${product.name}`);
+        title.addEventListener('click', onEdit);
+    }
     details.appendChild(title);
 
     if (product.description) {
@@ -357,6 +363,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.ShopData.savePaymentMethods(nextPaymentMethods);
     }
 
+    function editProduct(product) {
+        productIdInput.value = product.id;
+        productNameInput.value = product.name;
+        productEmojiInput.value = product.emoji;
+        productDescriptionInput.value = product.description;
+        productListingPriceInput.value = product.listingPrice || '';
+        productShippingPriceInput.value = product.shippingPrice || '';
+        productOnSaleInput.checked = Boolean(product.onSale);
+        productSalePriceInput.value = product.salePrice || '';
+        productSubcategoriesInput.value = product.subcategories.join('\n');
+        productVariantsInput.value = product.variants.join('\n');
+        productImagesDraft = [...product.images];
+        productVideosDraft = [...product.videos];
+        renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
+        renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
+        syncSalePriceField();
+        formTitle.textContent = `Edit ${product.name}`;
+        submitLabel.textContent = '💾 Update Product';
+        cancelEditButton.classList.remove('hidden');
+        activateSection('products');
+        setStatus(statusMessage, `Editing ${product.name}.`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function renderProducts(nextProducts) {
         products = nextProducts;
         productTableBody.replaceChildren();
@@ -367,7 +397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = document.createElement('tr');
 
             const productCell = document.createElement('td');
-            productCell.appendChild(createProductSummary(product));
+            productCell.appendChild(createProductSummary(product, () => editProduct(product)));
             row.appendChild(productCell);
 
             const pricingCell = document.createElement('td');
@@ -397,29 +427,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             editButton.type = 'button';
             editButton.className = 'table-action-btn click-item';
             editButton.textContent = '✏️ Edit';
-            editButton.addEventListener('click', () => {
-                productIdInput.value = product.id;
-                productNameInput.value = product.name;
-                productEmojiInput.value = product.emoji;
-                productDescriptionInput.value = product.description;
-                productListingPriceInput.value = product.listingPrice || '';
-                productShippingPriceInput.value = product.shippingPrice || '';
-                productOnSaleInput.checked = Boolean(product.onSale);
-                productSalePriceInput.value = product.salePrice || '';
-                productSubcategoriesInput.value = product.subcategories.join('\n');
-                productVariantsInput.value = product.variants.join('\n');
-                productImagesDraft = [...product.images];
-                productVideosDraft = [...product.videos];
-                renderMediaPreview(productImagesPreview, productImagesDraft, 'image');
-                renderMediaPreview(productVideosPreview, productVideosDraft, 'video');
-                syncSalePriceField();
-                formTitle.textContent = `Edit ${product.name}`;
-                submitLabel.textContent = '💾 Update Product';
-                cancelEditButton.classList.remove('hidden');
-                activateSection('products');
-                setStatus(statusMessage, `Editing ${product.name}.`);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
+            editButton.addEventListener('click', () => editProduct(product));
             actionsCell.appendChild(editButton);
 
             const deleteButton = document.createElement('button');
@@ -438,7 +446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const previewCard = document.createElement('div');
             previewCard.className = 'product-card';
-            previewCard.appendChild(createProductSummary(product));
+            previewCard.appendChild(createProductSummary(product, () => editProduct(product)));
             adminPreviewGrid.appendChild(previewCard);
         });
 
