@@ -59,6 +59,13 @@ const fullNameInput = document.getElementById('fullName');
 const usernameInput = document.getElementById('username');
 const contactMethodInput = document.getElementById('contactMethod');
 const contactInfoInput = document.getElementById('contactInfo');
+const reviewForm = document.getElementById('reviewForm');
+const reviewNicknameInput = document.getElementById('reviewNickname');
+const reviewRatingInput = document.getElementById('reviewRating');
+const reviewProductInput = document.getElementById('reviewProduct');
+const reviewCommentInput = document.getElementById('reviewComment');
+const reviewStatus = document.getElementById('reviewStatus');
+const reviewsList = document.getElementById('reviewsList');
 
 let isPoweredOn = true;
 let volumeLevel = 100;
@@ -79,13 +86,15 @@ let commerceCapabilities = {
 let catalogSource = 'browser-local';
 const MAX_CART_LINE_QUANTITY = 10;
 const MAX_CART_LINES = 50;
+const REVIEWS_STORAGE_KEY = 'sip-of-ghoulaid-reviews';
 const CHANNEL_NUMBERS = {
     home: '01',
     shop: '02',
     account: '03',
     'custom-order': '04',
     summon: '06',
-    about: '07'
+    about: '07',
+    reviews: '08'
 };
 
 async function commerceRequest(path, options = {}) {
@@ -657,6 +666,7 @@ function createProductCard(product) {
 
 function renderShopProducts(products) {
     shopProducts = products;
+    populateReviewProducts(products);
     const shopGrid = document.getElementById('shopGrid');
     if (!shopGrid) {
         return;
@@ -678,6 +688,150 @@ function renderShopProducts(products) {
 
     bindClickSound(shopGrid);
     bindProductCardEffects(shopGrid);
+}
+
+function populateReviewProducts(products) {
+    if (!reviewProductInput) {
+        return;
+    }
+
+    const selectedValue = reviewProductInput.value;
+    reviewProductInput.replaceChildren();
+
+    const overallOption = document.createElement('option');
+    overallOption.value = '';
+    overallOption.textContent = 'Overall shop experience';
+    reviewProductInput.appendChild(overallOption);
+
+    products.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.textContent = product.name;
+        reviewProductInput.appendChild(option);
+    });
+
+    if (Array.from(reviewProductInput.options).some(option => option.value === selectedValue)) {
+        reviewProductInput.value = selectedValue;
+    }
+}
+
+function loadReviews() {
+    try {
+        const storedReviews = JSON.parse(localStorage.getItem(REVIEWS_STORAGE_KEY) || '[]');
+        if (!Array.isArray(storedReviews)) {
+            return [];
+        }
+
+        return storedReviews.filter(review => (
+            review
+            && typeof review.nickname === 'string'
+            && review.nickname.length >= 2
+            && review.nickname.length <= 40
+            && Number.isInteger(review.rating)
+            && review.rating >= 1
+            && review.rating <= 5
+            && typeof review.comment === 'string'
+            && review.comment.length >= 10
+            && review.comment.length <= 1000
+            && typeof review.createdAt === 'string'
+        )).slice(0, 50);
+    } catch (error) {
+        console.error('Unable to load reviews.', error);
+        setStatus(reviewStatus, 'Saved reviews could not be loaded on this device.');
+        return [];
+    }
+}
+
+function renderReviews() {
+    if (!reviewsList) {
+        return;
+    }
+
+    reviewsList.replaceChildren();
+    const reviews = loadReviews();
+
+    if (!reviews.length) {
+        const emptyState = document.createElement('p');
+        emptyState.className = 'empty-products-message';
+        emptyState.textContent = 'No reviews transmitted yet. Be the first.';
+        reviewsList.appendChild(emptyState);
+        return;
+    }
+
+    reviews.forEach(review => {
+        const card = document.createElement('article');
+        card.className = 'review-card';
+
+        const header = document.createElement('div');
+        header.className = 'review-card-header';
+
+        const nickname = document.createElement('strong');
+        nickname.textContent = review.nickname;
+
+        const rating = document.createElement('span');
+        rating.className = 'review-stars';
+        rating.setAttribute('aria-label', `${review.rating} out of 5 stars`);
+        rating.textContent = `${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}`;
+
+        header.append(nickname, rating);
+        card.appendChild(header);
+
+        if (review.productName) {
+            const product = document.createElement('p');
+            product.className = 'review-product';
+            product.textContent = `Reviewing: ${review.productName}`;
+            card.appendChild(product);
+        }
+
+        const comment = document.createElement('p');
+        comment.textContent = review.comment;
+        card.appendChild(comment);
+
+        const date = document.createElement('time');
+        date.dateTime = review.createdAt;
+        date.textContent = new Date(review.createdAt).toLocaleDateString();
+        card.appendChild(date);
+
+        reviewsList.appendChild(card);
+    });
+}
+
+function saveReview(event) {
+    event.preventDefault();
+
+    const nickname = reviewNicknameInput.value.trim();
+    const rating = Number.parseInt(reviewRatingInput.value, 10);
+    const comment = reviewCommentInput.value.trim();
+
+    if (nickname.length < 2 || nickname.length > 40 || rating < 1 || rating > 5 || comment.length < 10 || comment.length > 1000) {
+        setStatus(reviewStatus, 'Enter a nickname, star rating, and review of at least 10 characters.');
+        return;
+    }
+
+    const productName = reviewProductInput.selectedOptions[0]?.textContent || '';
+    const review = {
+        id: window.crypto?.randomUUID?.() || `review-${Date.now()}`,
+        nickname,
+        rating,
+        productId: reviewProductInput.value,
+        productName: reviewProductInput.value ? productName : '',
+        comment,
+        createdAt: new Date().toISOString()
+    };
+
+    try {
+        const reviews = loadReviews();
+        reviews.unshift(review);
+        localStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(reviews.slice(0, 50)));
+    } catch (error) {
+        console.error('Unable to save review.', error);
+        setStatus(reviewStatus, 'Your review could not be saved on this device.');
+        return;
+    }
+
+    reviewForm.reset();
+    setStatus(reviewStatus, 'Review transmitted. Thank you!');
+    renderReviews();
 }
 
 function renderAnnouncement(targetId, title, message, enabled) {
@@ -1715,6 +1869,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         radio.addEventListener('change', updateAdditionalSetVisibility);
     });
     updateAdditionalSetVisibility();
+    renderReviews();
+
+    if (reviewForm) {
+        reviewForm.addEventListener('submit', saveReview);
+    }
 
     if (tvBootOverlay) {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

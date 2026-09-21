@@ -675,6 +675,66 @@ p, label {
     text-align: center;
 }
 
+.reviews-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.review-form {
+    margin: 0;
+}
+
+.reviews-feed {
+    padding: 20px;
+    border: 2px solid var(--mint);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(221, 160, 221, 0.05));
+}
+
+.reviews-feed h2 {
+    margin-bottom: 18px;
+    color: var(--pink);
+    text-align: center;
+}
+
+.reviews-list {
+    display: grid;
+    gap: 15px;
+}
+
+.review-card {
+    padding: 16px;
+    border: 1px solid rgba(0, 255, 136, 0.55);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.45);
+    box-shadow: inset 0 0 14px rgba(0, 255, 136, 0.08);
+}
+
+.review-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.review-card-header strong,
+.review-stars {
+    color: var(--pink);
+}
+
+.review-product,
+.review-card time {
+    color: var(--purple-soft);
+    font-size: 14px;
+}
+
+.review-card time {
+    display: block;
+    margin-top: 10px;
+}
+
 /* Shop Grid */
 .shop-grid {
     display: grid;
@@ -1788,7 +1848,8 @@ input[type="checkbox"] {
 
     .admin-grid-equal,
     .admin-shell,
-    .admin-grid {
+    .admin-grid,
+    .reviews-layout {
         grid-template-columns: 1fr;
     }
 

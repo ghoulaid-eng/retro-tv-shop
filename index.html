@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sip of Ghoulaid Shop</title>
-    <link rel="stylesheet" href="styles.css?v=20260920-power-on">
+    <link rel="stylesheet" href="styles.css?v=20260921-reviews">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -34,6 +34,7 @@
                                 <option value="account">👤 ACCOUNT</option>
                                 <option value="summon">🔮 SUMMON US</option>
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
+                                <option value="reviews">⭐ REVIEWS</option>
                                 <option value="about">ℹ️ ABOUT</option>
                             </select>
                         </nav>
@@ -92,6 +93,11 @@
                                             <span class="guide-number">CH 07</span>
                                             <strong>ℹ️ About</strong>
                                             <small>Meet the maker</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="reviews">
+                                            <span class="guide-number">CH 08</span>
+                                            <strong>⭐ Reviews</strong>
+                                            <small>Share your experience</small>
                                         </button>
                                     </div>
                                 </div>
@@ -504,6 +510,55 @@
                                 </div>
                             </section>
 
+                            <!-- Reviews Channel -->
+                            <section id="reviews" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">CUSTOMER TRANSMISSIONS</h1>
+                                <p class="channel-intro">Leave a review using any name or nickname. Reviews are saved on this device.</p>
+
+                                <div class="reviews-layout">
+                                    <form id="reviewForm" class="custom-order-form review-form">
+                                        <h2>TRANSMIT A REVIEW</h2>
+
+                                        <div class="form-group">
+                                            <label for="reviewNickname">Name or nickname *</label>
+                                            <input type="text" id="reviewNickname" name="nickname" minlength="2" maxlength="40" required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewRating">Rating *</label>
+                                            <select id="reviewRating" name="rating" required>
+                                                <option value="">Choose a rating</option>
+                                                <option value="5">★★★★★ — Amazing</option>
+                                                <option value="4">★★★★☆ — Great</option>
+                                                <option value="3">★★★☆☆ — Good</option>
+                                                <option value="2">★★☆☆☆ — Needs work</option>
+                                                <option value="1">★☆☆☆☆ — Disappointing</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewProduct">What are you reviewing?</label>
+                                            <select id="reviewProduct" name="product">
+                                                <option value="">Overall shop experience</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewComment">Your review *</label>
+                                            <textarea id="reviewComment" name="comment" rows="5" minlength="10" maxlength="1000" required></textarea>
+                                        </div>
+
+                                        <button type="submit" class="submit-btn click-item">Send Review</button>
+                                        <p id="reviewStatus" class="form-status" aria-live="polite"></p>
+                                    </form>
+
+                                    <div class="reviews-feed">
+                                        <h2>RECENT REVIEWS</h2>
+                                        <div id="reviewsList" class="reviews-list" aria-live="polite"></div>
+                                    </div>
+                                </div>
+                            </section>
+
                             <!-- About Channel -->
                             <section id="about" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">ABOUT SIP OF GHOULAID</h1>
@@ -556,6 +611,6 @@
     </audio>
 
     <script src="products.js?v=20260920-brand"></script>
-    <script src="script.js?v=20260920-guide"></script>
+    <script src="script.js?v=20260921-reviews"></script>
 </body>
 </html>
