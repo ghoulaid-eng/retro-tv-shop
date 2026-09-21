@@ -61,7 +61,9 @@ function createProductSummary(product, onEdit) {
 
     if (product.description) {
         const description = document.createElement('p');
-        description.textContent = product.description;
+        description.textContent = product.description.length > 180
+            ? `${product.description.slice(0, 177).trimEnd()}...`
+            : product.description;
         details.appendChild(description);
     }
 
@@ -284,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function sanitizeDescriptionHtml(html) {
-        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV']);
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV', 'H2', 'H3', 'H4']);
         const source = document.createElement('template');
         source.innerHTML = html;
 

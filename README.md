@@ -26,6 +26,18 @@ Node.js, Express, Prisma/PostgreSQL, and Stripe Checkout.
 Requirements: Node.js 20+, PostgreSQL (Supabase is supported), and optionally a
 Stripe test-mode account.
 
+To refresh the browser-local catalog and download public product images from the
+existing Big Cartel storefront:
+
+```text
+npm run import:catalog
+```
+
+The importer replaces `products.json` and `assets/products/` with the current
+public listings from `www.sipofghoulaid.com`. Public storefront inventory does
+not expose exact quantities, so imported products remain locally unlimited
+unless quantities are entered manually in the local admin editor.
+
 ```text
 copy .env.example .env
 npm install

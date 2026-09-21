@@ -464,7 +464,7 @@ function createProductMedia(product) {
 }
 
 function appendSanitizedRichText(target, html) {
-    const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV']);
+    const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV', 'H2', 'H3', 'H4']);
     const source = document.createElement('template');
     source.innerHTML = html;
 
@@ -547,14 +547,28 @@ function createProductCard(product) {
     card.appendChild(title);
 
     if (product.description) {
-        const description = document.createElement('div');
-        description.className = 'product-desc';
-        if (product.descriptionHtml) {
-            appendSanitizedRichText(description, product.descriptionHtml);
-        } else {
-            description.textContent = product.description;
+        const excerpt = document.createElement('p');
+        excerpt.className = 'product-desc';
+        excerpt.textContent = product.description.length > 220
+            ? `${product.description.slice(0, 217).trimEnd()}...`
+            : product.description;
+        card.appendChild(excerpt);
+
+        if (product.description.length > 220) {
+            const details = document.createElement('details');
+            details.className = 'product-description-details';
+            const summary = document.createElement('summary');
+            summary.textContent = 'Read full description';
+            const fullDescription = document.createElement('div');
+            fullDescription.className = 'product-description-full';
+            if (product.descriptionHtml) {
+                appendSanitizedRichText(fullDescription, product.descriptionHtml);
+            } else {
+                fullDescription.textContent = product.description;
+            }
+            details.append(summary, fullDescription);
+            card.appendChild(details);
         }
-        card.appendChild(description);
     }
 
     card.appendChild(createPriceDisplay(product));

@@ -485,6 +485,11 @@ const staticFiles = new Set([
     'products.json', 'styles.css'
 ]);
 app.get('/', (req, res) => res.sendFile('index.html', { root: staticRoot }));
+app.use('/assets/products', express.static(path.join(staticRoot, 'assets', 'products'), {
+    fallthrough: false,
+    immutable: true,
+    maxAge: '1y'
+}));
 app.get('/:file', (req, res, next) => {
     if (!staticFiles.has(req.params.file)) return next();
     res.sendFile(req.params.file, { root: staticRoot });

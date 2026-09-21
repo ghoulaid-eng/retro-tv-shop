@@ -35,7 +35,7 @@
     ];
     const resourceConfigs = {
         products: {
-            storageKey: 'sip-of-ghoulaid-products',
+            storageKey: 'sip-of-ghoulaid-products-v2',
             eventName: 'sip-of-ghoulaid-products-updated',
             getDefault: async () => normalizeProducts(await loadDefaultProducts())
         },
@@ -283,7 +283,8 @@
             videos: normalizeMediaList(product.videos, 3),
             available: product.available !== false
                 && (!trackInventory || (variantDetails.length ? hasAvailableVariant : stock > 0)),
-            priceSource: normalizeText(product.priceSource, 'browser-local')
+            priceSource: normalizeText(product.priceSource, 'browser-local'),
+            sourceUrl: normalizeText(product.sourceUrl)
         };
     }
 
