@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clearProductImagesButton = document.getElementById('clearProductImages');
     const clearProductVideosButton = document.getElementById('clearProductVideos');
     const cancelEditButton = document.getElementById('cancelEdit');
+    const deleteProductButton = document.getElementById('deleteProduct');
     const resetProductsButton = document.getElementById('resetProducts');
     const productTableBody = document.getElementById('productTableBody');
     const emptyProductsState = document.getElementById('emptyProductsState');
@@ -256,6 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         formTitle.textContent = 'Add New Product';
         submitLabel.textContent = '📼 Save Product';
         cancelEditButton.classList.add('hidden');
+        deleteProductButton.classList.add('hidden');
         syncSalePriceField();
     }
 
@@ -382,9 +384,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         formTitle.textContent = `Edit ${product.name}`;
         submitLabel.textContent = '💾 Update Product';
         cancelEditButton.classList.remove('hidden');
+        deleteProductButton.classList.remove('hidden');
         activateSection('products');
         setStatus(statusMessage, `Editing ${product.name}.`);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteProduct(product) {
+        if (!window.confirm(`Delete "${product.name}"? This removes it from the local storefront on this device.`)) {
+            return;
+        }
+
+        await saveProductsWithLatest(currentProducts => currentProducts.filter(item => item.id !== product.id));
+        resetProductForm();
+        activateSection('products');
+        setStatus(statusMessage, `${product.name} removed from the lineup.`);
     }
 
     function renderProducts(nextProducts) {
@@ -434,11 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
             deleteButton.textContent = '🗑️ Delete';
-            deleteButton.addEventListener('click', async () => {
-                await saveProductsWithLatest(currentProducts => currentProducts.filter(item => item.id !== product.id));
-                resetProductForm();
-                setStatus(statusMessage, `${product.name} removed from the lineup.`);
-            });
+            deleteButton.addEventListener('click', () => deleteProduct(product));
             actionsCell.appendChild(deleteButton);
 
             row.appendChild(actionsCell);
@@ -916,6 +926,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelEditButton.addEventListener('click', () => {
         resetProductForm();
         setStatus(statusMessage, 'Edit cancelled.');
+    });
+
+    deleteProductButton.addEventListener('click', async () => {
+        const product = products.find(item => item.id === productIdInput.value);
+        if (!product) {
+            setStatus(statusMessage, 'Select an existing product before deleting.');
+            return;
+        }
+
+        await deleteProduct(product);
     });
 
     resetProductsButton.addEventListener('click', async () => {
