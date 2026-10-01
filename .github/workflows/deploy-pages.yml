@@ -35,7 +35,7 @@ jobs:
           cp index.html admin.html script.js admin.js products.js products.json styles.css pages-dist/
 
       - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: pages-dist
 
