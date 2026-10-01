@@ -1,0 +1,39 @@
+name: Validate application
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://validation:validation@localhost:5432/validation
+      DIRECT_URL: postgresql://validation:validation@localhost:5432/validation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Run tests
+        run: npm test
