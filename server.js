@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const path = require('node:path');
 const express = require('express');
 const helmet = require('helmet');
@@ -7,12 +8,30 @@ const { rateLimit } = require('express-rate-limit');
 const Stripe = require('stripe');
 const { PrismaClient, Prisma } = require('@prisma/client');
 const { getPublicConfig, readConfig } = require('./backend/config');
+const { buildCheckoutShippingOptions } = require('./backend/shipping');
 const {
     ValidationError,
     decimalToCents,
     validateCheckout,
     validateCustomOrder
 } = require('./backend/validation');
+const {
+    ADMIN_RESOURCE_DEFAULTS,
+    AdminValidationError,
+    normalizeAdminProducts,
+    normalizeAdminResource,
+    validateMediaUpload,
+    verifySupabaseAdmin
+} = require('./backend/admin');
+const {
+    OrderOperationError,
+    orderEmailContent,
+    sendResendEmail,
+    validateFulfillment,
+    validateReason,
+    validateRefund,
+    validateSupport
+} = require('./backend/order-operations');
 
 const config = readConfig();
 const prisma = config.databaseConfigured ? new PrismaClient() : null;
@@ -33,7 +52,7 @@ app.use(helmet({
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
             mediaSrc: ["'self'", 'data:', 'blob:', 'https:'],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", ...(config.supabaseUrl ? [config.supabaseUrl] : [])],
             upgradeInsecureRequests: config.publicUrl.startsWith('https:') ? [] : null
         }
     },
@@ -49,6 +68,12 @@ const apiLimiter = rateLimit({
 const writeLimiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: 30,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false
+});
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 180,
     standardHeaders: 'draft-8',
     legacyHeaders: false
 });
@@ -70,24 +95,118 @@ function publicProduct(product) {
     return {
         id: product.id,
         name: product.name,
+        handle: product.handle,
         emoji: product.emoji || '🛍️',
         description: product.description,
+        descriptionHtml: product.descriptionHtml || '',
         subcategories: product.subcategories,
+        categories: product.subcategories,
         listingPrice: Number(product.price.toString()),
         onSale: product.salePrice !== null,
         salePrice: product.salePrice ? Number(product.salePrice.toString()) : 0,
-        shippingPrice: 0,
+        shippingPrice: Number(product.shippingPrice.toString()),
+        shippingWeight: Number(product.shippingWeight.toString()),
+        shippingWeightUnit: product.shippingWeightUnit,
+        packageSize: product.packageSize || '',
+        mustShipAlone: product.mustShipAlone,
+        trackInventory: product.trackInventory,
+        variantGroupName: product.variantGroupName,
+        variantDetails: product.variants
+            .filter(variant => variant.active)
+            .map(variant => ({
+                id: variant.id,
+                name: variant.name === 'Standard' ? '' : variant.name,
+                price: variant.price ? Number(variant.price.toString()) : Number(product.price.toString()),
+                stock: product.trackInventory && variant.inventory ? variant.inventory.quantity : null
+            })),
         variants: product.variants
-            .filter(variant => variant.active && variant.inventory && variant.inventory.quantity > variant.inventory.reserved)
+            .filter(variant => variant.active
+                && variant.inventory
+                && (!product.trackInventory || variant.inventory.quantity > variant.inventory.reserved))
             .map(variant => variant.name === 'Standard' ? '' : variant.name),
         images: product.media.filter(item => item.type === 'image').map(item => item.url),
         videos: product.media.filter(item => item.type === 'video').map(item => item.url),
         available: product.variants.some(variant => variant.active
             && variant.inventory
-            && variant.inventory.quantity > variant.inventory.reserved),
+            && (!product.trackInventory || variant.inventory.quantity > variant.inventory.reserved)),
         priceSource: 'server',
+        sourceUrl: product.sourceUrl || '',
         effectivePrice: Number(effectivePrice.toString())
     };
+}
+
+function skuFor(productId, variantName, index) {
+    const base = `${productId}-${variantName}`
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 56);
+    return `${base || 'PRODUCT'}-${index + 1}`;
+}
+
+async function requireAdmin(req, res, next) {
+    try {
+        req.admin = await verifySupabaseAdmin(config, req.get('authorization'));
+        next();
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function recordAdminAudit(admin, action, resource, resourceId = null, metadata = null, client = prisma) {
+    if (!client) return;
+    await client.adminAuditLog.create({
+        data: {
+            adminEmail: admin.email,
+            action,
+            resource,
+            resourceId,
+            metadata: metadata || undefined
+        }
+    });
+}
+
+async function deliverOrderEmail(order, type, details = {}) {
+    if (!order.email) return null;
+    const content = orderEmailContent(type, order, { ...details, supportEmail: config.supportEmail });
+    const delivery = await prisma.transactionalEmail.upsert({
+        where: { orderId_type: { orderId: order.id, type } },
+        update: {
+            recipient: order.email,
+            subject: content.subject,
+            status: 'PENDING',
+            error: null
+        },
+        create: {
+            orderId: order.id,
+            type,
+            recipient: order.email,
+            subject: content.subject,
+            status: 'PENDING'
+        }
+    });
+    try {
+        const result = await sendResendEmail(config, {
+            to: [order.email],
+            subject: content.subject,
+            html: content.html
+        });
+        return prisma.transactionalEmail.update({
+            where: { id: delivery.id },
+            data: {
+                status: 'SENT',
+                providerMessageId: result.id || null,
+                sentAt: new Date(),
+                error: null
+            }
+        });
+    } catch (error) {
+        await prisma.transactionalEmail.update({
+            where: { id: delivery.id },
+            data: { status: 'FAILED', error: error.message.slice(0, 1000) }
+        });
+        throw error;
+    }
 }
 
 async function withSerializableRetry(work) {
@@ -277,7 +396,29 @@ async function completePaidOrder(event, session) {
             where: { id: orderId },
             data: {
                 status: reservationWasReleased ? 'NEEDS_REVIEW' : 'PAID',
-                fulfilledAt: new Date()
+                fulfilledAt: new Date(),
+                shippingMethod: typeof session.shipping_cost?.shipping_rate === 'object'
+                    ? session.shipping_cost.shipping_rate.display_name || null
+                    : null,
+                shippingAmount: centsToDecimal(
+                    session.total_details?.amount_shipping
+                    ?? session.shipping_cost?.amount_total
+                    ?? 0
+                ),
+                taxAmount: centsToDecimal(session.total_details?.amount_tax ?? 0),
+                stripeShippingRateId: typeof session.shipping_cost?.shipping_rate === 'string'
+                    ? session.shipping_cost.shipping_rate
+                    : session.shipping_cost?.shipping_rate?.id || null,
+                shippingAddress: session.collected_information?.shipping_details
+                    || session.shipping_details
+                    || undefined,
+                adminData: {
+                    ...(order.adminData && typeof order.adminData === 'object' ? order.adminData : {}),
+                    fullName: session.collected_information?.shipping_details?.name
+                        || session.shipping_details?.name
+                        || order.email
+                        || 'Checkout customer'
+                }
             }
         });
         await tx.webhookEvent.update({
@@ -293,6 +434,12 @@ async function completePaidOrder(event, session) {
     });
     if (needsReview) {
         console.error(`Paid order ${orderId} requires manual inventory review after reservation release.`);
+    }
+    const paidOrder = await prisma.order.findUnique({ where: { id: orderId } });
+    if (paidOrder?.email && config.emailConfigured) {
+        await deliverOrderEmail(paidOrder, 'confirmation').catch(error => {
+            console.error(`Order confirmation email failed for ${orderId}:`, error.message);
+        });
     }
 }
 
@@ -323,7 +470,10 @@ app.post('/api/commerce/webhook', express.raw({ type: 'application/json', limit:
         const session = event.data.object;
         if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
             if (session.payment_status === 'paid') {
-                await completePaidOrder(event, session);
+                const detailedSession = await stripe.checkout.sessions.retrieve(session.id, {
+                    expand: ['shipping_cost.shipping_rate']
+                });
+                await completePaidOrder(event, detailedSession);
             } else {
                 await prisma.webhookEvent.update({
                     where: { id: event.id },
@@ -354,11 +504,624 @@ app.post('/api/commerce/webhook', express.raw({ type: 'application/json', limit:
 });
 
 app.use('/api', apiLimiter);
+
+app.post('/api/admin/media', adminLimiter, requireAdmin, express.raw({
+    type: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'],
+    limit: '15mb'
+}), async (req, res, next) => {
+    try {
+        const contentType = String(req.get('content-type') || '').split(';')[0].toLowerCase();
+        validateMediaUpload(contentType, req.body?.length || 0);
+        const originalName = String(req.get('x-file-name') || 'upload')
+            .replace(/[^A-Za-z0-9._-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 120) || 'upload';
+        const objectPath = `products/${crypto.randomUUID()}-${originalName}`;
+        const uploadUrl = `${config.supabaseUrl}/storage/v1/object/${encodeURIComponent(config.supabaseStorageBucket)}/${objectPath.split('/').map(encodeURIComponent).join('/')}`;
+        const upload = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                apikey: config.supabaseServiceRoleKey,
+                Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+                'Content-Type': contentType,
+                'x-upsert': 'false'
+            },
+            body: req.body,
+            signal: AbortSignal.timeout(30_000)
+        });
+        if (!upload.ok) {
+            const message = await upload.text();
+            console.error('Supabase media upload failed:', upload.status, message);
+            throw new Error('Product media could not be uploaded.');
+        }
+        await recordAdminAudit(req.admin, 'upload', 'media', objectPath, { contentType, bytes: req.body.length });
+        res.status(201).json({
+            url: `${config.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(config.supabaseStorageBucket)}/${objectPath.split('/').map(encodeURIComponent).join('/')}`,
+            path: objectPath
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 app.use(express.json({ limit: '64kb', strict: true }));
 
 app.get('/api/commerce/config', (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json(getPublicConfig(config));
+});
+
+function adminOrderStatus(status) {
+    if (status === 'PAID') return 'Completed';
+    if (status === 'NEEDS_REVIEW') return 'Ready to Confirm';
+    if (status === 'CHECKOUT_CREATED') return 'In Progress';
+    return 'Pending';
+}
+
+function adminPaymentStatus(status) {
+    if (status === 'PAID') return 'Paid';
+    if (status === 'REFUNDED') return 'Refunded';
+    if (status === 'FAILED') return 'Awaiting Payment';
+    return 'Awaiting Payment';
+}
+
+function serializeCommerceAdminOrder(order) {
+    const adminData = order.adminData && typeof order.adminData === 'object' ? order.adminData : {};
+    const payment = order.payments[0];
+    return {
+        id: order.id,
+        kind: 'commerce',
+        fullName: adminData.fullName || order.email || 'Checkout customer',
+        username: 'Stripe checkout',
+        contactMethod: 'email',
+        contactInfo: order.email || '',
+        description: order.items.map(item => `${item.quantity}× ${item.name}${item.variant ? ` (${item.variant})` : ''}`).join(', '),
+        paymentMethod: 'stripe',
+        paymentStatus: payment ? adminPaymentStatus(payment.status) : 'Awaiting Payment',
+        paymentAmount: payment ? Number(payment.amount.toString()) : 0,
+        paymentReference: payment?.reference || payment?.providerPaymentIntentId || '',
+        paymentNotes: payment?.notes || '',
+        paymentReceivedAt: payment?.paidAt?.toISOString() || '',
+        fulfillmentStatus: order.fulfillmentStatus,
+        trackingCarrier: order.trackingCarrier || '',
+        trackingNumber: order.trackingNumber || '',
+        trackingUrl: order.trackingUrl || '',
+        shippingMethod: order.shippingMethod || '',
+        shippingAmount: Number(order.shippingAmount?.toString() || 0),
+        taxAmount: Number(order.taxAmount?.toString() || 0),
+        shippingAddress: order.shippingAddress || null,
+        cancellationReason: order.cancellationReason || '',
+        supportNotes: order.supportNotes || [],
+        timeline: order.timeline || [],
+        emailDeliveries: order.emailDeliveries || [],
+        status: adminData.status || adminOrderStatus(order.status),
+        createdAt: order.createdAt.toISOString()
+    };
+}
+
+function serializeCustomAdminOrder(order) {
+    const adminData = order.adminData && typeof order.adminData === 'object' ? order.adminData : {};
+    return {
+        id: order.id,
+        kind: 'custom',
+        fullName: order.fullName,
+        username: order.username,
+        contactMethod: order.contactMethod,
+        contactInfo: order.contactInfo,
+        customizationLevel: order.customizationLevel,
+        description: order.description,
+        refImages: order.refImages || '',
+        colors: order.colors || '',
+        handPaintedDetails: order.handPaintedDetails || '',
+        scents: order.scents,
+        glitter: order.glitter,
+        glow: order.glow,
+        additionalSets: order.additionalSets || '',
+        additionalSetCount: order.additionalSetCount || '',
+        deadline: order.deadline || '',
+        additionalInfo: order.additionalInfo || '',
+        paymentMethod: adminData.paymentMethod || order.preferredPaymentMethod || '',
+        paymentStatus: adminData.paymentStatus || 'Awaiting Payment',
+        paymentAmount: Number(adminData.paymentAmount || 0),
+        paymentReference: adminData.paymentReference || '',
+        paymentNotes: adminData.paymentNotes || '',
+        paymentReceivedAt: adminData.paymentReceivedAt || '',
+        status: adminData.status || order.status,
+        createdAt: order.createdAt.toISOString()
+    };
+}
+
+async function loadAdminResources() {
+    const stored = await prisma.adminResource.findMany();
+    const byKey = new Map(stored.map(resource => [resource.key, resource.value]));
+    return Object.fromEntries(Object.entries(ADMIN_RESOURCE_DEFAULTS).map(([key, fallback]) => [
+        key,
+        byKey.has(key) ? byKey.get(key) : fallback
+    ]));
+}
+
+async function loadAdminProducts() {
+    const products = await prisma.product.findMany({
+        orderBy: { createdAt: 'asc' },
+        include: {
+            variants: { include: { inventory: true }, orderBy: { createdAt: 'asc' } },
+            media: { orderBy: { position: 'asc' } }
+        }
+    });
+    return products.map(publicProduct);
+}
+
+async function loadAdminOrders() {
+    const [commerceOrders, customOrders] = await Promise.all([
+        prisma.order.findMany({
+            include: {
+                items: { orderBy: { id: 'asc' } },
+                payments: { orderBy: { createdAt: 'desc' } }
+                ,
+                timeline: { orderBy: { createdAt: 'desc' } },
+                supportNotes: { orderBy: { createdAt: 'desc' } },
+                emailDeliveries: { orderBy: { createdAt: 'desc' } }
+            },
+            orderBy: { createdAt: 'desc' }
+        }),
+        prisma.customOrderRequest.findMany({ orderBy: { createdAt: 'desc' } })
+    ]);
+    return [
+        ...commerceOrders.map(serializeCommerceAdminOrder),
+        ...customOrders.map(serializeCustomAdminOrder)
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+app.get('/api/admin/session', adminLimiter, requireAdmin, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ email: req.admin.email });
+});
+
+app.get('/api/admin/bootstrap', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const [products, orders, resources] = await Promise.all([
+            loadAdminProducts(),
+            loadAdminOrders(),
+            loadAdminResources()
+        ]);
+        res.set('Cache-Control', 'no-store');
+        res.json({ products, orders, ...resources, admin: { email: req.admin.email } });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.put('/api/admin/resources/:name', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const value = normalizeAdminResource(req.params.name, req.body);
+        const resource = await prisma.adminResource.upsert({
+            where: { key: req.params.name },
+            update: { value, updatedBy: req.admin.email },
+            create: { key: req.params.name, value, updatedBy: req.admin.email }
+        });
+        await recordAdminAudit(req.admin, 'update', 'admin-resource', req.params.name);
+        res.json(resource.value);
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/admin/resources/:name/reset', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        if (!(req.params.name in ADMIN_RESOURCE_DEFAULTS)) {
+            throw new AdminValidationError('Unknown admin resource.', 404);
+        }
+        const value = ADMIN_RESOURCE_DEFAULTS[req.params.name];
+        await prisma.adminResource.upsert({
+            where: { key: req.params.name },
+            update: { value, updatedBy: req.admin.email },
+            create: { key: req.params.name, value, updatedBy: req.admin.email }
+        });
+        await recordAdminAudit(req.admin, 'reset', 'admin-resource', req.params.name);
+        res.json(value);
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.put('/api/admin/products', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const products = normalizeAdminProducts(req.body);
+        await withSerializableRetry(async tx => {
+            const incomingIds = products.map(product => product.id);
+            await tx.product.updateMany({
+                where: { id: { notIn: incomingIds } },
+                data: { active: false }
+            });
+
+            for (const product of products) {
+                await tx.product.upsert({
+                    where: { id: product.id },
+                    update: {
+                        name: product.name,
+                        handle: product.handle,
+                        emoji: product.emoji,
+                        description: product.description,
+                        descriptionHtml: product.descriptionHtml || null,
+                        subcategories: product.categories,
+                        price: product.listingPrice,
+                        salePrice: product.onSale ? product.salePrice : null,
+                        shippingPrice: product.shippingPrice,
+                        shippingWeight: product.shippingWeight,
+                        shippingWeightUnit: product.shippingWeightUnit,
+                        packageSize: product.packageSize || null,
+                        mustShipAlone: product.mustShipAlone,
+                        trackInventory: product.trackInventory,
+                        variantGroupName: product.variantGroupName,
+                        sourceUrl: product.sourceUrl || null,
+                        active: product.available
+                    },
+                    create: {
+                        id: product.id,
+                        name: product.name,
+                        handle: product.handle,
+                        emoji: product.emoji,
+                        description: product.description,
+                        descriptionHtml: product.descriptionHtml || null,
+                        subcategories: product.categories,
+                        price: product.listingPrice,
+                        salePrice: product.onSale ? product.salePrice : null,
+                        shippingPrice: product.shippingPrice,
+                        shippingWeight: product.shippingWeight,
+                        shippingWeightUnit: product.shippingWeightUnit,
+                        packageSize: product.packageSize || null,
+                        mustShipAlone: product.mustShipAlone,
+                        trackInventory: product.trackInventory,
+                        variantGroupName: product.variantGroupName,
+                        sourceUrl: product.sourceUrl || null,
+                        active: product.available
+                    }
+                });
+
+                const variants = product.variantDetails.length
+                    ? product.variantDetails
+                    : [{ name: 'Standard', price: product.listingPrice, stock: product.stock }];
+                await tx.productVariant.updateMany({
+                    where: { productId: product.id, name: { notIn: variants.map(variant => variant.name) } },
+                    data: { active: false }
+                });
+
+                for (const [index, variant] of variants.entries()) {
+                    const storedVariant = await tx.productVariant.upsert({
+                        where: { productId_name: { productId: product.id, name: variant.name || 'Standard' } },
+                        update: { price: variant.price, active: true },
+                        create: {
+                            productId: product.id,
+                            name: variant.name || 'Standard',
+                            sku: skuFor(product.id, variant.name || 'Standard', index),
+                            price: variant.price,
+                            active: true
+                        },
+                        include: { inventory: true }
+                    });
+                    const quantity = product.trackInventory ? Number(variant.stock ?? product.stock ?? 0) : 0;
+                    if (storedVariant.inventory && quantity < storedVariant.inventory.reserved) {
+                        throw new AdminValidationError(
+                            `${product.name} / ${variant.name || 'Standard'} stock cannot be below its reserved quantity.`
+                        );
+                    }
+                    await tx.inventory.upsert({
+                        where: { variantId: storedVariant.id },
+                        update: { quantity },
+                        create: { variantId: storedVariant.id, quantity }
+                    });
+                }
+
+                const media = [
+                    ...product.images.map(url => ({ type: 'image', url })),
+                    ...product.videos.map(url => ({ type: 'video', url }))
+                ];
+                await tx.productMedia.deleteMany({ where: { productId: product.id } });
+                if (media.length) {
+                    await tx.productMedia.createMany({
+                        data: media.map((item, position) => ({
+                            productId: product.id,
+                            type: item.type,
+                            url: item.url,
+                            alt: `${product.name} preview ${position + 1}`,
+                            position
+                        }))
+                    });
+                }
+            }
+            await recordAdminAudit(req.admin, 'sync', 'products', null, { count: products.length }, tx);
+        });
+        res.json(await loadAdminProducts());
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.put('/api/admin/orders', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        if (!Array.isArray(req.body) || req.body.length > 2000) {
+            throw new AdminValidationError('Orders must be an array with at most 2,000 entries.');
+        }
+        const incoming = req.body.filter(order => order && typeof order === 'object' && order.id);
+        const incomingCustomIds = incoming.filter(order => order.kind === 'custom').map(order => String(order.id));
+
+        await withSerializableRetry(async tx => {
+            const storedCustomOrders = await tx.customOrderRequest.findMany({ select: { id: true } });
+            const deletableIds = storedCustomOrders
+                .map(order => order.id)
+                .filter(id => !incomingCustomIds.includes(id));
+            if (deletableIds.length) {
+                await tx.customOrderRequest.deleteMany({ where: { id: { in: deletableIds } } });
+            }
+
+            for (const order of incoming) {
+                const id = String(order.id).slice(0, 120);
+                const adminData = {
+                    status: String(order.status || 'Pending').slice(0, 80),
+                    paymentMethod: String(order.paymentMethod || '').slice(0, 80),
+                    paymentStatus: String(order.paymentStatus || 'Awaiting Payment').slice(0, 80),
+                    paymentAmount: Math.max(0, Number(order.paymentAmount || 0)),
+                    paymentReference: String(order.paymentReference || '').slice(0, 240),
+                    paymentNotes: String(order.paymentNotes || '').slice(0, 2000),
+                    paymentReceivedAt: String(order.paymentReceivedAt || '').slice(0, 80)
+                };
+
+                if (order.kind === 'custom') {
+                    await tx.customOrderRequest.updateMany({
+                        where: { id },
+                        data: { adminData }
+                    });
+
+                    continue;
+                }
+
+                await tx.order.updateMany({
+                    where: { id },
+                    data: {
+                        adminData,
+                        fulfilledAt: adminData.status === 'Completed' ? new Date() : undefined
+                    }
+                });
+                const paymentStatus = adminData.paymentStatus === 'Paid'
+                    ? 'PAID'
+                    : adminData.paymentStatus === 'Refunded'
+                        ? 'REFUNDED'
+                        : 'PENDING';
+                const existingPayment = await tx.payment.findFirst({
+                    where: { orderId: id },
+                    orderBy: { createdAt: 'desc' }
+                });
+                if (existingPayment) {
+                    await tx.payment.update({
+                        where: { id: existingPayment.id },
+                        data: {
+                            status: paymentStatus,
+                            amount: adminData.paymentAmount,
+                            reference: adminData.paymentReference || null,
+                            notes: adminData.paymentNotes || null,
+                            paidAt: paymentStatus === 'PAID'
+                                ? (existingPayment.paidAt || new Date())
+                                : existingPayment.paidAt
+                        }
+                    });
+                }
+            }
+            await recordAdminAudit(req.admin, 'sync', 'orders', null, { count: incoming.length }, tx);
+        });
+        res.json(await loadAdminOrders());
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.patch('/api/admin/orders/:id/fulfillment', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const input = validateFulfillment(req.body);
+        const existing = await prisma.order.findUnique({ where: { id: req.params.id } });
+        if (!existing) throw new OrderOperationError('Order not found.', 404, 'ORDER_NOT_FOUND');
+        if (!['PAID', 'PROCESSING', 'SHIPPED'].includes(existing.status)) {
+            throw new OrderOperationError('Only paid orders can enter fulfillment.', 409, 'INVALID_ORDER_STATE');
+        }
+
+        const status = input.status;
+        const order = await prisma.$transaction(async tx => {
+            const updated = await tx.order.update({
+                where: { id: existing.id },
+                data: {
+                    status,
+                    fulfillmentStatus: status,
+                    trackingCarrier: input.trackingCarrier || existing.trackingCarrier,
+                    trackingNumber: input.trackingNumber || existing.trackingNumber,
+                    trackingUrl: input.trackingUrl || existing.trackingUrl,
+                    shippedAt: status === 'SHIPPED' ? (existing.shippedAt || new Date()) : existing.shippedAt,
+                    deliveredAt: status === 'DELIVERED' ? (existing.deliveredAt || new Date()) : existing.deliveredAt
+                }
+            });
+            await tx.orderTimelineEvent.create({
+                data: {
+                    orderId: existing.id,
+                    type: status,
+                    message: status === 'SHIPPED'
+                        ? `Order shipped with tracking ${input.trackingNumber}.`
+                        : `Order marked ${status.toLowerCase()}.`,
+                    actorEmail: req.admin.email,
+                    metadata: input
+                }
+            });
+            await recordAdminAudit(req.admin, 'fulfillment-update', 'order', existing.id, input, tx);
+            return updated;
+        });
+        const email = await deliverOrderEmail(order, status.toLowerCase(), input);
+        res.json({ order: serializeCommerceAdminOrder({ ...order, items: [], payments: [], supportNotes: [], timeline: [], emailDeliveries: email ? [email] : [] }) });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/admin/orders/:id/cancel', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const { reason } = validateReason(req.body);
+        const existing = await prisma.order.findUnique({
+            where: { id: req.params.id },
+            include: { payments: { orderBy: { createdAt: 'desc' } } }
+        });
+        if (!existing) throw new OrderOperationError('Order not found.', 404, 'ORDER_NOT_FOUND');
+        if (['CANCELED', 'SHIPPED', 'DELIVERED', 'REFUNDED'].includes(existing.status)) {
+            throw new OrderOperationError('Canceled, shipped, delivered, or refunded orders cannot be canceled.', 409, 'INVALID_ORDER_STATE');
+        }
+        if (!existing.payments.some(payment => payment.status === 'PAID')) {
+            await releaseOrder(existing.id, 'CANCELED');
+        }
+        const order = await prisma.$transaction(async tx => {
+            const updated = await tx.order.update({
+                where: { id: existing.id },
+                data: { status: 'CANCELED', canceledAt: new Date(), cancellationReason: reason }
+            });
+            await tx.orderTimelineEvent.create({
+                data: { orderId: existing.id, type: 'CANCELED', message: reason, actorEmail: req.admin.email }
+            });
+            await recordAdminAudit(req.admin, 'cancel', 'order', existing.id, { reason }, tx);
+            return updated;
+        });
+        await deliverOrderEmail(order, 'canceled', { reason });
+        res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/admin/orders/:id/refund', adminLimiter, requireAdmin, async (req, res, next) => {
+    let claimedPaymentId = null;
+    try {
+        const input = validateRefund(req.body);
+        if (!stripe) throw new OrderOperationError('Stripe refunds are not configured.', 503, 'REFUNDS_NOT_CONFIGURED');
+        const existing = await prisma.order.findUnique({
+            where: { id: req.params.id },
+            include: { payments: { orderBy: { createdAt: 'desc' } } }
+        });
+        if (!existing) throw new OrderOperationError('Order not found.', 404, 'ORDER_NOT_FOUND');
+        const payment = existing.payments.find(item => item.status === 'PAID' && item.providerPaymentIntentId);
+        if (!payment) throw new OrderOperationError('No refundable Stripe payment was found.', 409, 'PAYMENT_NOT_REFUNDABLE');
+        const paidAmount = Number(payment.amount.toString());
+        const amount = input.amount ?? paidAmount;
+        const alreadyRefunded = Number(payment.refundAmount.toString());
+        if (amount + alreadyRefunded > paidAmount) {
+            throw new OrderOperationError('Refund amount exceeds the remaining paid amount.');
+        }
+        const claim = await prisma.payment.updateMany({
+            where: { id: payment.id, refundPending: false },
+            data: { refundPending: true }
+        });
+        if (claim.count !== 1) {
+            throw new OrderOperationError('Another refund is already processing for this payment.', 409, 'REFUND_IN_PROGRESS');
+        }
+        claimedPaymentId = payment.id;
+
+        const refund = await stripe.refunds.create({
+            payment_intent: payment.providerPaymentIntentId,
+            amount: Math.round(amount * 100),
+            metadata: { orderId: existing.id, reason: input.reason.slice(0, 500) }
+        }, { idempotencyKey: `refund-${existing.id}-${Math.round((alreadyRefunded + amount) * 100)}` });
+
+        const fullyRefunded = amount + alreadyRefunded === paidAmount;
+        const order = await prisma.$transaction(async tx => {
+            await tx.payment.update({
+                where: { id: payment.id },
+                data: {
+                    refundAmount: { increment: amount },
+                    providerRefundId: refund.id,
+                    refundPending: false,
+                    status: fullyRefunded ? 'REFUNDED' : 'PAID',
+                    notes: input.reason
+                }
+            });
+            const updated = await tx.order.update({
+                where: { id: existing.id },
+                data: {
+                    status: fullyRefunded ? 'REFUNDED' : existing.status,
+                    refundedAt: fullyRefunded ? new Date() : existing.refundedAt
+                }
+            });
+            await tx.orderTimelineEvent.create({
+                data: {
+                    orderId: existing.id,
+                    type: fullyRefunded ? 'REFUNDED' : 'PARTIAL_REFUND',
+                    message: `${input.reason} ($${amount.toFixed(2)})`,
+                    actorEmail: req.admin.email,
+                    metadata: { refundId: refund.id, amount }
+                }
+            });
+            await recordAdminAudit(req.admin, 'refund', 'order', existing.id, { refundId: refund.id, amount }, tx);
+            return updated;
+        });
+        claimedPaymentId = null;
+        await deliverOrderEmail(order, 'refunded', { reason: input.reason, amount: `$${amount.toFixed(2)}` });
+        res.json({ success: true, refundId: refund.id, amount, fullyRefunded });
+    } catch (error) {
+        if (claimedPaymentId) {
+            await prisma.payment.updateMany({
+                where: { id: claimedPaymentId, refundPending: true },
+                data: { refundPending: false }
+            }).catch(releaseError => console.error('Unable to release refund lock:', releaseError));
+        }
+        next(error);
+    }
+});
+
+app.post('/api/admin/orders/:id/support-notes', adminLimiter, requireAdmin, async (req, res, next) => {
+    try {
+        const message = String(req.body?.message || '').trim();
+        if (!message || message.length > 4000) {
+            throw new OrderOperationError('Support note must be between 1 and 4,000 characters.');
+        }
+        const order = await prisma.order.findUnique({ where: { id: req.params.id }, select: { id: true } });
+        if (!order) throw new OrderOperationError('Order not found.', 404, 'ORDER_NOT_FOUND');
+        const note = await prisma.orderSupportNote.create({
+            data: {
+                orderId: order.id,
+                authorEmail: req.admin.email,
+                message,
+                source: 'ADMIN',
+                customerVisible: Boolean(req.body?.customerVisible)
+            }
+        });
+        await recordAdminAudit(req.admin, 'support-note', 'order', order.id, { noteId: note.id });
+        res.status(201).json(note);
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/support/orders', writeLimiter, async (req, res, next) => {
+    try {
+        if (!prisma) return unavailable(res, 'support', 'Hosted order support is not configured.');
+        const input = validateSupport(req.body);
+        const order = await prisma.order.findFirst({
+            where: { id: input.orderId, email: { equals: input.email, mode: 'insensitive' } }
+        });
+        if (order) {
+            await prisma.orderSupportNote.create({
+                data: {
+                    orderId: order.id,
+                    authorEmail: input.email,
+                    message: input.message,
+                    source: 'CUSTOMER',
+                    customerVisible: true
+                }
+            });
+            if (config.emailConfigured && config.supportEmail) {
+                await sendResendEmail(config, {
+                    to: [config.supportEmail],
+                    reply_to: input.email,
+                    subject: `Order support request — ${order.id}`,
+                    html: `<p>Order: ${order.id}</p><p>${input.message.replace(/[&<>"']/g, '')}</p>`
+                });
+            }
+        }
+        res.status(202).json({ message: 'If the order details match, the support request has been received.' });
+    } catch (error) {
+        next(error);
+    }
 });
 
 app.get('/api/health', async (req, res) => {
@@ -432,6 +1195,7 @@ app.post('/api/commerce/checkout-sessions', writeLimiter, async (req, res, next)
                     product_data: {
                         name: line.product.name,
                         description: line.variant.name === 'Standard' ? undefined : `Variant: ${line.variant.name}`,
+                        tax_code: config.stripeDefaultTaxCode,
                         metadata: {
                             productId: line.product.id,
                             variantId: line.variant.id
@@ -440,8 +1204,12 @@ app.post('/api/commerce/checkout-sessions', writeLimiter, async (req, res, next)
                 }
             })),
             customer_email: input.email || undefined,
+            automatic_tax: { enabled: config.automaticTaxEnabled },
             shipping_address_collection: { allowed_countries: config.allowedCountries },
-            shipping_options: config.shippingRateIds.map(shippingRate => ({ shipping_rate: shippingRate })),
+            shipping_options: buildCheckoutShippingOptions(
+                decimalToCents(reservation.order.subtotal.toString()),
+                config
+            ),
             success_url: `${config.publicUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${config.publicUrl}/?checkout=cancelled`,
             expires_at: Math.floor(reservation.expiresAt.getTime() / 1000),
@@ -485,6 +1253,8 @@ const staticFiles = new Set([
     'products.json', 'styles.css'
 ]);
 app.get('/', (req, res) => res.sendFile('index.html', { root: staticRoot }));
+app.get('/product/:handle', (req, res) => res.sendFile('index.html', { root: staticRoot }));
+app.get('/policies/:policy', (req, res) => res.sendFile('index.html', { root: staticRoot }));
 app.use('/assets/products', express.static(path.join(staticRoot, 'assets', 'products'), {
     fallthrough: false,
     immutable: true,
@@ -500,9 +1270,9 @@ app.use('/api', (req, res) => {
 });
 app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
-    if (error instanceof ValidationError) {
+    if (error instanceof ValidationError || error instanceof AdminValidationError || error instanceof OrderOperationError) {
         return res.status(error.statusCode).json({
-            error: 'VALIDATION_ERROR',
+            error: error.code || 'VALIDATION_ERROR',
             message: error.message,
             details: error.details
         });

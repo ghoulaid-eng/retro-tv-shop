@@ -15,6 +15,10 @@ enum OrderStatus {
   CANCELED
   EXPIRED
   NEEDS_REVIEW
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  REFUNDED
 }
 
 enum PaymentStatus {
@@ -35,12 +39,22 @@ enum CustomOrderStatus {
 model Product {
   id            String           @id
   name          String
+  handle        String           @unique
   emoji         String?
   description   String
+  descriptionHtml String?
   category      String?
   subcategories String[]
   price         Decimal          @db.Decimal(12, 2)
   salePrice     Decimal?         @db.Decimal(12, 2)
+  shippingPrice Decimal          @default(0) @db.Decimal(12, 2)
+  shippingWeight Decimal         @default(0) @db.Decimal(12, 2)
+  shippingWeightUnit String      @default("oz")
+  packageSize   String?
+  mustShipAlone Boolean          @default(false)
+  trackInventory Boolean         @default(true)
+  variantGroupName String        @default("Options")
+  sourceUrl     String?
   active        Boolean          @default(true)
   variants      ProductVariant[]
   media         ProductMedia[]
@@ -98,8 +112,26 @@ model Order {
   reservationExpiresAt  DateTime?
   fulfilledAt           DateTime?
   releasedAt            DateTime?
+  adminData             Json?
+  fulfillmentStatus     String        @default("UNFULFILLED")
+  trackingCarrier       String?
+  trackingNumber        String?
+  trackingUrl           String?
+  shippingMethod        String?
+  shippingAmount        Decimal       @default(0) @db.Decimal(12, 2)
+  taxAmount             Decimal       @default(0) @db.Decimal(12, 2)
+  shippingAddress       Json?
+  stripeShippingRateId  String?
+  shippedAt             DateTime?
+  deliveredAt           DateTime?
+  canceledAt            DateTime?
+  refundedAt            DateTime?
+  cancellationReason    String?
   items                 OrderItem[]
   payments              Payment[]
+  timeline              OrderTimelineEvent[]
+  supportNotes          OrderSupportNote[]
+  emailDeliveries       TransactionalEmail[]
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -131,11 +163,59 @@ model Payment {
   currency                String
   status                  PaymentStatus @default(PENDING)
   paidAt                  DateTime?
+  reference               String?
+  notes                   String?
+  refundAmount            Decimal       @default(0) @db.Decimal(12, 2)
+  providerRefundId         String?       @unique
+  refundPending            Boolean       @default(false)
   order                   Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 
   @@index([orderId, status])
+}
+
+model OrderTimelineEvent {
+  id         String   @id @default(cuid())
+  orderId    String
+  type       String
+  message    String
+  actorEmail String?
+  metadata   Json?
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model OrderSupportNote {
+  id              String   @id @default(cuid())
+  orderId         String
+  authorEmail     String
+  message         String
+  source          String
+  customerVisible Boolean  @default(false)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model TransactionalEmail {
+  id                String   @id @default(cuid())
+  orderId           String
+  type              String
+  recipient         String
+  subject           String
+  status            String
+  providerMessageId String?
+  error             String?
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  sentAt            DateTime?
+
+  @@index([orderId, createdAt])
+  @@unique([orderId, type])
 }
 
 model WebhookEvent {
@@ -167,8 +247,30 @@ model CustomOrderRequest {
   deadline               String?
   additionalInfo         String?
   preferredPaymentMethod String?
+  adminData              Json?
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
   @@index([status, createdAt])
+}
+
+model AdminResource {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminEmail String
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([adminEmail, createdAt])
+  @@index([resource, resourceId])
 }

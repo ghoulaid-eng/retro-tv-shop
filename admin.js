@@ -191,6 +191,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentsTableBody = document.getElementById('paymentsTableBody');
     const emptyPaymentsState = document.getElementById('emptyPaymentsState');
     const resetPaymentMethodsButton = document.getElementById('resetPaymentMethods');
+    const adminAuthPanel = document.getElementById('adminAuthPanel');
+    const adminShell = document.getElementById('adminShell');
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminLoginEmail = document.getElementById('adminLoginEmail');
+    const adminLoginPassword = document.getElementById('adminLoginPassword');
+    const adminLoginStatus = document.getElementById('adminLoginStatus');
+    const adminModeMessage = document.getElementById('adminModeMessage');
 
     let products = [];
     let orders = [];
@@ -203,6 +210,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let productImagesDraft = [];
     let productVideosDraft = [];
     let handleManuallyEdited = false;
+    let productionAdmin = false;
+    let adminAccessToken = sessionStorage.getItem('sip-of-ghoulaid-admin-token') || '';
+    let productionBootstrap = null;
+    let publicConfig = null;
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioContext = AudioContextClass ? new AudioContextClass() : null;
@@ -233,6 +244,103 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.querySelectorAll('.click-item').forEach(item => {
             if (item.dataset.clickSoundBound === 'true') {
                 return;
+            }
+
+            async function adminRequest(path, options = {}) {
+                const response = await fetch(path, {
+                    ...options,
+                    headers: {
+                        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                        ...options.headers,
+                        Authorization: `Bearer ${adminAccessToken}`
+                    }
+                });
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        sessionStorage.removeItem('sip-of-ghoulaid-admin-token');
+                    }
+                    throw new Error(body.message || 'Admin request failed.');
+                }
+                return body;
+            }
+
+            async function configureAdminMode() {
+                publicConfig = await fetch('/api/commerce/config', { cache: 'no-store' }).then(response => response.json());
+                if (!publicConfig.adminAuthAvailable) {
+                    return true;
+                }
+
+                if (!adminAccessToken) {
+                    adminAuthPanel.classList.remove('hidden');
+                    adminShell.classList.add('hidden');
+                    adminModeMessage.innerHTML = '<strong>SECURE PRODUCTION ADMIN:</strong> Sign in with an allowlisted account to manage hosted orders.';
+                    return false;
+                }
+
+                try {
+                    const session = await adminRequest('/api/admin/session');
+                    productionBootstrap = await adminRequest('/api/admin/bootstrap');
+                    productionAdmin = true;
+                    adminAuthPanel.classList.add('hidden');
+                    adminShell.classList.remove('hidden');
+                    adminModeMessage.classList.remove('error');
+                    adminModeMessage.textContent = `PRODUCTION ADMIN: Signed in as ${session.email}. Order actions affect hosted data and may email customers or issue Stripe refunds.`;
+                    return true;
+                } catch (error) {
+                    adminAccessToken = '';
+                    sessionStorage.removeItem('sip-of-ghoulaid-admin-token');
+                    adminAuthPanel.classList.remove('hidden');
+                    adminShell.classList.add('hidden');
+                    setStatus(adminLoginStatus, error.message);
+                    return false;
+                }
+            }
+
+            adminLoginForm?.addEventListener('submit', async event => {
+                event.preventDefault();
+                setStatus(adminLoginStatus, 'Signing in...');
+                try {
+                    const response = await fetch(`${publicConfig.supabaseUrl}/auth/v1/token?grant_type=password`, {
+                        method: 'POST',
+                        headers: {
+                            apikey: publicConfig.supabaseAnonKey,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: adminLoginEmail.value.trim(),
+                            password: adminLoginPassword.value
+                        })
+                    });
+                    const session = await response.json();
+                    if (!response.ok || !session.access_token) {
+                        throw new Error(session.error_description || session.msg || 'Sign in failed.');
+                    }
+                    sessionStorage.setItem('sip-of-ghoulaid-admin-token', session.access_token);
+                    window.location.reload();
+                } catch (error) {
+                    setStatus(adminLoginStatus, error.message);
+                }
+            });
+
+            async function refreshProductionOrders() {
+                const bootstrap = await adminRequest('/api/admin/bootstrap');
+                orders = bootstrap.orders;
+                renderOrders(orders);
+                renderPayments();
+            }
+
+            async function runOrderOperation(order, path, body) {
+                try {
+                    await adminRequest(`/api/admin/orders/${encodeURIComponent(order.id)}${path}`, {
+                        method: path === '/fulfillment' ? 'PATCH' : 'POST',
+                        body: JSON.stringify(body)
+                    });
+                    await refreshProductionOrders();
+                    setStatus(paymentManagerStatus, `Order ${order.id} updated.`);
+                } catch (error) {
+                    setStatus(paymentManagerStatus, error.message);
+                }
             }
 
             item.addEventListener('click', () => {
@@ -691,18 +799,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.appendChild(detailCell);
 
             const statusCell = document.createElement('td');
-            const statusSelect = document.createElement('select');
-            ['Pending', 'In Progress', 'Ready to Confirm', 'Completed'].forEach(optionValue => {
-                const option = document.createElement('option');
-                option.value = optionValue;
-                option.textContent = optionValue;
-                option.selected = optionValue === order.status;
-                statusSelect.appendChild(option);
-            });
-            statusSelect.addEventListener('change', async () => {
-                await saveOrdersWithLatest(currentOrders => currentOrders.map(item => item.id === order.id ? { ...item, status: statusSelect.value } : item));
-            });
-            statusCell.appendChild(statusSelect);
+            if (productionAdmin && order.kind === 'commerce') {
+                const status = document.createElement('strong');
+                status.textContent = order.fulfillmentStatus || order.status;
+                statusCell.appendChild(status);
+            } else {
+                const statusSelect = document.createElement('select');
+                ['Pending', 'In Progress', 'Ready to Confirm', 'Completed'].forEach(optionValue => {
+                    const option = document.createElement('option');
+                    option.value = optionValue;
+                    option.textContent = optionValue;
+                    option.selected = optionValue === order.status;
+                    statusSelect.appendChild(option);
+                });
+                statusSelect.addEventListener('change', async () => {
+                    await saveOrdersWithLatest(currentOrders => currentOrders.map(item => item.id === order.id ? { ...item, status: statusSelect.value } : item));
+                });
+                statusCell.appendChild(statusSelect);
+            }
             row.appendChild(statusCell);
 
             const paymentCell = document.createElement('td');
@@ -723,14 +837,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const actionsCell = document.createElement('td');
             actionsCell.className = 'admin-actions';
-            const deleteButton = document.createElement('button');
-            deleteButton.type = 'button';
-            deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
-            deleteButton.textContent = 'Delete';
-            deleteButton.addEventListener('click', async () => {
-                await saveOrdersWithLatest(currentOrders => currentOrders.filter(item => item.id !== order.id));
-            });
-            actionsCell.appendChild(deleteButton);
+            if (productionAdmin && order.kind === 'commerce') {
+                const addAction = (label, action) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'table-action-btn click-item';
+                    button.textContent = label;
+                    button.addEventListener('click', action);
+                    actionsCell.appendChild(button);
+                };
+                addAction('Prepare', () => runOrderOperation(order, '/fulfillment', { status: 'PROCESSING' }));
+                addAction('Ship', () => {
+                    const trackingNumber = window.prompt('Tracking number');
+                    if (!trackingNumber) return;
+                    const trackingCarrier = window.prompt('Carrier (for example USPS)', '') || '';
+                    const trackingUrl = window.prompt('HTTPS tracking URL (optional)', '') || '';
+                    runOrderOperation(order, '/fulfillment', { status: 'SHIPPED', trackingNumber, trackingCarrier, trackingUrl });
+                });
+                addAction('Delivered', () => runOrderOperation(order, '/fulfillment', { status: 'DELIVERED' }));
+                addAction('Support note', () => {
+                    const message = window.prompt('Internal customer support note');
+                    if (message) runOrderOperation(order, '/support-notes', { message, customerVisible: false });
+                });
+                addAction('Cancel', () => {
+                    const reason = window.prompt('Cancellation reason');
+                    if (reason) runOrderOperation(order, '/cancel', { reason });
+                });
+                addAction('Refund', () => {
+                    const reason = window.prompt('Refund reason');
+                    if (!reason) return;
+                    const amount = window.prompt('Refund amount (leave blank for full refund)', '');
+                    runOrderOperation(order, '/refund', { reason, amount: amount || null });
+                });
+            } else {
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'table-action-btn table-action-btn-danger click-item';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', async () => {
+                    await saveOrdersWithLatest(currentOrders => currentOrders.filter(item => item.id !== order.id));
+                });
+                actionsCell.appendChild(deleteButton);
+            }
             row.appendChild(actionsCell);
 
             ordersTableBody.appendChild(row);
@@ -1276,7 +1424,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+        if (!await configureAdminMode()) {
+            return;
+        }
+        if (productionAdmin) {
+            ({ products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer } = productionBootstrap);
+        } else {
+            [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer] = await Promise.all([
             window.ShopData.getProducts(),
             window.ShopData.getOrders(),
             window.ShopData.getPaymentMethods(),
@@ -1285,7 +1439,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.ShopData.getSettings(),
             window.ShopData.getAppCenter(),
             window.ShopData.getDesigner()
-        ]);
+            ]);
+        }
 
         renderProducts(products);
         renderOrders(orders);

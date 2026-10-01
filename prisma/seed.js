@@ -32,9 +32,17 @@ async function main() {
                 name: product.name,
                 emoji: product.emoji || null,
                 description: product.description || '',
+                descriptionHtml: product.descriptionHtml || null,
+                handle: product.handle,
                 subcategories: product.subcategories || [],
                 price,
                 salePrice,
+                shippingPrice: new Prisma.Decimal(String(product.shippingPrice || 0)),
+                shippingWeight: new Prisma.Decimal(String(product.shippingWeight || 0)),
+                shippingWeightUnit: product.shippingWeightUnit || 'oz',
+                packageSize: product.packageSize || null,
+                mustShipAlone: Boolean(product.mustShipAlone),
+                sourceUrl: product.sourceUrl || null,
                 active: true
             },
             create: {
@@ -42,9 +50,17 @@ async function main() {
                 name: product.name,
                 emoji: product.emoji || null,
                 description: product.description || '',
+                descriptionHtml: product.descriptionHtml || null,
+                handle: product.handle,
                 subcategories: product.subcategories || [],
                 price,
-                salePrice
+                salePrice,
+                shippingPrice: new Prisma.Decimal(String(product.shippingPrice || 0)),
+                shippingWeight: new Prisma.Decimal(String(product.shippingWeight || 0)),
+                shippingWeightUnit: product.shippingWeightUnit || 'oz',
+                packageSize: product.packageSize || null,
+                mustShipAlone: Boolean(product.mustShipAlone),
+                sourceUrl: product.sourceUrl || null
             }
         });
 

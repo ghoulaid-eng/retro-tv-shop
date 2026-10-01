@@ -66,12 +66,20 @@ const reviewProductInput = document.getElementById('reviewProduct');
 const reviewCommentInput = document.getElementById('reviewComment');
 const reviewStatus = document.getElementById('reviewStatus');
 const reviewsList = document.getElementById('reviewsList');
+const orderSupportForm = document.getElementById('orderSupportForm');
+const orderSupportStatus = document.getElementById('orderSupportStatus');
+const productDetailContent = document.getElementById('productDetailContent');
+const productDetailBack = document.getElementById('productDetailBack');
+const policyContent = document.getElementById('policyContent');
 
 let isPoweredOn = true;
 let volumeLevel = 100;
 let touchStartX = 0;
 let touchEndX = 0;
 let shopProducts = [];
+let latestBroadcastTimer = null;
+let latestBroadcastProductId = '';
+let latestBroadcastDeck = [];
 let availablePaymentMethods = [];
 let savedUsers = [];
 let currentUserState = {};
@@ -81,7 +89,10 @@ let currentSettings = {};
 let commerceCapabilities = {
     catalogAvailable: false,
     customOrdersAvailable: false,
-    checkoutAvailable: false
+    checkoutAvailable: false,
+    automaticTaxEnabled: false,
+    freeShippingThresholdCents: 5000,
+    localPickupAvailable: false
 };
 let catalogSource = 'browser-local';
 const MAX_CART_LINE_QUANTITY = 10;
@@ -90,11 +101,156 @@ const REVIEWS_STORAGE_KEY = 'sip-of-ghoulaid-reviews';
 const CHANNEL_NUMBERS = {
     home: '01',
     shop: '02',
+    'product-detail': '02',
     account: '03',
     'custom-order': '04',
     summon: '06',
     about: '07',
-    reviews: '08'
+    reviews: '08',
+    policies: '09'
+};
+const POLICY_CONTENT = {
+    privacy: {
+        title: 'Privacy Policy',
+        updated: 'April 17, 2026',
+        intro: [
+            'This Privacy Policy explains how Sip of Ghoulaid collects, uses, and shares your personal information when you shop on this website or contact us.',
+            'Sip of Ghoulaid is a small handmade business based in Southern California, United States.'
+        ],
+        sections: [
+            {
+                heading: 'Information We Collect',
+                paragraphs: ['When you place an order, we receive:'],
+                bullets: ['Your name', 'Shipping address', 'Email address', 'Phone number, if provided', 'Order details'],
+                after: ['If you message us, we collect your name, email, and message content.', 'We do not collect or store payment-card information. Payments are processed securely by Stripe or the applicable payment provider.']
+            },
+            {
+                heading: 'How We Use Your Information',
+                bullets: ['Process and ship your orders', 'Send shipping updates and respond to your messages', 'Provide customer support', 'Meet legal and tax record-keeping requirements']
+            },
+            {
+                heading: 'Sharing Your Information',
+                paragraphs: ['We do not sell or rent your information. We may share it only as needed with:'],
+                bullets: ['Shipping carriers such as USPS or UPS to deliver your package', 'Stripe and other payment processors to complete transactions', 'Service providers that host or operate our storefront', 'Legal authorities if required by law']
+            },
+            {
+                heading: 'Data Retention',
+                paragraphs: ['We keep order information only as long as needed to fulfill orders, provide support, and comply with tax laws—usually 3–7 years—then securely delete or anonymize it.']
+            },
+            {
+                heading: 'Your Rights',
+                paragraphs: ['You can request access to, correction of, or deletion of your personal information by contacting us. California residents may have additional rights under state law.']
+            },
+            {
+                heading: 'Security',
+                paragraphs: ['We take reasonable steps to protect your data, but no online method is 100% secure.']
+            },
+            {
+                heading: 'Changes to This Policy',
+                paragraphs: ['We may update this policy occasionally. The “Last Updated” date shows the latest version.']
+            },
+            {
+                heading: 'Contact Us',
+                paragraphs: ['Sip of Ghoulaid', 'California, United States', 'Email: support@sipofghoulaid.com', 'By placing an order, you agree to this Privacy Policy.']
+            }
+        ]
+    },
+    terms: {
+        title: 'Terms and Conditions',
+        updated: 'April 17, 2026',
+        intro: ['Welcome to Sip of Ghoulaid! These Terms and Conditions govern your purchase of products from our shop. By placing an order, you agree to these terms.'],
+        sections: [
+            { heading: '1. Our Products', paragraphs: ['All items are handmade in small batches using premium soy wax and fragrance oils. Slight variations in color, shape, scent strength, or fill level are normal and part of the handmade process. We strive for consistency, but exact matches to photos cannot be guaranteed.'] },
+            { heading: '2. Orders and Pricing', bullets: ['All prices are in USD and include any applicable taxes unless stated otherwise.', 'We reserve the right to correct pricing or typographical errors before shipping.', 'We may refuse, cancel, or limit any order at our discretion, including suspected fraud or stock issues.'] },
+            { heading: '3. Payments', paragraphs: ['Payments are processed securely through Stripe and its payment providers. We do not store your payment-card information.'] },
+            { heading: '4. Shipping and Delivery', bullets: ['Shipping times are estimates only and not guaranteed. Delays due to carriers, weather, or high volume may occur.', 'Once your package is handed to the carrier, we are not responsible for carrier delays.', 'Please provide a correct shipping address. We are not liable for orders sent to incorrect addresses.'] },
+            { heading: '5. Returns, Refunds, and Exchanges', paragraphs: ['All sales are final. Please see our separate No Returns or Refunds Policy for full details. We do not accept returns or exchanges due to the handmade and perishable nature of our wax products.'] },
+            { heading: '6. Intellectual Property', paragraphs: ['All shop content—including photos, descriptions, designs, logos, and product names—is owned by Sip of Ghoulaid and protected by copyright and trademark laws. You may not use, copy, or reproduce our content without written permission.'] },
+            { heading: '7. Limitation of Liability', paragraphs: ['To the fullest extent permitted by law, Sip of Ghoulaid is not liable for indirect, incidental, or consequential damages arising from your purchase or use of our products. Our total liability shall not exceed the amount paid for the specific item in question.'] },
+            { heading: '8. Product Use and Safety', paragraphs: ['Our wax melts are for use in electric warmers only. Never leave a warmer unattended. Keep out of reach of children and pets. We are not responsible for damage, injury, or issues resulting from improper use.'] },
+            { heading: '9. Changes to Terms', paragraphs: ['We may update these Terms and Conditions occasionally. The “Last Updated” date shows the latest version. Continued use of our shop after changes means you accept the updated terms.'] },
+            { heading: '10. Governing Law', paragraphs: ['These terms are governed by the laws of the State of California, United States, without regard to conflict-of-law principles.'] },
+            { heading: 'Contact Us', paragraphs: ['Questions about these Terms and Conditions may be sent to support@sipofghoulaid.com.'] }
+        ]
+    },
+    shipping: {
+        title: 'Shipping and Delivery Policy',
+        updated: 'April 17, 2026',
+        intro: ['Thank you for shopping with Sip of Ghoulaid!'],
+        sections: [
+            { heading: 'Processing Time', paragraphs: ['All orders are handmade to order. Please allow 1–3 business days for processing and preparation before your order ships. During busy periods or holidays, processing may take up to 5 business days. We will notify you if there is a delay.'] },
+            { heading: 'Shipping Methods and Costs', paragraphs: ['We ship within the United States via USPS.'], bullets: ['Shipping cost is calculated at checkout based on your location and package weight.', 'Standard shipping is available. Expedited or priority options may be available at checkout.'] },
+            { heading: 'Shipping Times', bullets: ['Standard shipping: 3–7 business days, not guaranteed'], after: ['Shipping times are estimates and can be affected by carrier delays, weather, holidays, or high shipping volume. We are not responsible for delays caused by the shipping carrier.'] },
+            { heading: 'Order Tracking', paragraphs: ['You will receive a tracking number by email once your package ships. You can track your order through the link provided or on the USPS website.'] },
+            { heading: 'International Shipping', paragraphs: ['We do not offer international shipping at this time.'] },
+            { heading: 'Address Accuracy', paragraphs: ['Please double-check your shipping address at checkout. We are not responsible for orders shipped to an incorrect or incomplete address. If an order is returned due to an incorrect address, you are responsible for reshipping costs, or we may issue a refund minus original shipping fees.'] },
+            { heading: 'Damaged or Lost Packages', paragraphs: ['If your package arrives damaged, contact us with photos within 48 hours of delivery.', 'If your package is lost by the carrier, we will work with you and the carrier to resolve the issue.'] },
+            { heading: 'Questions', paragraphs: ['Email support@sipofghoulaid.com with shipping questions.'] }
+        ]
+    },
+    returns: {
+        title: 'No Returns or Refunds Policy',
+        intro: ['Due to the handmade and custom nature of our products, we do not accept returns, exchanges, or refunds. All sales are final.'],
+        sections: [
+            {
+                heading: 'Please Note',
+                bullets: [
+                    'Each item is made to order with care using premium soy wax and fragrance oils.',
+                    'We thoroughly inspect every order before shipping to ensure quality.',
+                    'Slight variations in color, shape, or fill level are normal and part of the handmade process.',
+                    'Once an item leaves our studio, we cannot accept returns for hygiene and safety reasons because melted-wax products cannot be resold.'
+                ]
+            },
+            {
+                heading: 'Exceptions',
+                paragraphs: ['We want you to be happy with your purchase. If your item arrives damaged or significantly different from what you ordered—for example, the wrong scent or a broken item—contact us with photos within 48 hours of delivery. We will review your case and may offer a replacement or refund at our discretion.']
+            },
+            {
+                heading: 'Before Purchasing',
+                bullets: ['Read the full item description carefully', 'Check all listing photos', 'Message us with any questions before buying'],
+                after: ['By completing your purchase, you agree to this No Returns or Refunds Policy.']
+            }
+        ]
+    },
+    'custom-orders': {
+        title: 'Custom Order and Deposit Policy',
+        updated: 'April 17, 2026',
+        intro: ['Custom pieces require design, mold-making, printing, pouring, curing, painting, and other work that begins specifically for your order.'],
+        sections: [
+            { heading: 'Approval and Quote', paragraphs: ['Submitting a custom-order request is not an accepted order. We will discuss the design, scope, timing, and final price with you before work begins. A custom order starts only after you approve the written details and deposit request.'] },
+            { heading: '50% Non-Refundable Deposit', paragraphs: ['A deposit equal to 50% of the approved custom-order total is required before design or production begins. The deposit is non-refundable because it reserves production time and covers design work, custom materials, molds, prototypes, and other order-specific costs.'] },
+            { heading: 'Remaining Balance', paragraphs: ['The remaining balance and any approved shipping charges are due before the completed order ships. The order will not ship until payment is complete.'] },
+            { heading: 'Changes and Cancellations', paragraphs: ['Requested changes may affect price and delivery timing. Changes made after approval may require an additional payment. If you cancel after paying the deposit, the deposit is retained. Work completed beyond the deposit amount may also be invoiced.'] },
+            { heading: 'Creative Variations', paragraphs: ['Handmade custom products may have slight differences in color, shape, finish, scent strength, or other details. These normal handmade variations are not defects.'] },
+            { heading: 'One-of-a-Kind Work', paragraphs: ['When an order is approved as one-of-a-kind, its custom mold may be retired after fulfillment as described in the approved order details.'] },
+            { heading: 'Agreement', paragraphs: ['Paying the deposit confirms that you approve the custom-order details and agree to this policy and the shop’s No Returns or Refunds Policy.'] }
+        ]
+    },
+    contact: {
+        title: 'Contact and Support Policy',
+        updated: 'April 17, 2026',
+        intro: ['We are here to help with product questions, order updates, shipping concerns, damaged deliveries, and custom-order discussions.'],
+        sections: [
+            { heading: 'Contact', paragraphs: ['Email: support@sipofghoulaid.com', 'You may also use the Order Support form on the Summon Us channel for an existing checkout order.'] },
+            { heading: 'What to Include', bullets: ['Your order ID and the email used for the order', 'A clear description of the issue', 'Photos of damage or an incorrect item when applicable'] },
+            { heading: 'Damaged or Incorrect Orders', paragraphs: ['Report damaged or significantly incorrect items with photos within 48 hours of delivery so we can review the issue.'] },
+            { heading: 'Response Time', paragraphs: ['We aim to respond within 2 business days. Response times may be longer during holidays or high-volume periods.'] },
+            { heading: 'Payment Security', paragraphs: ['Never email payment-card numbers or account passwords. We will never ask you to send full payment-card information by email or through the support form.'] }
+        ]
+    },
+    legal: {
+        title: 'Legal Notice',
+        updated: 'April 17, 2026',
+        intro: ['Sip of Ghoulaid is a small handmade business offering soy wax melts and resin products. All items are created and sold by Sip of Ghoulaid.'],
+        sections: [
+            { heading: 'Intellectual Property', paragraphs: ['All shop content—including product photos, descriptions, designs, logos, product names, and branding—is the exclusive property of Sip of Ghoulaid and is protected by United States copyright and trademark laws.', 'You may not copy, reproduce, distribute, modify, or use our content for commercial or personal purposes without prior written permission.'] },
+            { heading: 'Product Information', paragraphs: ['While we strive for accuracy, product descriptions, colors, and images are illustrative. Slight variations are normal due to the handmade nature of our products and may occur from batch to batch.'] },
+            { heading: 'Disclaimer of Warranties', paragraphs: ['All products are provided “as is” without express or implied warranties. We do not guarantee a specific scent strength or melt time because results vary based on warmer type, room conditions, and usage.'] },
+            { heading: 'Limitation of Liability', paragraphs: ['To the fullest extent permitted by law, Sip of Ghoulaid shall not be liable for direct, indirect, incidental, or consequential damages arising from the purchase or use of our products.'] },
+            { heading: 'Governing Law', paragraphs: ['This Legal Notice and disputes related to our shop are governed by the laws of the State of California, United States.'] },
+            { heading: 'Contact Information', paragraphs: ['For legal inquiries or permission requests, email support@sipofghoulaid.com.'] }
+        ]
+    }
 };
 
 async function commerceRequest(path, options = {}) {
@@ -123,6 +279,16 @@ async function commerceRequest(path, options = {}) {
     }
 }
 
+function getCartVariantQuantity(productId, variant = '') {
+    const activeUser = getActiveUser();
+    if (!activeUser) {
+        return 0;
+    }
+    return getCartEntry(activeUser.id).items
+        .filter(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(productId, variant))
+        .reduce((total, item) => total + item.quantity, 0);
+}
+
 async function loadCommerceCapabilities() {
     try {
         commerceCapabilities = await commerceRequest('/api/commerce/config');
@@ -130,12 +296,15 @@ async function loadCommerceCapabilities() {
         commerceCapabilities = {
             catalogAvailable: false,
             customOrdersAvailable: false,
-            checkoutAvailable: false
+            checkoutAvailable: false,
+            automaticTaxEnabled: false,
+            freeShippingThresholdCents: 5000,
+            localPickupAvailable: false
         };
     }
     if (commerceModeMessage) {
         commerceModeMessage.textContent = commerceCapabilities.checkoutAvailable
-            ? 'Secure checkout is enabled. Prices and stock are server-verified; shipping and the final total are calculated in Stripe.'
+            ? 'Secure checkout is enabled. Stripe calculates tax; free local pickup and free US shipping at $50 are available.'
             : 'Demo/browser-local cart only. Hosted checkout is unavailable; no payment or hosted order will be created.';
         commerceModeMessage.classList.toggle('success', commerceCapabilities.checkoutAvailable);
         commerceModeMessage.classList.toggle('error', !commerceCapabilities.checkoutAvailable);
@@ -317,11 +486,17 @@ function activateChannel(channelName, shouldPlaySound = false) {
         channel.setAttribute('aria-hidden', String(!isActive));
     });
 
-    channelSelector.value = targetChannel?.id || 'home';
     const activeChannel = targetChannel?.id || 'home';
-    const activeLabel = channelSelector.selectedOptions[0]?.textContent
-        ?.replace(/^[^\p{L}\p{N}]+/u, '')
-        .trim() || 'HOME';
+    if (!['product-detail', 'policies'].includes(activeChannel)) {
+        channelSelector.value = activeChannel;
+    }
+    const activeLabel = activeChannel === 'product-detail'
+        ? 'PRODUCT'
+        : activeChannel === 'policies'
+            ? 'STORE POLICIES'
+        : channelSelector.selectedOptions[0]?.textContent
+            ?.replace(/^[^\p{L}\p{N}]+/u, '')
+            .trim() || 'HOME';
 
     if (channelIndicator) {
         channelIndicator.textContent = `CH ${CHANNEL_NUMBERS[activeChannel] || '--'} · ${activeLabel}`;
@@ -330,9 +505,12 @@ function activateChannel(channelName, shouldPlaySound = false) {
     if (shouldPlaySound) {
         playClickSound();
         announceStatus(`${targetChannel?.querySelector('h1')?.textContent || 'Home'} channel selected.`);
-        const url = new URL(window.location.href);
-        url.searchParams.set('channel', activeChannel);
-        window.history.replaceState(null, '', url);
+        if (activeChannel !== 'product-detail') {
+            const url = new URL(window.location.href);
+            url.pathname = '/';
+            url.searchParams.set('channel', activeChannel);
+            window.history.pushState(null, '', url);
+        }
     }
 }
 
@@ -463,6 +641,374 @@ function createProductMedia(product) {
     return viewport;
 }
 
+async function toggleProductWishlist(product) {
+    const user = ensureActiveUser('Create or switch to an account to save a wishlist.');
+    if (!user) {
+        return null;
+    }
+
+    let wishlisted = false;
+    await saveWishlistsWithLatest(currentWishlists => {
+        const existingEntry = currentWishlists.find(entry => entry.userId === user.id);
+        const nextIds = new Set(existingEntry?.productIds || []);
+        if (nextIds.has(product.id)) {
+            nextIds.delete(product.id);
+        } else {
+            nextIds.add(product.id);
+        }
+        wishlisted = nextIds.has(product.id);
+        const nextEntry = {
+            userId: user.id,
+            productIds: [...nextIds],
+            updatedAt: new Date().toISOString()
+        };
+        return [...currentWishlists.filter(entry => entry.userId !== user.id), nextEntry];
+    });
+
+    setStatus(accountStatusMessage, `${product.name} wishlist updated.`);
+    return wishlisted;
+}
+
+async function addProductToCart(product, variant = '') {
+    const user = ensureActiveUser('Create or switch to an account to save a cart.');
+    if (!user) {
+        return false;
+    }
+
+    const variantDetail = getVariantDetail(product, variant);
+    const stockLimit = variantDetail?.stock ?? (product.trackInventory ? product.stock : null);
+    const cart = getCartEntry(user.id);
+    const matchingQuantity = cart.items
+        .filter(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant))
+        .reduce((total, item) => total + item.quantity, 0);
+    if (stockLimit !== null && matchingQuantity >= stockLimit) {
+        setStatus(cartStatusMessage, `${product.name} has no more stock available for this option.`);
+        return false;
+    }
+    if (matchingQuantity >= MAX_CART_LINE_QUANTITY) {
+        setStatus(cartStatusMessage, `${product.name} reached the per-option cart limit.`);
+        return false;
+    }
+    if (!matchingQuantity && cart.items.length >= MAX_CART_LINES) {
+        setStatus(cartStatusMessage, 'Your cart has reached its product limit.');
+        return false;
+    }
+
+    await saveCartsWithLatest(currentCarts => {
+        const existingEntry = currentCarts.find(entry => entry.userId === user.id);
+        const items = [...(existingEntry?.items || [])];
+        const existingItemIndex = items.findIndex(item => (
+            getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant)
+        ));
+        if (existingItemIndex >= 0) {
+            items[existingItemIndex] = {
+                ...items[existingItemIndex],
+                quantity: items[existingItemIndex].quantity + 1
+            };
+        } else {
+            items.push({ productId: product.id, variant, quantity: 1 });
+        }
+        return [
+            ...currentCarts.filter(entry => entry.userId !== user.id),
+            { userId: user.id, items, updatedAt: new Date().toISOString() }
+        ];
+    });
+
+    setStatus(cartStatusMessage, `${product.name} saved to your cart.`);
+    return true;
+}
+
+function productPath(product) {
+    return `/product/${encodeURIComponent(product.handle || product.id)}`;
+}
+
+function setProductDocumentMetadata(product) {
+    document.title = `${product.name} — Sip of Ghoulaid`;
+    let description = document.querySelector('meta[name="description"]');
+    if (!description) {
+        description = document.createElement('meta');
+        description.name = 'description';
+        document.head.appendChild(description);
+    }
+    description.content = product.description.slice(0, 160);
+}
+
+function renderProductDetail(product) {
+    if (!productDetailContent) {
+        return;
+    }
+    productDetailContent.replaceChildren();
+    setProductDocumentMetadata(product);
+
+    const gallery = document.createElement('div');
+    gallery.className = 'product-detail-gallery';
+    const stage = document.createElement('div');
+    stage.className = 'product-detail-stage';
+    const thumbnails = document.createElement('div');
+    thumbnails.className = 'product-detail-thumbnails';
+    const media = getProductMedia(product);
+
+    const showMedia = (entry, index) => {
+        stage.replaceChildren();
+        thumbnails.querySelectorAll('button').forEach((button, buttonIndex) => {
+            button.classList.toggle('active', buttonIndex === index);
+        });
+        if (!entry) {
+            const fallback = document.createElement('span');
+            fallback.className = 'product-detail-fallback';
+            fallback.textContent = product.emoji || '🛍️';
+            stage.appendChild(fallback);
+            return;
+        }
+        if (entry.type === 'video') {
+            const video = document.createElement('video');
+            video.src = entry.src;
+            video.controls = true;
+            video.playsInline = true;
+            video.preload = 'metadata';
+            stage.appendChild(video);
+        } else {
+            const image = document.createElement('img');
+            image.src = entry.src;
+            image.alt = `${product.name} image ${index + 1}`;
+            stage.appendChild(image);
+        }
+    };
+
+    media.forEach((entry, index) => {
+        const thumbnail = document.createElement('button');
+        thumbnail.type = 'button';
+        thumbnail.setAttribute('aria-label', `Show ${entry.type} ${index + 1}`);
+        if (entry.type === 'image') {
+            const image = document.createElement('img');
+            image.src = entry.src;
+            image.alt = '';
+            thumbnail.appendChild(image);
+        } else {
+            thumbnail.textContent = '▶';
+        }
+        thumbnail.addEventListener('click', () => showMedia(entry, index));
+        thumbnails.appendChild(thumbnail);
+    });
+    showMedia(media[0], 0);
+    gallery.append(stage, thumbnails);
+
+    const information = document.createElement('div');
+    information.className = 'product-detail-info';
+    const eyebrow = document.createElement('p');
+    eyebrow.className = 'product-detail-eyebrow';
+    eyebrow.textContent = product.categories.join(' • ') || 'SIP OF GHOULAID ORIGINAL';
+    const title = document.createElement('h1');
+    title.className = 'channel-title';
+    title.textContent = product.name;
+    let price = createPriceDisplay(product);
+    price.classList.add('product-detail-price');
+
+    const description = document.createElement('div');
+    description.className = 'product-detail-description';
+    if (product.descriptionHtml) {
+        appendSanitizedRichText(description, product.descriptionHtml);
+    } else {
+        description.textContent = product.description;
+    }
+
+    const variantGroup = document.createElement('div');
+    variantGroup.className = 'form-group';
+    const variantLabel = document.createElement('label');
+    variantLabel.textContent = product.variantGroupName || 'Option';
+    const variantSelect = document.createElement('select');
+    const variantDetails = product.variantDetails?.length
+        ? product.variantDetails
+        : [{ name: '', price: product.listingPrice, stock: product.trackInventory ? product.stock : null }];
+    variantDetails.forEach(variant => {
+        const option = document.createElement('option');
+        option.value = variant.name;
+        option.textContent = variant.name || 'Standard';
+        option.disabled = variant.stock !== null && variant.stock <= 0;
+        variantSelect.appendChild(option);
+    });
+    const firstAvailable = variantDetails.find(variant => variant.stock === null || variant.stock > 0);
+    if (firstAvailable) variantSelect.value = firstAvailable.name;
+    variantGroup.append(variantLabel, variantSelect);
+
+    const inventory = document.createElement('p');
+    inventory.className = 'product-detail-inventory';
+    const shipping = document.createElement('p');
+    shipping.className = 'product-meta-text';
+    shipping.textContent = catalogSource === 'hosted'
+        ? 'Shipping calculated at secure checkout'
+        : `Shipping: ${formatMoney(product.shippingPrice)}`;
+    if (product.mustShipAlone) {
+        shipping.append(' • Ships separately');
+    }
+    const updateVariantState = () => {
+        const selected = getVariantDetail(product, variantSelect.value) || firstAvailable;
+        const nextPrice = createPriceDisplay({
+            ...product,
+            listingPrice: selected?.price ?? product.listingPrice
+        });
+        nextPrice.classList.add('product-detail-price');
+        price.replaceWith(nextPrice);
+        price = nextPrice;
+        inventory.textContent = selected?.stock === null || selected?.stock === undefined
+            ? (product.available === false ? 'SOLD OUT' : 'AVAILABLE')
+            : `${selected.stock} IN STOCK`;
+        cartButton.disabled = product.available === false || (selected?.stock !== null && selected?.stock <= 0);
+    };
+
+    const actions = document.createElement('div');
+    actions.className = 'product-detail-actions';
+    const activeUser = getActiveUser();
+    const wishlistButton = document.createElement('button');
+    wishlistButton.type = 'button';
+    wishlistButton.className = 'table-action-btn click-item';
+    wishlistButton.textContent = activeUser && getWishlistEntry(activeUser.id).productIds.includes(product.id)
+        ? '♥ Wishlisted'
+        : '♡ Add to wishlist';
+    wishlistButton.addEventListener('click', async () => {
+        const wishlisted = await toggleProductWishlist(product);
+        if (wishlisted !== null) wishlistButton.textContent = wishlisted ? '♥ Wishlisted' : '♡ Add to wishlist';
+    });
+    const cartButton = document.createElement('button');
+    cartButton.type = 'button';
+    cartButton.className = 'submit-btn click-item';
+    cartButton.textContent = product.available === false ? 'Sold out' : 'Add to cart';
+    cartButton.addEventListener('click', async () => {
+        if (await addProductToCart(product, variantSelect.value)) {
+            cartButton.textContent = `Added to cart (${getCartQuantity(product.id)})`;
+        }
+    });
+    variantSelect.addEventListener('change', updateVariantState);
+    actions.append(wishlistButton, cartButton);
+
+    information.append(eyebrow, title, price, inventory, shipping);
+    if (variantDetails.length > 1 || variantDetails[0]?.name) information.appendChild(variantGroup);
+    information.append(actions, description);
+    productDetailContent.append(gallery, information);
+    updateVariantState();
+    bindClickSound(productDetailContent);
+}
+
+function openProductDetail(product, pushHistory = true) {
+    if (!product) return;
+    renderProductDetail(product);
+    activateChannel('product-detail');
+    if (pushHistory) {
+        window.history.pushState({ productHandle: product.handle }, '', productPath(product));
+    }
+    playClickSound();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function appendPolicyParagraph(container, text) {
+    const paragraph = document.createElement('p');
+    const supportEmail = 'support@sipofghoulaid.com';
+    const emailIndex = text.toLowerCase().indexOf(supportEmail);
+    if (emailIndex < 0) {
+        paragraph.textContent = text;
+    } else {
+        paragraph.append(text.slice(0, emailIndex));
+        const link = document.createElement('a');
+        link.href = `mailto:${supportEmail}`;
+        link.textContent = text.slice(emailIndex, emailIndex + supportEmail.length);
+        paragraph.append(link, text.slice(emailIndex + supportEmail.length));
+    }
+    container.appendChild(paragraph);
+}
+
+function renderPolicy(policyKey) {
+    const policy = POLICY_CONTENT[policyKey] || POLICY_CONTENT.privacy;
+    if (!policyContent) return;
+    policyContent.replaceChildren();
+
+    const title = document.createElement('h2');
+    title.textContent = policy.title;
+    policyContent.appendChild(title);
+    if (policy.updated) {
+        const updated = document.createElement('p');
+        updated.className = 'policy-updated';
+        updated.textContent = `Last Updated: ${policy.updated}`;
+        policyContent.appendChild(updated);
+    }
+    policy.intro.forEach(text => appendPolicyParagraph(policyContent, text));
+
+    policy.sections.forEach(section => {
+        const heading = document.createElement('h3');
+        heading.textContent = section.heading;
+        policyContent.appendChild(heading);
+        (section.paragraphs || []).forEach(text => appendPolicyParagraph(policyContent, text));
+        if (section.bullets?.length) {
+            const list = document.createElement('ul');
+            section.bullets.forEach(text => {
+                const item = document.createElement('li');
+                item.textContent = text;
+                list.appendChild(item);
+            });
+            policyContent.appendChild(list);
+        }
+        (section.after || []).forEach(text => appendPolicyParagraph(policyContent, text));
+    });
+
+    document.querySelectorAll('[data-policy]').forEach(link => {
+        if (link.dataset.policy === policyKey) {
+            link.setAttribute('aria-current', 'page');
+        } else {
+            link.removeAttribute('aria-current');
+        }
+    });
+    document.title = `${policy.title} — Sip of Ghoulaid`;
+}
+
+function openPolicy(policyKey, pushHistory = true) {
+    const normalizedKey = POLICY_CONTENT[policyKey] ? policyKey : 'privacy';
+    renderPolicy(normalizedKey);
+    activateChannel('policies');
+    if (pushHistory) {
+        window.history.pushState({ policy: normalizedKey }, '', `/policies/${normalizedKey}`);
+    }
+    playClickSound();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function syncProductRoute() {
+    const policyMatch = window.location.pathname.match(/^\/policies\/([^/]+)\/?$/);
+    if (policyMatch) {
+        let policyKey = '';
+        try {
+            policyKey = decodeURIComponent(policyMatch[1]).toLowerCase();
+        } catch {
+            policyKey = '';
+        }
+        openPolicy(policyKey, false);
+        return;
+    }
+
+    const match = window.location.pathname.match(/^\/product\/([^/]+)\/?$/);
+    if (!match) {
+        document.title = 'Sip of Ghoulaid Shop';
+        const requested = new URLSearchParams(window.location.search).get('channel');
+        activateChannel(document.getElementById(requested) ? requested : 'home');
+        return;
+    }
+    let handle;
+    try {
+        handle = decodeURIComponent(match[1]).toLowerCase();
+    } catch {
+        handle = '';
+    }
+    const product = shopProducts.find(item => item.handle.toLowerCase() === handle || item.id === handle);
+    if (product) {
+        openProductDetail(product, false);
+        return;
+    }
+    productDetailContent.replaceChildren();
+    const missing = document.createElement('div');
+    missing.className = 'empty-products-message';
+    missing.textContent = 'This product transmission could not be found.';
+    productDetailContent.appendChild(missing);
+    activateChannel('product-detail');
+}
+
 function appendSanitizedRichText(target, html) {
     const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV', 'H2', 'H3', 'H4']);
     const source = document.createElement('template');
@@ -531,19 +1077,40 @@ function renderCartTotals(cart) {
     cartTotalsPanel.classList.remove('hidden');
     cartSubtotalValue.textContent = formatMoney(totals.subtotal);
     const hostedCheckout = commerceCapabilities.checkoutAvailable && catalogSource === 'hosted';
-    cartTaxValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.tax);
-    cartShippingValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.shipping);
+    cartTaxValue.textContent = hostedCheckout && commerceCapabilities.automaticTaxEnabled
+        ? 'Calculated by Stripe'
+        : formatMoney(totals.tax);
+    const freeShippingThreshold = Number(commerceCapabilities.freeShippingThresholdCents || 5000) / 100;
+    cartShippingValue.textContent = hostedCheckout
+        ? totals.subtotal >= freeShippingThreshold
+            ? 'FREE standard / pickup'
+            : `Calculated at checkout • FREE pickup`
+        : formatMoney(totals.shipping);
     cartTotalValue.textContent = hostedCheckout ? 'Calculated at checkout' : formatMoney(totals.total);
 }
 
 function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card click-item';
+    card.dataset.productId = product.id;
+    card.tabIndex = 0;
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', `View ${product.name}`);
 
     card.appendChild(createProductMedia(product));
 
     const title = document.createElement('h3');
-    title.textContent = product.name;
+    const titleLink = document.createElement('a');
+    titleLink.href = productPath(product);
+    titleLink.textContent = product.name;
+    titleLink.addEventListener('click', event => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        event.preventDefault();
+        openProductDetail(product);
+    });
+    title.appendChild(titleLink);
     card.appendChild(title);
 
     if (product.description) {
@@ -571,7 +1138,8 @@ function createProductCard(product) {
         }
     }
 
-    card.appendChild(createPriceDisplay(product));
+    let cardPrice = createPriceDisplay(product);
+    card.appendChild(cardPrice);
 
     const shippingText = document.createElement('p');
     shippingText.className = 'product-meta-text';
@@ -580,8 +1148,9 @@ function createProductCard(product) {
         : `Shipping: ${formatMoney(product.shippingPrice)}`;
     card.appendChild(shippingText);
 
+    let stockText = null;
     if (product.trackInventory) {
-        const stockText = document.createElement('p');
+        stockText = document.createElement('p');
         stockText.className = 'product-meta-text';
         const totalStock = product.variantDetails?.length
             ? product.variantDetails.reduce((total, variant) => total + Number(variant.stock || 0), 0)
@@ -650,39 +1219,17 @@ function createProductCard(product) {
     wishlistButton.textContent = wishlistIds.includes(product.id) ? '♥ Wishlisted' : '♡ Wishlist';
     wishlistButton.addEventListener('click', async event => {
         event.stopPropagation();
-        const user = ensureActiveUser('Create or switch to an account to save a wishlist.');
-        if (!user) {
-            return;
+        const wishlisted = await toggleProductWishlist(product);
+        if (wishlisted !== null) {
+            wishlistButton.textContent = wishlisted ? '♥ Wishlisted' : '♡ Wishlist';
         }
-
-        await saveWishlistsWithLatest(currentWishlists => {
-            const existingEntry = currentWishlists.find(entry => entry.userId === user.id);
-            const nextIds = new Set(existingEntry?.productIds || []);
-
-            if (nextIds.has(product.id)) {
-                nextIds.delete(product.id);
-            } else {
-                nextIds.add(product.id);
-            }
-
-            const nextEntry = {
-                userId: user.id,
-                productIds: [...nextIds],
-                updatedAt: new Date().toISOString()
-            };
-
-            const remainingEntries = currentWishlists.filter(entry => entry.userId !== user.id);
-            return [...remainingEntries, nextEntry];
-        });
-
-        setStatus(accountStatusMessage, `${product.name} wishlist updated.`);
     });
     actions.appendChild(wishlistButton);
 
     const cartButton = document.createElement('button');
     cartButton.type = 'button';
     cartButton.className = 'table-action-btn click-item';
-    const quantity = getCartQuantity(product.id);
+    const quantity = getCartVariantQuantity(product.id, getSelectedVariant(variantSelect, product));
     cartButton.textContent = quantity ? `🛒 Add another (${quantity})` : '🛒 Save to cart';
     cartButton.disabled = product.available === false || quantity >= MAX_CART_LINE_QUANTITY;
     if (product.available === false) {
@@ -692,62 +1239,154 @@ function createProductCard(product) {
     }
     cartButton.addEventListener('click', async event => {
         event.stopPropagation();
-        const user = ensureActiveUser('Create or switch to an account to save a cart.');
-        if (!user) {
-            return;
-        }
-
         const variant = getSelectedVariant(variantSelect, product);
-        const variantDetail = getVariantDetail(product, variant);
-        const stockLimit = variantDetail?.stock ?? (product.trackInventory ? product.stock : null);
-        const variantQuantity = getCartEntry(user.id).items
-            .filter(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant))
-            .reduce((total, item) => total + item.quantity, 0);
-        if (stockLimit !== null && variantQuantity >= stockLimit) {
-            setStatus(cartStatusMessage, `${product.name} has no more stock available for this option.`);
-            return;
+        if (await addProductToCart(product, variant)) {
+            const nextQuantity = getCartVariantQuantity(product.id, variant);
+            cartButton.textContent = `🛒 Add another (${nextQuantity})`;
+            cartButton.disabled = nextQuantity >= MAX_CART_LINE_QUANTITY;
         }
-
-        await saveCartsWithLatest(currentCarts => {
-            const existingEntry = currentCarts.find(entry => entry.userId === user.id);
-            const items = [...(existingEntry?.items || [])];
-            const existingItemIndex = items.findIndex(item => getCartItemKey(item.productId, item.variant) === getCartItemKey(product.id, variant));
-
-            if (existingItemIndex >= 0) {
-                if (items[existingItemIndex].quantity >= MAX_CART_LINE_QUANTITY) {
-                    return currentCarts;
-                }
-                items[existingItemIndex] = {
-                    ...items[existingItemIndex],
-                    quantity: items[existingItemIndex].quantity + 1
-                };
-            } else {
-                if (items.length >= MAX_CART_LINES) {
-                    return currentCarts;
-                }
-                items.push({ productId: product.id, variant, quantity: 1 });
-            }
-
-            const nextEntry = {
-                userId: user.id,
-                items,
-                updatedAt: new Date().toISOString()
-            };
-
-            const remainingEntries = currentCarts.filter(entry => entry.userId !== user.id);
-            return [...remainingEntries, nextEntry];
-        });
-
-        setStatus(cartStatusMessage, `${product.name} saved to your cart.`);
     });
     actions.appendChild(cartButton);
 
     card.appendChild(actions);
+
+    const refreshVariantSummary = () => {
+        const variantName = getSelectedVariant(variantSelect, product);
+        const variant = getVariantDetail(product, variantName);
+        const nextPrice = createPriceDisplay({
+            ...product,
+            listingPrice: variant?.price ?? product.listingPrice
+        });
+        cardPrice.replaceWith(nextPrice);
+        cardPrice = nextPrice;
+
+        if (stockText) {
+            const stock = variant?.stock ?? product.stock;
+            stockText.textContent = stock === null ? 'Available' : `${stock} in stock`;
+        }
+
+        const variantQuantity = getCartVariantQuantity(product.id, variantName);
+        const soldOut = product.available === false || (variant?.stock !== null && variant?.stock <= 0);
+        cartButton.disabled = soldOut || variantQuantity >= MAX_CART_LINE_QUANTITY;
+        cartButton.textContent = soldOut
+            ? 'Sold out'
+            : variantQuantity
+                ? `🛒 Add another (${variantQuantity})`
+                : '🛒 Save to cart';
+    };
+    variantSelect?.addEventListener('change', refreshVariantSummary);
+    refreshVariantSummary();
+
+    const openCard = event => {
+        if (event.target.closest('button, select, input, a, label, details, summary, video')) {
+            return;
+        }
+        openProductDetail(product);
+    };
+    card.addEventListener('click', openCard);
+    card.addEventListener('keydown', event => {
+        if (event.target === card && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            openProductDetail(product);
+        }
+    });
     return card;
+}
+
+function shuffleProducts(products) {
+    const shuffled = [...products];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const replacementIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[replacementIndex]] = [shuffled[replacementIndex], shuffled[index]];
+    }
+    return shuffled;
+}
+
+function updateLatestBroadcast(product) {
+    const screen = document.getElementById('latestBroadcastScreen');
+    const target = document.getElementById('latestBroadcastProduct');
+    if (!screen || !target || !product) {
+        return;
+    }
+
+    latestBroadcastProductId = product.id;
+    target.replaceChildren();
+
+    const image = product.images?.[0];
+    if (image) {
+        const artwork = document.createElement('img');
+        artwork.src = image;
+        artwork.alt = '';
+        target.appendChild(artwork);
+    } else {
+        const fallback = document.createElement('span');
+        fallback.className = 'broadcast-product-fallback';
+        fallback.textContent = product.emoji || '🛍️';
+        target.appendChild(fallback);
+    }
+
+    const details = document.createElement('span');
+    details.className = 'broadcast-product-details';
+
+    const status = document.createElement('span');
+    status.className = 'broadcast-product-status';
+    status.textContent = product.available === false ? 'SIGNAL LOST • SOLD OUT' : 'NOW TRANSMITTING';
+
+    const name = document.createElement('strong');
+    name.textContent = product.name;
+
+    const price = document.createElement('span');
+    price.className = 'broadcast-product-price';
+    price.textContent = formatMoney(product.onSale && product.salePrice > 0 ? product.salePrice : product.listingPrice);
+
+    details.append(status, name, price);
+    target.appendChild(details);
+    screen.setAttribute('aria-label', `View ${product.name} in the shop`);
+}
+
+function renderLatestBroadcast(products) {
+    const screen = document.getElementById('latestBroadcastScreen');
+    if (!screen) {
+        return;
+    }
+
+    window.clearTimeout(latestBroadcastTimer);
+    latestBroadcastDeck = shuffleProducts(products);
+
+    if (!latestBroadcastDeck.length) {
+        screen.disabled = true;
+        latestBroadcastProductId = '';
+        document.getElementById('latestBroadcastProduct').textContent = 'NO PRODUCT SIGNAL';
+        return;
+    }
+
+    screen.disabled = false;
+    let broadcastIndex = 0;
+    updateLatestBroadcast(latestBroadcastDeck[broadcastIndex]);
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || latestBroadcastDeck.length === 1) {
+        return;
+    }
+
+    const tuneNextProduct = () => {
+        screen.classList.add('is-static');
+        latestBroadcastTimer = window.setTimeout(() => {
+            broadcastIndex = (broadcastIndex + 1) % latestBroadcastDeck.length;
+            if (broadcastIndex === 0) {
+                latestBroadcastDeck = shuffleProducts(latestBroadcastDeck);
+            }
+            updateLatestBroadcast(latestBroadcastDeck[broadcastIndex]);
+            screen.classList.remove('is-static');
+            latestBroadcastTimer = window.setTimeout(tuneNextProduct, 4500);
+        }, 550);
+    };
+
+    latestBroadcastTimer = window.setTimeout(tuneNextProduct, 4500);
 }
 
 function renderShopProducts(products) {
     shopProducts = products;
+    renderLatestBroadcast(products);
     populateReviewProducts(products);
     const shopGrid = document.getElementById('shopGrid');
     if (!shopGrid) {
@@ -770,6 +1409,9 @@ function renderShopProducts(products) {
 
     bindClickSound(shopGrid);
     bindProductCardEffects(shopGrid);
+    if (window.location.pathname.startsWith('/product/')) {
+        syncProductRoute();
+    }
 }
 
 function populateReviewProducts(products) {
@@ -1053,6 +1695,28 @@ function renderPaymentMethods(paymentMethods) {
 
         if (!availablePaymentMethods.some(method => method.id === previousValue) && availablePaymentMethods[0]) {
             paymentMethodSelect.value = availablePaymentMethods[0].id;
+        }
+
+        if (orderSupportForm) {
+            orderSupportForm.addEventListener('submit', async event => {
+                event.preventDefault();
+                setStatus(orderSupportStatus, 'Sending support request...');
+                try {
+                    const response = await fetch('/api/support/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(Object.fromEntries(new FormData(orderSupportForm)))
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Support request could not be sent.');
+                    }
+                    orderSupportForm.reset();
+                    setStatus(orderSupportStatus, result.message);
+                } catch (error) {
+                    setStatus(orderSupportStatus, error.message);
+                }
+            });
         }
 
         paymentMethodSelect.disabled = !availablePaymentMethods.length;
@@ -1515,7 +2179,6 @@ async function initializeShopData() {
     applyAppCenter(appCenter);
     applyDesigner(designer);
     renderPaymentMethods(paymentMethods);
-    renderAnnouncement('homeAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
     renderAnnouncement('shopAnnouncement', marketing.announcementTitle, marketing.announcementMessage, appCenter.marketingEnabled);
     renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
     renderDiscounts(discounts, appCenter.discountsEnabled);
@@ -1552,7 +2215,6 @@ async function initializeShopData() {
     });
     window.ShopData.subscribe('marketing', nextMarketing => {
         window.ShopData.getAppCenter().then(currentAppCenter => {
-            renderAnnouncement('homeAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
             renderAnnouncement('shopAnnouncement', nextMarketing.announcementTitle, nextMarketing.announcementMessage, currentAppCenter.marketingEnabled);
             renderFeaturedBroadcast(nextMarketing, currentAppCenter.marketingEnabled);
         });
@@ -1560,7 +2222,6 @@ async function initializeShopData() {
     window.ShopData.subscribe('appCenter', nextAppCenter => {
         applyAppCenter(nextAppCenter);
         window.ShopData.getMarketing().then(currentMarketing => {
-            renderAnnouncement('homeAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
             renderAnnouncement('shopAnnouncement', currentMarketing.announcementTitle, currentMarketing.announcementMessage, nextAppCenter.marketingEnabled);
             renderFeaturedBroadcast(currentMarketing, nextAppCenter.marketingEnabled);
         });
@@ -1577,11 +2238,46 @@ if (channelSelector && channels.length) {
 }
 
 document.addEventListener('click', event => {
+    const policyLink = event.target.closest('[data-policy]');
+    if (policyLink) {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        event.preventDefault();
+        openPolicy(policyLink.dataset.policy);
+        return;
+    }
+
     const channelTarget = event.target.closest('[data-channel-target]');
     if (!channelTarget) {
         return;
     }
     activateChannel(channelTarget.dataset.channelTarget, true);
+});
+
+document.getElementById('latestBroadcastScreen')?.addEventListener('click', () => {
+    if (!latestBroadcastProductId) {
+        return;
+    }
+
+    openProductDetail(findProduct(latestBroadcastProductId));
+});
+
+productDetailBack?.addEventListener('click', () => {
+    if (window.history.state?.productHandle) {
+        window.history.back();
+        return;
+    }
+    const url = new URL('/', window.location.origin);
+    url.searchParams.set('channel', 'shop');
+    window.history.replaceState(null, '', url);
+    activateChannel('shop');
+    document.title = 'Sip of Ghoulaid Shop';
+    playClickSound();
+});
+
+window.addEventListener('popstate', () => {
+    syncProductRoute();
 });
 
 if (openAccountFromShopButton) {
@@ -1779,7 +2475,7 @@ if (checkoutButton) {
         }
 
         checkoutButton.disabled = true;
-        setStatus(cartStatusMessage, 'Validating stock and opening secure Stripe Checkout…');
+        setStatus(cartStatusMessage, 'Validating stock, shipping rules, and opening secure Stripe Checkout…');
         try {
             const result = await commerceRequest('/api/commerce/checkout-sessions', {
                 method: 'POST',
@@ -1965,6 +2661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await initializeShopData();
+    syncProductRoute();
 
     const checkoutResult = new URLSearchParams(window.location.search).get('checkout');
     if (checkoutResult === 'success') {

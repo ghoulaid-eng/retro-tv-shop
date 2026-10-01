@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: sip-of-ghoulaid
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run db:generate
+    startCommand: npm run start:render
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.23.2
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: product-media
+      - key: ADMIN_EMAIL_ALLOWLIST
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_SHIPPING_RATE_IDS
+        sync: false
+      - key: STRIPE_ALLOWED_SHIPPING_COUNTRIES
+        value: US
+      - key: STRIPE_AUTOMATIC_TAX_ENABLED
+        value: "true"
+      - key: STRIPE_DEFAULT_TAX_CODE
+        value: txcd_99999999
+      - key: FREE_SHIPPING_THRESHOLD_CENTS
+        value: "5000"
+      - key: LOCAL_PICKUP_ENABLED
+        value: "true"
+      - key: LOCAL_PICKUP_NAME
+        value: Local pickup — Redlands, CA
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ORDER_EMAIL_FROM
+        value: Sip of Ghoulaid <orders@sipofghoulaid.com>
+      - key: SUPPORT_EMAIL
+        value: support@sipofghoulaid.com
+      - key: RESERVATION_MINUTES
+        value: "31"
+      - key: SEED_INVENTORY_DEFAULT
+        value: "0"

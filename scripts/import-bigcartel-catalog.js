@@ -5,6 +5,8 @@ const STORE_ORIGIN = 'https://www.sipofghoulaid.com';
 const SITEMAP_URL = `${STORE_ORIGIN}/sitemap.xml`;
 const OUTPUT_PATH = path.resolve(__dirname, '..', 'products.json');
 const ASSET_ROOT = path.resolve(__dirname, '..', 'assets', 'products');
+const SHIPPING_EXPORT_PATH = path.resolve(__dirname, 'bigcartel-shipping.json');
+const DEFAULT_PACKAGE_SIZE = 'X-Small';
 
 function extractProductUrls(sitemap) {
     return [...sitemap.matchAll(/<loc>(https:\/\/www\.sipofghoulaid\.com\/product\/[^<]+)<\/loc>/gi)]
@@ -101,16 +103,9 @@ async function downloadImage(imageUrl, destination) {
     await fs.writeFile(destination, buffer);
 }
 
-async function importProduct(productUrl, position, total) {
-    const response = await fetch(productUrl);
-    if (!response.ok) {
-        throw new Error(`Product request failed (${response.status}): ${productUrl}`);
-    }
-
-    const html = await response.text();
-    const product = extractJsonObject(html, '"product":');
+async function importProduct(productUrl, product, position, total, assetRoot, existingProduct, shippingDetails) {
     const handle = String(product.permalink || new URL(productUrl).pathname.split('/').pop()).toLowerCase();
-    const productDirectory = path.join(ASSET_ROOT, handle);
+    const productDirectory = path.join(assetRoot, handle);
     await fs.mkdir(productDirectory, { recursive: true });
 
     const images = [];
@@ -152,11 +147,11 @@ async function importProduct(productUrl, position, total) {
         listingPrice,
         onSale: Boolean(product.on_sale),
         salePrice: product.on_sale ? Number(product.price || 0) : 0,
-        shippingPrice: 0,
-        shippingWeight: 0,
-        shippingWeightUnit: 'oz',
-        packageSize: '',
-        mustShipAlone: false,
+        shippingPrice: Number(existingProduct?.shippingPrice || 0),
+        shippingWeight: Number(shippingDetails?.weight ?? existingProduct?.shippingWeight ?? 0),
+        shippingWeightUnit: shippingDetails?.unit || existingProduct?.shippingWeightUnit || 'oz',
+        packageSize: shippingDetails?.packageSize || existingProduct?.packageSize || DEFAULT_PACKAGE_SIZE,
+        mustShipAlone: Boolean(shippingDetails?.mustShipAlone ?? existingProduct?.mustShipAlone),
         trackInventory: false,
         stock: null,
         variantGroupName: optionGroupName,
@@ -171,6 +166,18 @@ async function importProduct(productUrl, position, total) {
 }
 
 async function main() {
+    const existingProducts = JSON.parse(await fs.readFile(OUTPUT_PATH, 'utf8'));
+    const existingById = new Map(existingProducts.map(product => [String(product.id), product]));
+    const shippingExport = JSON.parse(await fs.readFile(SHIPPING_EXPORT_PATH, 'utf8'));
+    const shippingById = new Map(shippingExport.map(details => [String(details.id), details]));
+    const stagingRoot = path.resolve(
+        path.dirname(ASSET_ROOT),
+        `.products-import-${process.pid}-${Date.now()}`
+    );
+    const backupRoot = `${ASSET_ROOT}.backup-${process.pid}`;
+    const stagingOutput = `${OUTPUT_PATH}.import-${process.pid}`;
+    const backupOutput = `${OUTPUT_PATH}.backup-${process.pid}`;
+
     const sitemapResponse = await fetch(SITEMAP_URL);
     if (!sitemapResponse.ok) {
         throw new Error(`Sitemap request failed (${sitemapResponse.status})`);
@@ -181,16 +188,65 @@ async function main() {
         throw new Error('No product URLs were found in the sitemap.');
     }
 
-    await fs.rm(ASSET_ROOT, { recursive: true, force: true });
-    await fs.mkdir(ASSET_ROOT, { recursive: true });
+    await fs.mkdir(stagingRoot, { recursive: true });
 
-    const products = [];
-    for (const [index, productUrl] of productUrls.entries()) {
-        products.push(await importProduct(productUrl, index + 1, productUrls.length));
+    try {
+        const products = [];
+        for (const [index, productUrl] of productUrls.entries()) {
+            const response = await fetch(productUrl);
+            if (!response.ok) {
+                throw new Error(`Product request failed (${response.status}): ${productUrl}`);
+            }
+            const html = await response.text();
+            const sourceProduct = extractJsonObject(html, '"product":');
+            const existingProduct = existingById.get(`bigcartel-${sourceProduct.id}`)
+                || existingProducts.find(product => product.sourceUrl === productUrl);
+
+            products.push(await importProduct(
+                productUrl,
+                sourceProduct,
+                index + 1,
+                productUrls.length,
+                stagingRoot,
+                existingProduct,
+                shippingById.get(String(sourceProduct.id))
+            ));
+        }
+
+        await fs.rm(backupRoot, { recursive: true, force: true });
+        await fs.rm(backupOutput, { force: true });
+        await fs.writeFile(stagingOutput, `${JSON.stringify(products, null, 2)}\n`, 'utf8');
+        let assetsBackedUp = false;
+        let outputBackedUp = false;
+        let assetsInstalled = false;
+        try {
+            await fs.rename(ASSET_ROOT, backupRoot);
+            assetsBackedUp = true;
+            await fs.rename(OUTPUT_PATH, backupOutput);
+            outputBackedUp = true;
+            await fs.rename(stagingRoot, ASSET_ROOT);
+            assetsInstalled = true;
+            await fs.rename(stagingOutput, OUTPUT_PATH);
+        } catch (error) {
+            if (assetsInstalled) {
+                await fs.rm(ASSET_ROOT, { recursive: true, force: true });
+            }
+            if (assetsBackedUp) {
+                await fs.rename(backupRoot, ASSET_ROOT);
+            }
+            if (outputBackedUp) {
+                await fs.rm(OUTPUT_PATH, { force: true });
+                await fs.rename(backupOutput, OUTPUT_PATH);
+            }
+            throw error;
+        }
+        await fs.rm(backupRoot, { recursive: true, force: true });
+        await fs.rm(backupOutput, { force: true });
+        console.log(`Imported ${products.length} products into ${OUTPUT_PATH}`);
+    } finally {
+        await fs.rm(stagingRoot, { recursive: true, force: true });
+        await fs.rm(stagingOutput, { force: true });
     }
-
-    await fs.writeFile(OUTPUT_PATH, `${JSON.stringify(products, null, 2)}\n`, 'utf8');
-    console.log(`Imported ${products.length} products into ${OUTPUT_PATH}`);
 }
 
 main().catch(error => {

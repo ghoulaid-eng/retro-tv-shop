@@ -1,0 +1,6 @@
+ALTER TABLE "Order"
+ADD COLUMN "shippingMethod" TEXT,
+ADD COLUMN "shippingAmount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN "taxAmount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN "shippingAddress" JSONB,
+ADD COLUMN "stripeShippingRateId" TEXT;

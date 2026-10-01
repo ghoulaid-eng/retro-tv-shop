@@ -19,12 +19,27 @@
                                     <div>
                                         <h1 id="adminShopName" class="channel-title">SIP OF GHOULAID SHOP ADMIN</h1>
                                         <p id="adminShopSubtitle" class="channel-intro">A spooky control panel for sip of ghoulaid shop, products, and storefront tools.</p>
-                                        <p class="form-status error"><strong>LOCAL-ONLY DEMO:</strong> this unprotected panel only changes browser storage. It does not manage the hosted catalog, inventory, payments, or production orders.</p>
+                                        <p id="adminModeMessage" class="form-status error"><strong>LOCAL-ONLY DEMO:</strong> this unprotected panel only changes browser storage. It does not manage the hosted catalog, inventory, payments, or production orders.</p>
                                     </div>
                                     <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
                                 </div>
 
-                                <div class="admin-shell">
+                                <div id="adminAuthPanel" class="admin-panel-card hidden">
+                                    <h2>Secure admin sign in</h2>
+                                    <form id="adminLoginForm" class="admin-simple-form">
+                                        <div class="form-group">
+                                            <label for="adminLoginEmail">Email</label>
+                                            <input id="adminLoginEmail" type="email" autocomplete="username" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adminLoginPassword">Password</label>
+                                            <input id="adminLoginPassword" type="password" autocomplete="current-password" required>
+                                        </div>
+                                        <button type="submit" class="submit-btn click-item">Sign in</button>
+                                        <p id="adminLoginStatus" class="form-status" role="status"></p>
+                                    </form>
+                                </div>
+                                <div id="adminShell" class="admin-shell">
                                     <div class="admin-section-picker admin-panel-card">
                                         <label for="adminSectionSelect">Admin Console</label>
                                         <select id="adminSectionSelect" aria-label="Choose an admin section">

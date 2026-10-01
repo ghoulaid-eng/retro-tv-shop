@@ -87,7 +87,17 @@ Create one or more Stripe Shipping Rates and configure:
 - `STRIPE_WEBHOOK_SECRET` — signing secret for this endpoint
 - `STRIPE_SHIPPING_RATE_IDS` — comma-separated `shr_...` IDs
 - `STRIPE_ALLOWED_SHIPPING_COUNTRIES` — comma-separated two-letter codes
+- `STRIPE_AUTOMATIC_TAX_ENABLED` — keep `true` after activating Stripe Tax
+- `STRIPE_DEFAULT_TAX_CODE` — defaults to General Tangible Goods (`txcd_99999999`)
+- `FREE_SHIPPING_THRESHOLD_CENTS` — server-enforced threshold (`5000` for $50)
+- `LOCAL_PICKUP_ENABLED` — offers a free local-pickup option
+- `LOCAL_PICKUP_NAME` — customer-facing pickup label
 - `PUBLIC_URL` — canonical HTTPS origin used for success/cancel redirects
+
+Checkout always recalculates the subtotal from database prices. Orders at or above the
+configured threshold receive free USPS standard shipping. Local pickup is free at every
+subtotal. Stripe Checkout collects a US address and calculates tax automatically from
+the customer address after Stripe Tax registrations are configured.
 
 Register this HTTPS webhook:
 
@@ -107,6 +117,21 @@ For local testing, use Stripe CLI forwarding:
 ```text
 stripe listen --forward-to localhost:3000/api/commerce/webhook
 ```
+
+## Render deployment
+
+`render.yaml` defines a free-tier test web service. Render builds with `npm ci`,
+generates Prisma Client, applies pending migrations, seeds the catalog idempotently,
+and checks `/api/health`. The app automatically uses Render's `RENDER_EXTERNAL_URL`
+for Stripe success and cancel redirects.
+
+Create the service as a Render Blueprint, then enter every `sync: false` environment
+variable in the Render dashboard. Use the Supabase pooled transaction URL for
+`DATABASE_URL` and the direct port 5432 URL for `DIRECT_URL`. The seed defaults new
+inventory to zero so exact quantities must be entered before checkout is enabled.
+
+The free tier is suitable for integration testing but sleeps when idle. Upgrade the
+service before treating it as always-on production hosting.
 
 Checkout prices, variants, and stock are loaded from PostgreSQL; browser prices
 are never trusted. Inventory is reserved in a serializable transaction when a
@@ -144,10 +169,36 @@ proxy. Do not commit `.env`; `.env.example` contains placeholders only.
 
 - Customer accounts, wishlists, and carts are device-local, not authenticated
   cloud accounts.
-- No production admin CRUD/API is exposed.
-- Tax calculation, fulfillment labels/tracking, transactional email, refunds,
-  and customer order-history pages are not implemented.
+- Production administration requires Supabase Auth, the server-side email
+  allowlist, and the hosted database; static-only deployments remain demo-only.
+- Tax calculation, fulfillment-label purchasing, and customer order-history
+  pages are not implemented.
 - Policy content (privacy, terms, shipping, returns) requires business/legal
   review before launch.
 - Live Stripe/PostgreSQL behavior must be exercised in Stripe test mode against
   the deployed database; unit tests intentionally require no credentials.
+
+## Order operations
+
+Production order operations are available to authenticated, allowlisted admins:
+
+- Payment confirmation and order-status emails through Resend.
+- Processing, shipping, carrier/tracking, and delivery updates.
+- Cancellation with an auditable reason.
+- Full or partial Stripe refunds using the stored PaymentIntent.
+- Internal support notes and customer order-support requests.
+- Persistent order timeline and email-delivery records.
+
+Before deployment, run `npm run db:deploy` and configure:
+
+```env
+RESEND_API_KEY="re_..."
+ORDER_EMAIL_FROM="Sip of Ghoulaid <orders@sipofghoulaid.com>"
+SUPPORT_EMAIL="support@sipofghoulaid.com"
+```
+
+The From address must use a domain verified in Resend. Refunds require
+`STRIPE_SECRET_KEY`; order-operation buttons are available only after signing
+into the production Admin Portal with a Supabase account listed in
+`ADMIN_EMAIL_ALLOWLIST`. Customer support requests intentionally return the same
+response whether or not an order matches, preventing order-email enumeration.
