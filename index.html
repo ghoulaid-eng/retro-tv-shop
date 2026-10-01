@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sip of Ghoulaid</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Sip of Ghoulaid Shop</title>
+    <link rel="stylesheet" href="styles.css?v=20261001-store-policies">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -15,106 +16,304 @@
             <div class="tv-bezel">
                 <!-- Screen -->
                 <div class="screen-wrapper">
+                    <div class="tv-boot-overlay" id="tvBootOverlay" aria-hidden="true">
+                        <div class="boot-logo">SIP OF<br>GHOULAID</div>
+                        <p class="boot-welcome">WELCOME CULT LEADERS AND GHOULAID DRINKERS</p>
+                        <p class="boot-signal">ACQUIRING SIGNAL...</p>
+                        <div class="boot-progress"><span></span></div>
+                    </div>
                     <div class="screen-content" id="screenContent">
                         <!-- Static Effect -->
-                        <div class="static"></div>
+                        <div class="static" id="staticOverlay"></div>
                         
                         <!-- Navigation -->
                         <nav class="tv-nav">
-                            <select id="channelSelector" class="channel-selector">
+                            <label for="channelSelector" class="sr-only">Select TV channel</label>
+                            <select id="channelSelector" class="channel-selector" aria-label="Channel selector">
                                 <option value="home">📺 HOME</option>
                                 <option value="shop">🛍️ SHOP</option>
+                                <option value="account">👤 ACCOUNT</option>
                                 <option value="summon">🔮 SUMMON US</option>
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
+                                <option value="reviews">⭐ REVIEWS</option>
                                 <option value="about">ℹ️ ABOUT</option>
                             </select>
                         </nav>
+                        <div id="statusLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
                         <!-- Main Content Area -->
                         <main class="content-area">
                             <!-- Home Channel -->
-                            <section id="home" class="channel active">
-                                <h1 class="glitch" data-text="WELCOME CULT LEADERS AND GHOULAID DRINKERS">WELCOME CULT LEADERS AND GHOULAID DRINKERS</h1>
-                                <p class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
+                            <section id="home" class="channel active" aria-hidden="false">
+                                <h1 id="homeHeadline" class="glitch" data-text="SIP OF GHOULAID">SIP OF GHOULAID</h1>
+                                <p id="homeTagline" class="channel-intro">CREEPY • CUTE • HANDMADE • A LITTLE UNHINGED</p>
                                 <div class="intro-text">
                                     <p>From hand-poured & hand-painted wax melts to custom creations designed from scratch, everything here is made with a little darkness, a lot of creativity, and just the right amount of chaos.</p>
-                                    <p>Change the channel to have a look around.</p>
+                                    <p>Choose a transmission from the TV Guide.</p>
+                                </div>
+                                <div class="account-banner">
+                                    <div>
+                                        <h3 id="shopAccountGreeting">Browsing as guest</h3>
+                                        <p id="shopAccountSummary">Create a local account to save wishlists, carts, and shipping details on this device.</p>
+                                    </div>
+                                    <button type="button" class="table-action-btn click-item" id="openAccountFromShop">Open account</button>
+                                </div>
+                                <section class="latest-broadcast" aria-labelledby="latestBroadcastTitle">
+                                    <div class="latest-broadcast-heading">
+                                        <div>
+                                            <span class="broadcast-live-dot" aria-hidden="true"></span>
+                                            <h2 id="latestBroadcastTitle">LATEST BROADCAST</h2>
+                                        </div>
+                                        <span>PRODUCT SIGNAL</span>
+                                    </div>
+                                    <button type="button" class="broadcast-tv click-item" id="latestBroadcastScreen" aria-label="View the featured product in the shop">
+                                        <span class="broadcast-tv-screen">
+                                            <span class="broadcast-product" id="latestBroadcastProduct"></span>
+                                            <span class="broadcast-static" aria-hidden="true"></span>
+                                            <span class="broadcast-scanlines" aria-hidden="true"></span>
+                                        </span>
+                                        <span class="broadcast-tv-controls" aria-hidden="true">
+                                            <span></span>
+                                            <span></span>
+                                        </span>
+                                    </button>
+                                </section>
+                                <div class="tv-guide" aria-label="TV Guide">
+                                    <div class="tv-guide-heading">
+                                        <span>TV GUIDE</span>
+                                        <small>SELECT A CHANNEL</small>
+                                    </div>
+                                    <div class="tv-guide-grid">
+                                        <button type="button" class="guide-card" data-channel-target="shop">
+                                            <span class="guide-number">CH 02</span>
+                                            <strong>🛍️ Shop</strong>
+                                            <small>Browse the latest drops</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="account">
+                                            <span class="guide-number">CH 03</span>
+                                            <strong>🛒 Cart</strong>
+                                            <small>Review your saved cart</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="custom-order">
+                                            <span class="guide-number">CH 04</span>
+                                            <strong>✨ Custom Order</strong>
+                                            <small>Summon something unique</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="account">
+                                            <span class="guide-number">CH 05</span>
+                                            <strong>💚 Saved Drops</strong>
+                                            <small>Open your wishlist</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="summon">
+                                            <span class="guide-number">CH 06</span>
+                                            <strong>🔮 Summon Us</strong>
+                                            <small>Contact the ghoul lab</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="about">
+                                            <span class="guide-number">CH 07</span>
+                                            <strong>ℹ️ About</strong>
+                                            <small>Meet the maker</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="reviews">
+                                            <span class="guide-number">CH 08</span>
+                                            <strong>⭐ Reviews</strong>
+                                            <small>Share your experience</small>
+                                        </button>
+                                    </div>
                                 </div>
                             </section>
 
                             <!-- Shop Channel -->
-                            <section id="shop" class="channel">
-                                <h1 class="channel-title">SHOP CHANNEL</h1>
-                                <div class="shop-grid">
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🕯️</div>
-                                        <h3>Extra Large Wax Melts</h3>
-                                        <p class="product-desc">Hand-poured & hand-painted masterpieces. Pick your scent family!</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🔥</div>
-                                        <h3>Full Size Wax Melts</h3>
-                                        <p class="product-desc">Spooky scents to haunt your space</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">✨</div>
-                                        <h3>Mini Wax Melts</h3>
-                                        <p class="product-desc">Small but mighty creepy-cute designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">📚</div>
-                                        <h3>Book Accessories</h3>
-                                        <div class="subcategories">
-                                            <p class="subcategory">🔥 Smut Exclusives</p>
-                                            <p class="subcategory">🍷 Feeling Thirsty?</p>
+                            <section id="shop" class="channel" aria-hidden="true" hidden>
+                                <h1 id="shopChannelTitle" class="channel-title">SIP OF GHOULAID SHOP</h1>
+                                <div id="shopAnnouncement" class="broadcast-banner hidden"></div>
+                                <div id="shopDiscounts" class="discount-broadcast hidden"></div>
+                                <div id="shopGrid" class="shop-grid card-size-cozy" aria-live="polite"></div>
+                            </section>
+
+                            <section id="product-detail" class="channel" aria-hidden="true" hidden>
+                                <button type="button" class="product-detail-back click-item" id="productDetailBack">← Back to shop</button>
+                                <div id="productDetailContent" class="product-detail-shell" aria-live="polite"></div>
+                            </section>
+
+                            <section id="account" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">ACCOUNT VAULT</h1>
+                                <p class="channel-intro">Create a local account on this device to save your spooky wishlist, saved cart, and shipping details.</p>
+
+                                <div class="account-grid">
+                                    <div class="account-stack">
+                                        <div class="account-panel">
+                                            <h3 id="accountGreeting">No account active</h3>
+                                            <p id="accountSummary">Create an account or switch to one saved on this device.</p>
+                                            <p id="accountStatusMessage" class="admin-status" aria-live="polite"></p>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Switch local account</h3>
+                                            <div class="form-group">
+                                                <label for="savedAccountSelect">Saved accounts on this device</label>
+                                                <select id="savedAccountSelect">
+                                                    <option value="">Choose an account...</option>
+                                                </select>
+                                            </div>
+                                            <div class="account-button-row">
+                                                <button type="button" class="table-action-btn click-item" id="switchAccountButton">Use selected account</button>
+                                                <button type="button" class="table-action-btn click-item" id="createAccountModeButton">Create new account</button>
+                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="signOutButton">Sign out</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Account profile</h3>
+                                            <form id="accountProfileForm" class="admin-simple-form">
+                                                <div class="form-group">
+                                                    <label for="accountName">Name</label>
+                                                    <input type="text" id="accountName" placeholder="Your name" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountUsername">Username</label>
+                                                    <input type="text" id="accountUsername" placeholder="@ghoul-next-door" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountEmail">Email</label>
+                                                    <input type="email" id="accountEmail" placeholder="you@example.com" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountContactMethod">Preferred Contact Method</label>
+                                                    <select id="accountContactMethod">
+                                                        <option value="">Choose contact method...</option>
+                                                        <option value="email">📧 Email</option>
+                                                        <option value="phone">📱 Phone</option>
+                                                        <option value="instagram">📷 Instagram DM</option>
+                                                        <option value="discord">💬 Discord</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="accountContactInfo">Contact Details</label>
+                                                    <input type="text" id="accountContactInfo" placeholder="Email, phone, or handle">
+                                                </div>
+                                                <button type="submit" class="submit-btn click-item">Save account</button>
+                                            </form>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Shipping details</h3>
+                                            <form id="shippingProfileForm" class="admin-simple-form">
+                                                <div class="form-group">
+                                                    <label for="shippingFullName">Full Name</label>
+                                                    <input type="text" id="shippingFullName" placeholder="Full shipping name">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingAddressLine1">Address Line 1</label>
+                                                    <input type="text" id="shippingAddressLine1" placeholder="123 Haunted Hollow Rd">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingAddressLine2">Address Line 2</label>
+                                                    <input type="text" id="shippingAddressLine2" placeholder="Apartment, suite, etc.">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingCity">City</label>
+                                                    <input type="text" id="shippingCity" placeholder="Salem">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingState">State / Region</label>
+                                                    <input type="text" id="shippingState" placeholder="Massachusetts">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingPostalCode">Postal Code</label>
+                                                    <input type="text" id="shippingPostalCode" placeholder="01970">
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="shippingCountry">Country</label>
+                                                    <input type="text" id="shippingCountry" placeholder="United States">
+                                                </div>
+                                                <button type="submit" class="submit-btn click-item">Save shipping details</button>
+                                            </form>
+                                            <p id="shippingStatusMessage" class="admin-status" aria-live="polite"></p>
                                         </div>
                                     </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎧</div>
-                                        <h3>Headset Holder</h3>
-                                        <p class="product-desc">3D Printed custom designs</p>
-                                    </div>
-                                    <div class="product-card click-item">
-                                        <div class="product-image">🎁</div>
-                                        <h3>Gift Boxes</h3>
-                                        <p class="product-desc">Curated spooky collections</p>
+
+                                    <div class="account-stack">
+                                        <div class="account-panel">
+                                            <h3>Wishlist</h3>
+                                            <div id="wishlistList" class="account-saved-list"></div>
+                                        </div>
+
+                                        <div class="account-panel">
+                                            <h3>Saved cart</h3>
+                                            <p id="cartSummaryMessage">Your active account cart is saved automatically on this device.</p>
+                                            <div class="account-button-row">
+                                                <button type="button" class="table-action-btn click-item" id="moveWishlistToCartButton">Move wishlist to cart</button>
+                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="clearCartButton">Clear cart</button>
+                                            </div>
+                                            <div id="cartList" class="account-saved-list"></div>
+                                            <p id="commerceModeMessage" class="form-status" aria-live="polite">Checking secure checkout availability…</p>
+                                            <div id="cartTotalsPanel" class="account-panel hidden">
+                                                <h3>Cart totals</h3>
+                                                <div class="cart-totals-row"><span>Subtotal</span><strong id="cartSubtotalValue">$0.00</strong></div>
+                                                <div class="cart-totals-row"><span>Sales tax</span><strong id="cartTaxValue">$0.00</strong></div>
+                                                <div class="cart-totals-row"><span>Shipping</span><strong id="cartShippingValue">$0.00</strong></div>
+                                                <div class="cart-totals-row cart-totals-row-total"><span>Total</span><strong id="cartTotalValue">$0.00</strong></div>
+                                                <button type="button" class="submit-btn click-item" id="checkoutButton">Proceed to Secure Checkout</button>
+                                            </div>
+                                            <p id="cartStatusMessage" class="admin-status" aria-live="polite"></p>
+                                        </div>
                                     </div>
                                 </div>
-                                <p class="shop-note">Visit sipofghoulaid.com for the full collection and latest releases! 👻</p>
                             </section>
 
                             <!-- Summon Us Channel -->
-                            <section id="summon" class="channel">
+                            <section id="summon" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">SUMMON US</h1>
                                 <div class="summon-content">
                                     <p>👻 Have a question? Want to collaborate? Need to summon the chaos? 👻</p>
                                     <div class="summon-grid">
                                         <div class="summon-card click-item">
                                             <h3>📷 Instagram</h3>
-                                            <p>@sipofghoulaid</p>
+                                            <p><a href="https://www.instagram.com/sipofghoulaid/" target="_blank" rel="noopener noreferrer">@sipofghoulaid</a></p>
                                             <p class="desc">DMs open for spooky talk</p>
                                         </div>
                                         <div class="summon-card click-item">
-                                            <h3>💬 Discord</h3>
-                                            <p>Join our community</p>
-                                            <p class="desc">Exclusive peeks & ghoul chat</p>
+                                            <h3>🎵 TikTok</h3>
+                                            <p><a href="https://www.tiktok.com/@sipofghoulaid" target="_blank" rel="noopener noreferrer">@sipofghoulaid</a></p>
+                                            <p class="desc">Watch spooky creations come to life</p>
                                         </div>
                                         <div class="summon-card click-item">
                                             <h3>📧 Email</h3>
-                                            <p>sipofghoulaid@gmail.com</p>
-                                            <p class="desc">For business inquiries</p>
+                                            <p><a href="mailto:support@sipofghoulaid.com">support@sipofghoulaid.com</a></p>
+                                            <p class="desc">For order support and business inquiries</p>
                                         </div>
                                         <div class="summon-card click-item">
-                                            <h3>🛒 Shop</h3>
-                                            <p>sipofghoulaid.com</p>
-                                            <p class="desc">Browse the full spooky collection</p>
+                                            <h3>📘 Facebook</h3>
+                                            <p><a href="https://www.facebook.com/sipofghoulaid" target="_blank" rel="noopener noreferrer">Sip of Ghoulaid</a></p>
+                                            <p class="desc">Follow shop news and new drops</p>
                                         </div>
                                     </div>
+                                    <form id="orderSupportForm" class="custom-order-form">
+                                        <h3 class="form-section-title">📦 ORDER SUPPORT</h3>
+                                        <p>Need help with an existing checkout order? Send a secure message to the ghoul lab.</p>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="supportOrderId">Order ID</label>
+                                                <input id="supportOrderId" name="orderId" required autocomplete="off">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="supportEmail">Order email</label>
+                                                <input id="supportEmail" name="email" type="email" required autocomplete="email">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="supportMessage">How can we help?</label>
+                                            <textarea id="supportMessage" name="message" rows="4" maxlength="4000" required></textarea>
+                                        </div>
+                                        <button type="submit" class="submit-btn click-item">Send support request</button>
+                                        <p id="orderSupportStatus" class="form-status" role="status"></p>
+                                    </form>
                                 </div>
                             </section>
 
                             <!-- Custom Order Channel -->
-                            <section id="custom-order" class="channel">
+                            <section id="custom-order" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">CUSTOM ORDER</h1>
                                 
                                 <!-- Please Read Section -->
@@ -301,7 +500,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="form-group" id="additionalSetCountGroup" style="display: none;">
+                                    <div class="form-group" id="additionalSetCountGroup" hidden aria-hidden="true">
                                         <label for="additionalSetCount">How many additional sets?</label>
                                         <input type="number" id="additionalSetCount" name="additionalSetCount" min="1" max="10" placeholder="Number of additional sets">
                                     </div>
@@ -321,6 +520,24 @@
                                         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any other special requests, notes, or important information..." rows="3"></textarea>
                                     </div>
 
+                                    <hr class="form-divider">
+
+                                    <h3 class="form-section-title">💳 PAYMENT</h3>
+
+                                    <div class="payment-methods-panel">
+                                        <p class="payment-help-text">Choose your preferred payment method. We&apos;ll confirm your order total first, then send payment directions using your selected option.</p>
+                                        <div id="paymentMethodsList" class="payment-method-list" aria-live="polite"></div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="paymentMethod">Preferred Payment Method</label>
+                                        <select id="paymentMethod" name="paymentMethod" required>
+                                            <option value="">Choose payment method...</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="paymentMethodInstructions" class="payment-instructions" aria-live="polite"></div>
+
                                     <div class="form-group checkbox">
                                         <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
                                         <label for="agreeTerms">I agree to the terms & conditions</label>
@@ -329,15 +546,65 @@
                                     <button type="submit" class="submit-btn click-item">📡 SUBMIT ORDER</button>
                                     <button type="reset" class="reset-btn click-item">🔄 CLEAR FORM</button>
                                 </form>
+                                <p id="formStatus" class="form-status" aria-live="polite"></p>
 
-                                <div id="orderSuccess" class="order-success hidden">
+                                <div id="orderSuccess" class="order-success hidden" aria-live="polite">
                                     <h2>✅ ORDER RECEIVED!</h2>
-                                    <p>Thank you! We'll contact you soon to confirm your custom order.</p>
+                                    <p id="orderSuccessMessage">Thank you! We'll contact you soon to confirm your custom order.</p>
+                                </div>
+                            </section>
+
+                            <!-- Reviews Channel -->
+                            <section id="reviews" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">CUSTOMER TRANSMISSIONS</h1>
+                                <p class="channel-intro">Leave a review using any name or nickname. Reviews are saved on this device.</p>
+
+                                <div class="reviews-layout">
+                                    <form id="reviewForm" class="custom-order-form review-form">
+                                        <h2>TRANSMIT A REVIEW</h2>
+
+                                        <div class="form-group">
+                                            <label for="reviewNickname">Name or nickname *</label>
+                                            <input type="text" id="reviewNickname" name="nickname" minlength="2" maxlength="40" required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewRating">Rating *</label>
+                                            <select id="reviewRating" name="rating" required>
+                                                <option value="">Choose a rating</option>
+                                                <option value="5">★★★★★ — Amazing</option>
+                                                <option value="4">★★★★☆ — Great</option>
+                                                <option value="3">★★★☆☆ — Good</option>
+                                                <option value="2">★★☆☆☆ — Needs work</option>
+                                                <option value="1">★☆☆☆☆ — Disappointing</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewProduct">What are you reviewing?</label>
+                                            <select id="reviewProduct" name="product">
+                                                <option value="">Overall shop experience</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="reviewComment">Your review *</label>
+                                            <textarea id="reviewComment" name="comment" rows="5" minlength="10" maxlength="1000" required></textarea>
+                                        </div>
+
+                                        <button type="submit" class="submit-btn click-item">Send Review</button>
+                                        <p id="reviewStatus" class="form-status" aria-live="polite"></p>
+                                    </form>
+
+                                    <div class="reviews-feed">
+                                        <h2>RECENT REVIEWS</h2>
+                                        <div id="reviewsList" class="reviews-list" aria-live="polite"></div>
+                                    </div>
                                 </div>
                             </section>
 
                             <!-- About Channel -->
-                            <section id="about" class="channel">
+                            <section id="about" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">ABOUT SIP OF GHOULAID</h1>
                                 <div class="about-content">
                                     <div class="about-section">
@@ -362,15 +629,51 @@
                                         <p class="warning">DON'T DRINK THE GHOULAID.</p>
                                     </div>
                                 </div>
+                                <p class="shop-admin-link"><a href="admin.html">🛠️ Open Local-Only Admin Panel</a></p>
+                            </section>
+
+                            <section id="policies" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">STORE POLICIES</h1>
+                                <nav class="policy-tabs" aria-label="Store policy pages">
+                                    <a href="/policies/privacy" data-policy="privacy">Privacy</a>
+                                    <a href="/policies/terms" data-policy="terms">Terms</a>
+                                    <a href="/policies/shipping" data-policy="shipping">Shipping</a>
+                                    <a href="/policies/returns" data-policy="returns">Returns &amp; Refunds</a>
+                                    <a href="/policies/custom-orders" data-policy="custom-orders">Custom Orders</a>
+                                    <a href="/policies/contact" data-policy="contact">Contact &amp; Support</a>
+                                    <a href="/policies/legal" data-policy="legal">Legal Notice</a>
+                                </nav>
+                                <article id="policyContent" class="policy-content" aria-live="polite"></article>
                             </section>
                         </main>
+                        <footer class="store-footer">
+                            <strong>Store policies</strong>
+                            <nav aria-label="Store policies">
+                                <a href="/policies/privacy" data-policy="privacy">Privacy</a>
+                                <a href="/policies/terms" data-policy="terms">Terms</a>
+                                <a href="/policies/shipping" data-policy="shipping">Shipping</a>
+                                <a href="/policies/returns" data-policy="returns">Returns &amp; Refunds</a>
+                                <a href="/policies/custom-orders" data-policy="custom-orders">Custom Orders &amp; Deposits</a>
+                                <a href="/policies/contact" data-policy="contact">Contact &amp; Support</a>
+                            </nav>
+                            <p class="store-footer-signoff">Pour a lil out for the ghouls 💀</p>
+                            <small>© 2026 Sip of GhoulAid. All rights reserved.</small>
+                            <small>Spooky fast shipping 🦇 • No refunds or exchanges 🧪</small>
+                        </footer>
+                        <nav class="tv-footer-nav" aria-label="Persistent channel navigation">
+                            <button type="button" class="footer-home-btn" data-channel-target="home">← HOME</button>
+                            <span id="channelIndicator">CH 01 · HOME</span>
+                            <button type="button" class="footer-guide-btn" data-channel-target="home">TV GUIDE</button>
+                        </nav>
                     </div>
                 </div>
 
                 <!-- TV Control Buttons -->
                 <div class="tv-controls">
-                    <button class="control-btn click-item" id="powerBtn">⏻</button>
-                    <button class="control-btn click-item" id="volumeBtn">🔊</button>
+                    <button class="control-btn control-btn-power click-item" id="powerBtn" aria-label="Toggle TV power">
+                        <span class="power-icon" aria-hidden="true"></span>
+                    </button>
+                    <button class="control-btn click-item" id="volumeBtn" aria-label="Adjust TV volume">🔊</button>
                 </div>
             </div>
         </div>
@@ -381,6 +684,7 @@
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
-    <script src="script.js"></script>
+    <script src="products.js?v=20260921-live-catalog"></script>
+    <script src="script.js?v=20261001-store-policies"></script>
 </body>
 </html>
