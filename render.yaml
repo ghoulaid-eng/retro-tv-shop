@@ -3,7 +3,7 @@ services:
     name: sip-of-ghoulaid
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run db:generate
+    buildCommand: npm ci && npm run db:generate && npm run db:deploy && npm run db:seed
     startCommand: npm run start:render
     healthCheckPath: /api/health
     autoDeployTrigger: commit

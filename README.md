@@ -120,15 +120,19 @@ stripe listen --forward-to localhost:3000/api/commerce/webhook
 
 ## Render deployment
 
-`render.yaml` defines a free-tier test web service. Render builds with `npm ci`,
-generates Prisma Client, applies pending migrations, seeds the catalog idempotently,
-and checks `/api/health`. The app automatically uses Render's `RENDER_EXTERNAL_URL`
-for Stripe success and cancel redirects.
+`render.yaml` defines a free-tier test web service. Its build runs `npm ci`,
+generates Prisma Client, applies pending migrations, and seeds the catalog
+idempotently. Its runtime start command only launches the server, so cold boots and
+restarts do not run database migrations or seed the catalog. The app automatically
+uses Render's `RENDER_EXTERNAL_URL` for Stripe success and cancel redirects.
 
 Create the service as a Render Blueprint, then enter every `sync: false` environment
 variable in the Render dashboard. Use the Supabase pooled transaction URL for
-`DATABASE_URL` and the direct port 5432 URL for `DIRECT_URL`. The seed defaults new
-inventory to zero so exact quantities must be entered before checkout is enabled.
+`DATABASE_URL` and the direct port 5432 URL for `DIRECT_URL`. For a catalog refresh
+outside a deployment, run `npm run db:seed` once from a controlled environment after
+reviewing the source catalog; do not add it to the runtime start command. The seed
+defaults new inventory to zero so exact quantities must be entered before checkout is
+enabled.
 
 The free tier is suitable for integration testing but sleeps when idle. Upgrade the
 service before treating it as always-on production hosting.

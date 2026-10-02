@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:render": "npm run db:deploy && npm run db:seed && node server.js",
+    "start:render": "node server.js",
     "dev": "node --watch server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
