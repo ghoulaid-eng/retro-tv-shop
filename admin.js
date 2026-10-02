@@ -198,6 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const adminLoginPassword = document.getElementById('adminLoginPassword');
     const adminLoginStatus = document.getElementById('adminLoginStatus');
     const adminModeMessage = document.getElementById('adminModeMessage');
+    const adminSignOut = document.getElementById('adminSignOut');
 
     let products = [];
     let orders = [];
@@ -211,9 +212,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let productVideosDraft = [];
     let handleManuallyEdited = false;
     let productionAdmin = false;
-    let adminAccessToken = sessionStorage.getItem('sip-of-ghoulaid-admin-token') || '';
     let productionBootstrap = null;
     let publicConfig = null;
+    let supabaseClient = null;
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioContext = AudioContextClass ? new AudioContextClass() : null;
@@ -246,103 +247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            async function adminRequest(path, options = {}) {
-                const response = await fetch(path, {
-                    ...options,
-                    headers: {
-                        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-                        ...options.headers,
-                        Authorization: `Bearer ${adminAccessToken}`
-                    }
-                });
-                const body = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) {
-                        sessionStorage.removeItem('sip-of-ghoulaid-admin-token');
-                    }
-                    throw new Error(body.message || 'Admin request failed.');
-                }
-                return body;
-            }
-
-            async function configureAdminMode() {
-                publicConfig = await fetch('/api/commerce/config', { cache: 'no-store' }).then(response => response.json());
-                if (!publicConfig.adminAuthAvailable) {
-                    return true;
-                }
-
-                if (!adminAccessToken) {
-                    adminAuthPanel.classList.remove('hidden');
-                    adminShell.classList.add('hidden');
-                    adminModeMessage.innerHTML = '<strong>SECURE PRODUCTION ADMIN:</strong> Sign in with an allowlisted account to manage hosted orders.';
-                    return false;
-                }
-
-                try {
-                    const session = await adminRequest('/api/admin/session');
-                    productionBootstrap = await adminRequest('/api/admin/bootstrap');
-                    productionAdmin = true;
-                    adminAuthPanel.classList.add('hidden');
-                    adminShell.classList.remove('hidden');
-                    adminModeMessage.classList.remove('error');
-                    adminModeMessage.textContent = `PRODUCTION ADMIN: Signed in as ${session.email}. Order actions affect hosted data and may email customers or issue Stripe refunds.`;
-                    return true;
-                } catch (error) {
-                    adminAccessToken = '';
-                    sessionStorage.removeItem('sip-of-ghoulaid-admin-token');
-                    adminAuthPanel.classList.remove('hidden');
-                    adminShell.classList.add('hidden');
-                    setStatus(adminLoginStatus, error.message);
-                    return false;
-                }
-            }
-
-            adminLoginForm?.addEventListener('submit', async event => {
-                event.preventDefault();
-                setStatus(adminLoginStatus, 'Signing in...');
-                try {
-                    const response = await fetch(`${publicConfig.supabaseUrl}/auth/v1/token?grant_type=password`, {
-                        method: 'POST',
-                        headers: {
-                            apikey: publicConfig.supabaseAnonKey,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            email: adminLoginEmail.value.trim(),
-                            password: adminLoginPassword.value
-                        })
-                    });
-                    const session = await response.json();
-                    if (!response.ok || !session.access_token) {
-                        throw new Error(session.error_description || session.msg || 'Sign in failed.');
-                    }
-                    sessionStorage.setItem('sip-of-ghoulaid-admin-token', session.access_token);
-                    window.location.reload();
-                } catch (error) {
-                    setStatus(adminLoginStatus, error.message);
-                }
-            });
-
-            async function refreshProductionOrders() {
-                const bootstrap = await adminRequest('/api/admin/bootstrap');
-                orders = bootstrap.orders;
-                renderOrders(orders);
-                renderPayments();
-            }
-
-            async function runOrderOperation(order, path, body) {
-                try {
-                    await adminRequest(`/api/admin/orders/${encodeURIComponent(order.id)}${path}`, {
-                        method: path === '/fulfillment' ? 'PATCH' : 'POST',
-                        body: JSON.stringify(body)
-                    });
-                    await refreshProductionOrders();
-                    setStatus(paymentManagerStatus, `Order ${order.id} updated.`);
-                } catch (error) {
-                    setStatus(paymentManagerStatus, error.message);
-                }
-            }
-
             item.addEventListener('click', () => {
                 if (clickSound) {
                     playClickSound();
@@ -350,6 +254,164 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             item.dataset.clickSoundBound = 'true';
         });
+    }
+
+    function setLoginStatus(message, isError = false) {
+        adminLoginStatus.classList.toggle('error', isError);
+        adminLoginStatus.classList.toggle('success', !isError && Boolean(message));
+        setStatus(adminLoginStatus, message);
+    }
+
+    function setAdminAccessState(isAuthorized) {
+        adminAuthPanel.classList.toggle('hidden', isAuthorized);
+        adminShell.classList.toggle('hidden', !isAuthorized);
+        adminShell.setAttribute('aria-hidden', String(!isAuthorized));
+        adminSignOut.classList.toggle('hidden', !isAuthorized);
+    }
+
+    async function signOutAndLock(message = 'Signed out.') {
+        if (supabaseClient) {
+            const { error } = await supabaseClient.auth.signOut({ scope: 'local' });
+            if (error) console.error('Unable to clear Supabase session:', error);
+        }
+        productionAdmin = false;
+        productionBootstrap = null;
+        setAdminAccessState(false);
+        adminLoginPassword.value = '';
+        setLoginStatus(message);
+        adminModeMessage.classList.add('error');
+        adminModeMessage.textContent = 'SECURE PRODUCTION ADMIN: Sign in with an allowlisted account to manage hosted data.';
+    }
+
+    async function adminRequest(path, options = {}) {
+        if (!supabaseClient) throw new Error('Secure admin sign-in is unavailable.');
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            await signOutAndLock('Your session has expired. Sign in again.');
+            throw new Error('Your session has expired. Sign in again.');
+        }
+        const response = await fetch(path, {
+            ...options,
+            cache: 'no-store',
+            headers: {
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                ...options.headers,
+                Authorization: `Bearer ${session.access_token}`
+            }
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                await signOutAndLock(body.message || 'Your admin access is no longer valid.');
+            }
+            throw new Error(body.message || 'Admin request failed.');
+        }
+        return body;
+    }
+
+    async function configureAdminMode() {
+        const response = await fetch('/api/commerce/config', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Secure admin configuration is unavailable.');
+        publicConfig = await response.json();
+        if (!publicConfig.adminAuthAvailable || !publicConfig.supabaseUrl || !publicConfig.supabaseAnonKey) {
+            setAdminAccessState(false);
+            adminLoginForm.querySelector('button[type="submit"]').disabled = true;
+            adminModeMessage.classList.add('error');
+            adminModeMessage.textContent = 'SECURE ADMIN UNAVAILABLE: Authentication has not been configured on this server.';
+            setLoginStatus('Admin authentication is unavailable. Contact the site owner.', true);
+            return false;
+        }
+        if (!window.supabase?.createClient) {
+            throw new Error('Secure sign-in could not be loaded. Refresh the page and try again.');
+        }
+
+        if (!supabaseClient) {
+            supabaseClient = window.supabase.createClient(publicConfig.supabaseUrl, publicConfig.supabaseAnonKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: false
+                }
+            });
+            supabaseClient.auth.onAuthStateChange((event) => {
+                if (event === 'SIGNED_OUT') {
+                    productionAdmin = false;
+                    productionBootstrap = null;
+                    setAdminAccessState(false);
+                }
+            });
+        }
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            setAdminAccessState(false);
+            adminModeMessage.textContent = 'SECURE PRODUCTION ADMIN: Sign in with an allowlisted account to manage hosted data.';
+            return false;
+        }
+
+        try {
+            const adminSession = await adminRequest('/api/admin/session');
+            productionBootstrap = await adminRequest('/api/admin/bootstrap');
+            productionAdmin = true;
+            setAdminAccessState(true);
+            adminModeMessage.classList.remove('error');
+            adminModeMessage.textContent = `PRODUCTION ADMIN: Signed in as ${adminSession.email}. Order actions affect hosted data and may email customers or issue Stripe refunds.`;
+            return true;
+        } catch (error) {
+            if (productionAdmin) throw error;
+            return false;
+        }
+    }
+
+    adminLoginForm?.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!supabaseClient) {
+            setLoginStatus('Secure admin sign-in is unavailable.', true);
+            return;
+        }
+        const submitButton = adminLoginForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        setLoginStatus('Signing in…');
+        try {
+            const { error } = await supabaseClient.auth.signInWithPassword({
+                email: adminLoginEmail.value.trim(),
+                password: adminLoginPassword.value
+            });
+            if (error) throw error;
+            adminLoginPassword.value = '';
+            window.location.reload();
+        } catch (error) {
+            setLoginStatus(error.message || 'Sign-in failed. Verify your credentials and try again.', true);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+
+    adminSignOut?.addEventListener('click', () => {
+        signOutAndLock().catch(error => {
+            console.error('Unable to sign out:', error);
+            setLoginStatus('Unable to sign out. Close this browser window and try again.', true);
+        });
+    });
+
+    async function refreshProductionOrders() {
+        const bootstrap = await adminRequest('/api/admin/bootstrap');
+        orders = bootstrap.orders;
+        renderOrders(orders);
+        renderPayments();
+    }
+
+    async function runOrderOperation(order, path, body) {
+        try {
+            await adminRequest(`/api/admin/orders/${encodeURIComponent(order.id)}${path}`, {
+                method: path === '/fulfillment' ? 'PATCH' : 'POST',
+                body: JSON.stringify(body)
+            });
+            await refreshProductionOrders();
+            setStatus(paymentManagerStatus, `Order ${order.id} updated.`);
+        } catch (error) {
+            setStatus(paymentManagerStatus, error.message);
+        }
     }
 
     function setStatus(target, message) {

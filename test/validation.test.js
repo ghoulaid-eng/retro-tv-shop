@@ -41,6 +41,24 @@ test('public capabilities never expose secrets and require complete checkout con
     assert.equal(JSON.stringify(publicConfig).includes('secret'), false);
 });
 
+test('public configuration exposes only browser-safe Supabase Auth settings', () => {
+    const config = readConfig({
+        DATABASE_URL: 'postgresql://database-secret',
+        SUPABASE_URL: 'https://project.supabase.co/',
+        SUPABASE_ANON_KEY: 'sb_publishable_browser_key',
+        SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_server_key',
+        ADMIN_EMAIL_ALLOWLIST: 'Owner@Example.com, operations@example.com'
+    });
+    const publicConfig = getPublicConfig(config);
+
+    assert.equal(publicConfig.adminAuthAvailable, true);
+    assert.equal(publicConfig.supabaseUrl, 'https://project.supabase.co');
+    assert.equal(publicConfig.supabaseAnonKey, 'sb_publishable_browser_key');
+    assert.equal(JSON.stringify(publicConfig).includes('sb_secret_server_key'), false);
+    assert.equal(JSON.stringify(publicConfig).includes('database-secret'), false);
+    assert.deepEqual(config.adminEmails, ['owner@example.com', 'operations@example.com']);
+});
+
 test('order operations configuration exposes capability but never the Resend key', () => {
     const config = readConfig({
         RESEND_API_KEY: 're_secret',
