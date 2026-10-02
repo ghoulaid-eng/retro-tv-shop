@@ -31,6 +31,6 @@
     "stripe": "^18.5.0"
   },
   "devDependencies": {
-    "prisma": "^6.16.2"
+    "prisma": "^7.10.0"
   }
 }
