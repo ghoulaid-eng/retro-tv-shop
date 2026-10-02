@@ -12,6 +12,10 @@ services:
         sync: false
       - key: PUBLIC_URL
         sync: false
+      - key: OWNER_PORTAL_USERNAME
+        sync: false
+      - key: OWNER_PORTAL_PASSWORD
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

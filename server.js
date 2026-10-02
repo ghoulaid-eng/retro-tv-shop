@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const helmet = require('helmet');
 const Stripe = require('stripe');
@@ -14,6 +15,9 @@ const shippingCountries = (process.env.STRIPE_ALLOWED_SHIPPING_COUNTRIES || 'US'
   .map((country) => country.trim().toUpperCase()).filter((country) => /^[A-Z]{2}$/.test(country));
 const databaseEnabled = Boolean(process.env.DATABASE_URL);
 const commerceEnabled = Boolean(databaseEnabled && process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET && shippingRateIds.length && shippingCountries.length);
+const ownerPortalUsername = process.env.OWNER_PORTAL_USERNAME;
+const ownerPortalPassword = process.env.OWNER_PORTAL_PASSWORD;
+const ownerPortalEnabled = Boolean(ownerPortalUsername && ownerPortalPassword);
 
 let stripe;
 let prisma;
@@ -52,6 +56,14 @@ app.use(express.json({ limit: '16kb' }));
 
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+app.get('/api/auth/session', requireOwnerPortal, (_req, res) => {
+  res.json({ authenticated: true, username: ownerPortalUsername });
+});
+
+app.get('/admin.html', requireOwnerPortal, (_req, res) => {
+  res.sendFile(path.join(root, 'admin.html'));
 });
 
 app.get('/api/commerce/config', (_req, res) => {
@@ -139,7 +151,7 @@ app.get('/checkout/cancel', async (req, res) => {
 });
 
 app.use((req, res, next) => {
-  const restrictedPath = /^\/(?:server(?:\.js|\.ps1)?|package(?:-lock)?\.json|prisma|\.env)(?:\/|$)/i;
+  const restrictedPath = /^\/(?:admin\.html|server(?:\.js|\.ps1)?|package(?:-lock)?\.json|prisma|\.env)(?:\/|$)/i;
   if (restrictedPath.test(req.path)) return res.sendStatus(404);
   return next();
 });
@@ -163,6 +175,36 @@ function normalizeCart(items) {
 
 function isNonEmptyString(value, maximumLength) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maximumLength;
+}
+
+function requireOwnerPortal(req, res, next) {
+  if (!ownerPortalEnabled) return res.sendStatus(404);
+  const authorization = req.get('authorization');
+  if (!authorization || !authorization.startsWith('Basic ')) return requestOwnerCredentials(res);
+  let credentials;
+  try {
+    credentials = Buffer.from(authorization.slice(6), 'base64').toString('utf8');
+  } catch {
+    return requestOwnerCredentials(res);
+  }
+  const separator = credentials.indexOf(':');
+  if (separator < 0
+    || !secureEquals(credentials.slice(0, separator), ownerPortalUsername)
+    || !secureEquals(credentials.slice(separator + 1), ownerPortalPassword)) {
+    return requestOwnerCredentials(res);
+  }
+  return next();
+}
+
+function requestOwnerCredentials(res) {
+  res.set('WWW-Authenticate', 'Basic realm="Sip of Ghoulaid Owner Portal", charset="UTF-8"');
+  return res.status(401).send('Owner credentials are required.');
+}
+
+function secureEquals(value, expected) {
+  const actualBuffer = Buffer.from(value);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 async function reserveOrder(items) {
