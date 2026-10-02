@@ -1,8 +1,8 @@
 # Sip of Ghoulaid Shop
 
-A retro TV-themed storefront with a browser-local account, wishlist, cart, and
-demo admin experience, plus an optional production commerce service built with
-Node.js, Express, Prisma/PostgreSQL, and Stripe Checkout.
+A retro TV-themed storefront with a browser-local account, wishlist, and cart,
+plus an optional production commerce service built with Node.js, Express,
+Prisma/PostgreSQL, Stripe Checkout, and secure Supabase-backed administration.
 
 ## What runs where
 
@@ -11,15 +11,14 @@ Node.js, Express, Prisma/PostgreSQL, and Stripe Checkout.
   orders, payments, webhook idempotency, and custom-order requests.
 - Stripe hosts card collection. This application never receives or stores raw
   card details.
-- Browser storage remains available for account, wishlist, cart, and demo admin
-  behavior. If the backend cannot be reached, the UI explicitly identifies
+- Browser storage remains available for account, wishlist, and cart behavior.
+  If the backend cannot be reached, the UI explicitly identifies
   checkout and custom requests as browser-local and does not claim submission.
-- `admin.html` is deliberately **local-only and unauthenticated**. It cannot
-  mutate production data. A production admin API must be added only with
-  server-side authentication and authorization; there is no hardcoded password.
-  Its product editor supports local gallery images, URL handles, formatted
-  descriptions, sale pricing, stock fields, shipping details, categories, and
-  per-variant prices and quantities for storefront prototyping.
+- `admin.html` is a public login page, not a public admin console. Its controls
+  remain hidden until Supabase Auth has an active session and the server verifies
+  that the account email is in `ADMIN_EMAIL_ALLOWLIST`. It never contains a
+  password or Supabase service-role key. The browser receives only the
+  publishable Supabase URL and anon key from the same-origin capability endpoint.
 
 ## Local setup
 
@@ -78,6 +77,31 @@ npm start
 
 `POST /api/custom-orders` depends only on `DATABASE_URL`, not Stripe. With no
 database configured it returns HTTP 503 rather than a fake success response.
+
+### Admin authentication
+
+1. Create the administrator accounts in **Supabase Dashboard → Authentication →
+   Users** (or invite them from the dashboard). Use a unique, strong password for
+   each person; do not create a shared password or put credentials in this repo.
+2. In **Authentication → Providers → Email**, choose the email-confirmation
+   policy appropriate to the launch. For production, keep confirmation enabled
+   and ensure the redirect/site URLs are your canonical HTTPS domain. Confirm
+   each administrator's email before expecting password login to work.
+3. Set `ADMIN_EMAIL_ALLOWLIST` on Render to the comma-separated, lower-case
+   email addresses permitted to administer production, for example
+   `owner@example.com,operations@example.com`. Authentication alone is not
+   authorization: the server rejects authenticated accounts outside this list.
+4. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `DATABASE_URL`, and `DIRECT_URL` only as Render environment variables. The
+   URL and anon key are intentionally browser-visible; database URLs and the
+   `SUPABASE_SERVICE_ROLE_KEY` are private server secrets and must never appear
+   in browser code, GitHub variables exposed to Pages, or client logs.
+
+The admin page uses the Supabase browser client with persistent sessions and
+automatic token refresh. Every production admin request sends the current access
+token, but authorization remains enforced by the server on every route. The
+response for `admin.html` is `no-store` and has `noindex` protections; this is
+defense in depth, not access control.
 
 ## Stripe setup
 

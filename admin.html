@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <title>Sip of Ghoulaid Shop Admin</title>
     <link rel="stylesheet" href="styles.css?v=20260921-product-editor">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -19,12 +20,13 @@
                                     <div>
                                         <h1 id="adminShopName" class="channel-title">SIP OF GHOULAID SHOP ADMIN</h1>
                                         <p id="adminShopSubtitle" class="channel-intro">A spooky control panel for sip of ghoulaid shop, products, and storefront tools.</p>
-                                        <p id="adminModeMessage" class="form-status error"><strong>LOCAL-ONLY DEMO:</strong> this unprotected panel only changes browser storage. It does not manage the hosted catalog, inventory, payments, or production orders.</p>
+                                        <p id="adminModeMessage" class="form-status" role="status">Checking secure admin access…</p>
                                     </div>
                                     <p class="shop-admin-link"><a href="index.html">📺 Return to Shop Channel</a></p>
+                                    <button id="adminSignOut" type="button" class="submit-btn click-item hidden">Sign out</button>
                                 </div>
 
-                                <div id="adminAuthPanel" class="admin-panel-card hidden">
+                                <div id="adminAuthPanel" class="admin-panel-card">
                                     <h2>Secure admin sign in</h2>
                                     <form id="adminLoginForm" class="admin-simple-form">
                                         <div class="form-group">
@@ -36,10 +38,10 @@
                                             <input id="adminLoginPassword" type="password" autocomplete="current-password" required>
                                         </div>
                                         <button type="submit" class="submit-btn click-item">Sign in</button>
-                                        <p id="adminLoginStatus" class="form-status" role="status"></p>
+                                        <p id="adminLoginStatus" class="form-status" role="alert" aria-live="polite"></p>
                                     </form>
                                 </div>
-                                <div id="adminShell" class="admin-shell">
+                                <div id="adminShell" class="admin-shell hidden" aria-hidden="true">
                                     <div class="admin-section-picker admin-panel-card">
                                         <label for="adminSectionSelect">Admin Console</label>
                                         <select id="adminSectionSelect" aria-label="Choose an admin section">
@@ -548,11 +550,15 @@
         </div>
     </div>
 
+    <noscript>
+        <p class="form-status error">JavaScript is required to sign in to the secure admin portal.</p>
+    </noscript>
     <audio id="clickSound" preload="auto">
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
     <script src="products.js?v=20260921-live-catalog"></script>
-    <script src="admin.js?v=20260921-live-catalog"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js" integrity="sha384-lDkWTkrzxBtYvBtgQmPcLBhTbJdqB11igYtWVcCIVXO0Lv4+XuKKdd4razodiyzk" crossorigin="anonymous"></script>
+    <script src="admin.js?v=20261002-secure-auth"></script>
 </body>
 </html>

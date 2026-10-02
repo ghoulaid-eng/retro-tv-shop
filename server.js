@@ -47,7 +47,7 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
             styleSrc: ["'self'", 'https://fonts.googleapis.com'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
@@ -1262,6 +1262,12 @@ app.use('/assets/products', express.static(path.join(staticRoot, 'assets', 'prod
 }));
 app.get('/:file', (req, res, next) => {
     if (!staticFiles.has(req.params.file)) return next();
+    if (req.params.file === 'admin.html') {
+        res.set({
+            'Cache-Control': 'no-store',
+            'X-Robots-Tag': 'noindex, nofollow, noarchive'
+        });
+    }
     res.sendFile(req.params.file, { root: staticRoot });
 });
 
