@@ -18,6 +18,11 @@ const commerceEnabled = Boolean(databaseEnabled && process.env.STRIPE_SECRET_KEY
 const ownerPortalUsername = process.env.OWNER_PORTAL_USERNAME;
 const ownerPortalPassword = process.env.OWNER_PORTAL_PASSWORD;
 const ownerPortalEnabled = Boolean(ownerPortalUsername && ownerPortalPassword);
+const ownerSessions = new Map();
+const ownerLoginAttempts = new Map();
+const ownerSessionLifetimeMs = 8 * 60 * 60 * 1000;
+const ownerLoginWindowMs = 15 * 60 * 1000;
+const ownerLoginMaximumAttempts = 5;
 
 let stripe;
 let prisma;
@@ -58,8 +63,53 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-app.get('/api/auth/session', requireOwnerPortal, (_req, res) => {
-  res.json({ authenticated: true, username: ownerPortalUsername });
+app.get('/api/auth/session', (req, res) => {
+  const session = getOwnerSession(req);
+  res.json({ authenticated: Boolean(session), username: session?.username || null });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  if (!ownerPortalEnabled) return res.sendStatus(404);
+  const address = req.ip;
+  const attempt = ownerLoginAttempts.get(address);
+  if (attempt && attempt.resetAt > Date.now() && attempt.count >= ownerLoginMaximumAttempts) {
+    return res.status(429).json({ error: 'Too many sign-in attempts. Try again in 15 minutes.' });
+  }
+  const { username, password } = req.body || {};
+  if (typeof username !== 'string' || typeof password !== 'string'
+    || !secureEquals(username, ownerPortalUsername) || !secureEquals(password, ownerPortalPassword)) {
+    recordFailedOwnerLogin(address);
+    return res.status(401).json({ error: 'Invalid owner username or password.' });
+  }
+  ownerLoginAttempts.delete(address);
+  const token = crypto.randomBytes(32).toString('base64url');
+  ownerSessions.set(token, { username: ownerPortalUsername, expiresAt: Date.now() + ownerSessionLifetimeMs });
+  res.cookie('sip_owner_session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: ownerSessionLifetimeMs,
+    path: '/'
+  });
+  return res.json({ authenticated: true, username: ownerPortalUsername });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = getCookie(req, 'sip_owner_session');
+  if (token) ownerSessions.delete(token);
+  res.clearCookie('sip_owner_session', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/'
+  });
+  return res.json({ ok: true });
+});
+
+app.get('/owner-login.html', (req, res) => {
+  if (!ownerPortalEnabled) return res.sendStatus(404);
+  if (getOwnerSession(req)) return res.redirect('/admin.html');
+  return res.sendFile(path.join(root, 'owner-login.html'));
 });
 
 app.get('/admin.html', requireOwnerPortal, (_req, res) => {
@@ -151,7 +201,7 @@ app.get('/checkout/cancel', async (req, res) => {
 });
 
 app.use((req, res, next) => {
-  const restrictedPath = /^\/(?:admin\.html|server(?:\.js|\.ps1)?|package(?:-lock)?\.json|prisma|\.env)(?:\/|$)/i;
+  const restrictedPath = /^\/(?:admin\.html|owner-login\.html|server(?:\.js|\.ps1)?|package(?:-lock)?\.json|prisma|\.env)(?:\/|$)/i;
   if (restrictedPath.test(req.path)) return res.sendStatus(404);
   return next();
 });
@@ -179,26 +229,38 @@ function isNonEmptyString(value, maximumLength) {
 
 function requireOwnerPortal(req, res, next) {
   if (!ownerPortalEnabled) return res.sendStatus(404);
-  const authorization = req.get('authorization');
-  if (!authorization || !authorization.startsWith('Basic ')) return requestOwnerCredentials(res);
-  let credentials;
-  try {
-    credentials = Buffer.from(authorization.slice(6), 'base64').toString('utf8');
-  } catch {
-    return requestOwnerCredentials(res);
-  }
-  const separator = credentials.indexOf(':');
-  if (separator < 0
-    || !secureEquals(credentials.slice(0, separator), ownerPortalUsername)
-    || !secureEquals(credentials.slice(separator + 1), ownerPortalPassword)) {
-    return requestOwnerCredentials(res);
-  }
+  if (!getOwnerSession(req)) return res.redirect('/owner-login.html');
   return next();
 }
 
-function requestOwnerCredentials(res) {
-  res.set('WWW-Authenticate', 'Basic realm="Sip of Ghoulaid Owner Portal", charset="UTF-8"');
-  return res.status(401).send('Owner credentials are required.');
+function getOwnerSession(req) {
+  const token = getCookie(req, 'sip_owner_session');
+  const session = token && ownerSessions.get(token);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) {
+    ownerSessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function getCookie(req, name) {
+  const header = req.get('cookie');
+  if (!header) return null;
+  const cookie = header.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  if (!cookie) return null;
+  try {
+    return decodeURIComponent(cookie.slice(name.length + 1));
+  } catch {
+    return null;
+  }
+}
+
+function recordFailedOwnerLogin(address) {
+  const previous = ownerLoginAttempts.get(address);
+  const now = Date.now();
+  const activeAttempt = previous && previous.resetAt > now ? previous : { count: 0, resetAt: now + ownerLoginWindowMs };
+  ownerLoginAttempts.set(address, { ...activeAttempt, count: activeAttempt.count + 1 });
 }
 
 function secureEquals(value, expected) {
