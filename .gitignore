@@ -1,0 +1,4 @@
+.sip-of-ghoulaid-data/
+.env
+node_modules/
+.prisma/

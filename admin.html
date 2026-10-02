@@ -14,11 +14,11 @@
         <header class="admin-header">
             <p class="eyebrow">SIP OF GHOULAID / OWNER FREQUENCY</p>
             <h1>THE GHOUL ROOM</h1>
-            <p>Catalog controls for this browser only.</p>
+            <p>Local owner accounts and catalog controls.</p>
         </header>
         <section id="loginPanel" class="admin-panel login-panel">
             <h2>OWNER LOGIN</h2>
-            <p class="prototype-warning"><strong>LOCAL PROTOTYPE ONLY — NOT SECURE FOR PRODUCTION.</strong> This client-side check is visible in browser code and offers no real protection.</p>
+            <p class="prototype-warning"><strong>LOCAL DEVELOPMENT ONLY — NOT READY FOR PRODUCTION.</strong> Owner passwords are handled by the local server, but this prototype has no HTTPS, hosted database, password recovery, or production deployment.</p>
             <p class="demo-credentials">Demo credentials: <strong>owner</strong> / <strong>ghoulaid-demo</strong></p>
             <form id="loginForm">
                 <label for="adminUsername">Username</label>
@@ -31,10 +31,35 @@
         </section>
         <section id="dashboardPanel" class="admin-dashboard hidden">
             <div class="dashboard-heading">
-                <div><h2>YOUR PRODUCTS</h2><p>Make a change here, then see it on the storefront in this browser.</p></div>
+                <div><h2>OWNER CONSOLE</h2><p>Manage this browser-local Sip of Ghoulaid prototype.</p></div>
                 <div class="header-actions"><button id="newProductButton" class="submit-btn" type="button">+ ADD PRODUCT</button><button id="logoutButton" class="ghost-btn" type="button">LOG OUT</button></div>
             </div>
-            <div class="admin-grid">
+            <nav class="admin-navigation" aria-label="Owner portal sections">
+                <div class="bigcartel-links">
+                    <button type="button" data-admin-view="dashboard">DASHBOARD</button>
+                    <button type="button" data-admin-view="orders">ORDERS</button>
+                    <button type="button" data-admin-view="products">PRODUCTS</button>
+                    <button type="button" data-admin-view="discounts">DISCOUNTS</button>
+                    <button type="button" data-admin-view="marketing">MARKETING</button>
+                    <button type="button" data-admin-view="apps">APP CENTER</button>
+                    <button type="button" data-admin-view="settings">SETTINGS</button>
+                </div>
+            </nav>
+            <section class="overview-panel admin-view active" data-admin-panel="dashboard" aria-labelledby="overviewTitle">
+                <div class="overview-heading"><h3 id="overviewTitle">OVERVIEW</h3><p>Local prototype activity only</p></div>
+                <div class="metric-grid">
+                    <div><span>VISITORS</span><strong id="visitorMetric">0</strong></div>
+                    <div><span>ORDERS</span><strong id="orderMetric">0</strong></div>
+                    <div><span>CONVERSION RATE</span><strong id="conversionMetric">0%</strong></div>
+                    <div><span>AVERAGE ORDER VALUE</span><strong id="averageOrderMetric">$0.00</strong></div>
+                    <div><span>NET REVENUE</span><strong id="revenueMetric">$0.00</strong></div>
+                </div>
+                <div class="insight-grid">
+                    <section><h3>TOP SELLERS</h3><ol id="topSellers" class="insight-list"></ol></section>
+                    <section><h3>TOP CATEGORIES</h3><ol id="topCategories" class="insight-list"></ol></section>
+                </div>
+            </section>
+            <div class="admin-grid admin-view" data-admin-panel="products">
                 <section class="admin-panel catalog-list-panel">
                     <div class="catalog-list-heading"><h3>PRODUCT LIST</h3><button id="resetCatalogButton" class="text-btn" type="button">RESET DEMO CATALOG</button></div>
                     <div id="adminCatalogList" class="admin-catalog-list" aria-live="polite"></div>
@@ -48,18 +73,94 @@
                         <div><label for="productPrice">Price</label><input id="productPrice" type="number" min="0" step="0.01" required placeholder="0.00"></div>
                         <div><label for="productStock">In stock</label><input id="productStock" type="number" min="0" step="1" required value="1"></div>
                     </div>
+                    <fieldset class="variant-editor">
+                        <legend>Variants <span class="field-note">(saved in this browser only)</span></legend>
+                        <p class="field-note">Add one row for each sellable option. Option values use comma-separated pairs, e.g. <code>Scent: Sweet, Size: Large</code>.</p>
+                        <div id="variantRows" class="variant-rows"></div>
+                        <button id="addVariantButton" class="ghost-btn" type="button">+ ADD VARIANT</button>
+                    </fieldset>
                     <label for="productDescription">Description</label>
                     <textarea id="productDescription" required maxlength="220" rows="4"></textarea>
-                    <label for="productImage">Image URL <span class="field-note">(optional)</span></label>
-                    <input id="productImage" type="url" placeholder="https://example.com/product.jpg">
+                    <label for="productMediaUrl">Image or video URL <span class="field-note">(optional)</span></label>
+                    <input id="productMediaUrl" type="url" placeholder="https://example.com/product.jpg">
+                    <label for="productAdditionalImages">Additional image URLs <span class="field-note">(comma-separated; optional)</span></label>
+                    <input id="productAdditionalImages" type="text" placeholder="https://example.com/detail.jpg, https://example.com/back.jpg">
+                    <label for="productMediaType">Media type</label>
+                    <select id="productMediaType"><option value="image">Image</option><option value="video">Video</option></select>
+                    <label for="productMediaUpload">Or upload an image or video <span class="field-note">(2 MB max; saved in this browser only)</span></label>
+                    <input id="productMediaUpload" type="file" accept="image/*,video/*">
+                    <p id="uploadMessage" class="form-message" aria-live="polite"></p>
                     <label class="toggle-label" for="productAvailable"><input id="productAvailable" type="checkbox" checked> Visible on storefront</label>
                     <button class="submit-btn" type="submit">SAVE PRODUCT</button>
                     <button id="cancelEditButton" class="ghost-btn hidden" type="button">CANCEL EDIT</button>
                 </form>
             </div>
-            <aside class="prototype-help"><strong>LOCAL PROTOTYPE HELP:</strong> Products, login, and settings stay in this browser only. There is no checkout, server, secure account system, or shared inventory. Use a real backend and authentication before production.</aside>
+            <section class="admin-panel admin-view" data-admin-panel="orders">
+                <h3>ORDERS</h3>
+                <p>Demo checkout records appear here automatically. No payment is collected or sent.</p>
+                <div id="adminOrders" class="admin-catalog-list"></div>
+            </section>
+            <section class="admin-panel admin-view" data-admin-panel="discounts">
+                <h3>NEW DISCOUNT</h3>
+                <p>Create a browser-local discount for the prototype cart.</p>
+                <form id="discountForm" class="discount-form">
+                    <label for="discountCode">Code</label><input id="discountCode" required maxlength="24" placeholder="GHOUL10">
+                    <button id="generateDiscountButton" class="ghost-btn" type="button">GENERATE RANDOM CODE</button>
+                    <label for="discountDescription">Description <span class="field-note">(shown at checkout)</span></label><input id="discountDescription" maxlength="80" placeholder="10% off spooky drops">
+                    <label class="toggle-label" for="discountAutomatic"><input id="discountAutomatic" type="checkbox"> Apply this discount automatically at checkout</label>
+                    <label for="discountCondition">When a customer...</label>
+                    <select id="discountCondition"><option value="any">Orders anything</option><option value="minimum-amount">Spends a minimum amount</option><option value="minimum-items">Orders a minimum number of items</option></select>
+                    <input id="discountThreshold" type="number" min="0" step="0.01" value="0" aria-label="Minimum purchase requirement">
+                    <label for="discountType">Give them</label>
+                    <select id="discountType"><option value="percent">A percentage discount</option><option value="amount-order">A set amount off per order</option><option value="amount-item">A set amount off per item</option><option value="free-shipping">Free shipping</option></select>
+                    <input id="discountAmount" type="number" min="0" step="0.01" value="10" aria-label="Discount amount">
+                    <label for="discountScope">On...</label>
+                    <select id="discountScope"><option value="all">Their entire order</option><option value="category">A specific category</option><option value="product">A specific product</option></select>
+                    <select id="discountTarget" aria-label="Discount category or product"><option value="">Entire order</option></select>
+                    <label for="discountStart">Starting...</label><input id="discountStart" type="date">
+                    <label for="discountExpiry">Expiring...</label>
+                    <select id="discountExpiry"><option value="never">Never</option><option value="date">On a specific date</option><option value="uses">After number of uses</option></select>
+                    <input id="discountEndDate" type="date" aria-label="Discount expiry date">
+                    <input id="discountMaxUses" type="number" min="1" step="1" aria-label="Maximum uses">
+                    <label class="toggle-label" for="discountOnePerEmail"><input id="discountOnePerEmail" type="checkbox"> Limit to one per email address</label>
+                    <label class="toggle-label" for="discountShippingEntire"><input id="discountShippingEntire" type="checkbox"> Apply free shipping to the entire order</label>
+                    <button class="submit-btn" type="submit">SAVE DISCOUNT</button>
+                </form>
+                <div id="discountList" class="admin-catalog-list"></div>
+            </section>
+            <section class="admin-panel admin-view" data-admin-panel="marketing">
+                <h3>MARKETING</h3>
+                <p>Use a saved discount code in your promo ticker, social posts, or email list. Local codes work only in this prototype cart.</p>
+                <button type="button" class="featured-cta" data-admin-view="discounts">MANAGE DISCOUNT CODES</button>
+            </section>
+            <section class="admin-panel admin-view" data-admin-panel="apps">
+                <h3>APP CENTER</h3>
+                <p>Explore providers for your live store. These links open each provider; no account connection is configured here.</p>
+                <div class="bigcartel-links app-links">
+                    <a href="https://stripe.com" target="_blank" rel="noopener noreferrer">STRIPE PAYMENTS</a>
+                    <a href="https://chatway.app" target="_blank" rel="noopener noreferrer">CHATWAY LIVE CHAT</a>
+                    <a href="https://www.commoninja.com" target="_blank" rel="noopener noreferrer">COMMON NINJA WIDGETS</a>
+                    <a href="https://www.fera.ai" target="_blank" rel="noopener noreferrer">FERA REVIEWS</a>
+                </div>
+            </section>
+            <section class="admin-panel admin-view" data-admin-panel="settings">
+                <h3>SETTINGS & HELP</h3>
+                <p>Owner logins are stored by the local development server. Catalog, discount, visitor, and demo-order data remain in this browser only. This is not a production deployment.</p>
+                <form id="ownerAccountForm" class="discount-form">
+                    <h4>CREATE OWNER LOGIN</h4>
+                    <p>Signed-in owners can create another owner login for this local server.</p>
+                    <label for="newOwnerUsername">Username</label>
+                    <input id="newOwnerUsername" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]+" required>
+                    <label for="newOwnerPassword">Password</label>
+                    <input id="newOwnerPassword" type="password" autocomplete="new-password" minlength="12" required>
+                    <button class="submit-btn" type="submit">CREATE OWNER LOGIN</button>
+                    <p id="ownerAccountMessage" class="form-message" aria-live="polite"></p>
+                </form>
+                <button id="clearPrototypeDataButton" class="cart-clear" type="button">CLEAR LOCAL PROTOTYPE DATA</button>
+            </section>
         </section>
     </main>
-    <script src="admin.js"></script>
+    <script src="catalog-data.js?v=3"></script>
+    <script src="admin-v4.js?v=5"></script>
 </body>
 </html>
