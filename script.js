@@ -73,6 +73,13 @@ const waitlistStatus = document.getElementById('waitlistStatus');
 const productDetailContent = document.getElementById('productDetailContent');
 const productDetailBack = document.getElementById('productDetailBack');
 const policyContent = document.getElementById('policyContent');
+const musicPlayer = document.getElementById('musicPlayer');
+const musicAudio = document.getElementById('musicAudio');
+const musicTrackTitle = document.getElementById('musicTrackTitle');
+const musicTrackArtist = document.getElementById('musicTrackArtist');
+const musicPreviousButton = document.getElementById('musicPrevious');
+const musicPlayPauseButton = document.getElementById('musicPlayPause');
+const musicNextButton = document.getElementById('musicNext');
 
 let isPoweredOn = true;
 let volumeLevel = 100;
@@ -97,6 +104,8 @@ let commerceCapabilities = {
     localPickupAvailable: false
 };
 let catalogSource = 'browser-local';
+let musicSongs = [];
+let musicSongIndex = 0;
 const MAX_CART_LINE_QUANTITY = 10;
 const MAX_CART_LINES = 50;
 const REVIEWS_STORAGE_KEY = 'sip-of-ghoulaid-reviews';
@@ -331,9 +340,52 @@ function getAudioContext() {
 }
 
 function playClickSound() {
+    if (volumeLevel === 0) {
+        return;
+    }
     const context = getAudioContext();
     if (!context) {
         return;
+    }
+
+    function renderMusicTrack() {
+        const song = musicSongs[musicSongIndex];
+        if (!song || !musicAudio) return;
+        if (musicAudio.src !== song.url) {
+            musicAudio.src = song.url;
+        }
+        setStatus(musicTrackTitle, song.title);
+        setStatus(musicTrackArtist, song.artist || 'Sip of Ghoulaid Radio');
+    }
+
+    async function playMusic() {
+        if (!musicAudio || !musicSongs.length) return;
+        renderMusicTrack();
+        try {
+            await musicAudio.play();
+        } catch {
+            setStatus(musicTrackArtist, 'Press play to start this track');
+        }
+    }
+
+    function changeMusicTrack(offset) {
+        if (!musicSongs.length) return;
+        const wasPlaying = !musicAudio.paused;
+        musicSongIndex = (musicSongIndex + offset + musicSongs.length) % musicSongs.length;
+        renderMusicTrack();
+        if (wasPlaying) playMusic();
+    }
+
+    async function loadMusicPlaylist() {
+        try {
+            const music = await commerceRequest('/api/music');
+            musicSongs = music.enabled && Array.isArray(music.songs) ? music.songs : [];
+            musicPlayer?.classList.toggle('hidden', !musicSongs.length);
+            if (musicSongs.length) renderMusicTrack();
+        } catch (error) {
+            console.warn('Store music is unavailable.', error);
+            musicPlayer?.classList.add('hidden');
+        }
     }
 
     try {
@@ -2642,19 +2694,12 @@ if (powerBtn) {
 
 if (volumeBtn) {
     volumeBtn.addEventListener('click', () => {
-        volumeLevel = (volumeLevel + 25) % 125;
-
-        if (volumeLevel === 0) {
-            volumeBtn.textContent = '🔇';
-        } else if (volumeLevel === 25) {
-            volumeBtn.textContent = '🔈';
-        } else if (volumeLevel === 50) {
-            volumeBtn.textContent = '🔉';
-        } else {
-            volumeBtn.textContent = '🔊';
-        }
-
-        playClickSound();
+        const muted = volumeLevel !== 0;
+        volumeLevel = muted ? 0 : 100;
+        if (musicAudio) musicAudio.muted = muted;
+        volumeBtn.textContent = muted ? '🔇' : '🔊';
+        volumeBtn.setAttribute('aria-pressed', String(muted));
+        volumeBtn.setAttribute('aria-label', muted ? 'Unmute store music' : 'Mute store music');
 
         const randomPulse = Math.random() * 0.3 + 0.2;
         volumeBtn.style.transform = `scale(${1 + randomPulse})`;
@@ -2663,6 +2708,28 @@ if (volumeBtn) {
         }, 200);
     });
 }
+
+musicPlayPauseButton?.addEventListener('click', () => {
+    if (musicAudio?.paused) {
+        playMusic();
+    } else {
+        musicAudio.pause();
+    }
+});
+musicPreviousButton?.addEventListener('click', () => changeMusicTrack(-1));
+musicNextButton?.addEventListener('click', () => changeMusicTrack(1));
+musicAudio?.addEventListener('play', () => {
+    musicPlayPauseButton.textContent = '⏸';
+    musicPlayPauseButton.setAttribute('aria-label', 'Pause music');
+});
+musicAudio?.addEventListener('pause', () => {
+    musicPlayPauseButton.textContent = '▶';
+    musicPlayPauseButton.setAttribute('aria-label', 'Play music');
+});
+musicAudio?.addEventListener('ended', () => {
+    changeMusicTrack(1);
+    playMusic();
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     const requestedChannel = new URLSearchParams(window.location.search).get('channel');
@@ -2688,7 +2755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, reducedMotion ? 0 : 2600);
     }
 
-    await initializeShopData();
+    await Promise.all([initializeShopData(), loadMusicPlaylist()]);
     syncProductRoute();
 
     const checkoutResult = new URLSearchParams(window.location.search).get('checkout');

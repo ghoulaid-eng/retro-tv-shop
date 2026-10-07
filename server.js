@@ -673,6 +673,13 @@ async function loadAdminOrders() {
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+async function loadWaitlistEntries() {
+    return prisma.waitlistEntry.findMany({
+        select: { id: true, email: true, createdAt: true },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
 app.get('/api/admin/session', adminLimiter, requireAdmin, (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({ email: req.admin.email });
@@ -680,13 +687,14 @@ app.get('/api/admin/session', adminLimiter, requireAdmin, (req, res) => {
 
 app.get('/api/admin/bootstrap', adminLimiter, requireAdmin, async (req, res, next) => {
     try {
-        const [products, orders, resources] = await Promise.all([
+        const [products, orders, resources, waitlistEntries] = await Promise.all([
             loadAdminProducts(),
             loadAdminOrders(),
-            loadAdminResources()
+            loadAdminResources(),
+            loadWaitlistEntries()
         ]);
         res.set('Cache-Control', 'no-store');
-        res.json({ products, orders, ...resources, admin: { email: req.admin.email } });
+        res.json({ products, orders, waitlistEntries, ...resources, admin: { email: req.admin.email } });
     } catch (error) {
         next(error);
     }
@@ -1151,6 +1159,20 @@ app.get('/api/catalog', async (req, res, next) => {
             }
         });
         res.json({ products: products.map(publicProduct), source: 'hosted' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get('/api/music', async (req, res, next) => {
+    if (!prisma) return res.json(ADMIN_RESOURCE_DEFAULTS.music);
+    try {
+        const resource = await prisma.adminResource.findUnique({ where: { key: 'music' } });
+        const music = resource
+            ? normalizeAdminResource('music', resource.value)
+            : ADMIN_RESOURCE_DEFAULTS.music;
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(music);
     } catch (error) {
         next(error);
     }

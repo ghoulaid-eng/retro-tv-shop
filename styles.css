@@ -1857,6 +1857,64 @@ input[type="checkbox"] {
     text-align: center;
 }
 
+.music-player {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-top: 1px solid rgba(0, 255, 136, 0.35);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.94), rgba(41, 14, 52, 0.94));
+}
+
+.music-player-copy {
+    display: grid;
+    min-width: 0;
+}
+
+.music-player-copy strong,
+.music-player-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.music-player-copy small,
+.music-player-label {
+    color: var(--purple-soft);
+}
+
+.music-player-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+.music-player-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.music-player-controls button {
+    width: 42px;
+    height: 38px;
+    border: 1px solid var(--mint);
+    border-radius: 6px;
+    background: rgba(0, 255, 136, 0.1);
+    color: white;
+    cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .music-player {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .music-player-controls {
+        justify-content: center;
+    }
+}
+
 @keyframes successPulse {
     0% {
         opacity: 0;
@@ -2326,6 +2384,23 @@ input[type="checkbox"] {
     border: 1px solid rgba(0, 255, 136, 0.25);
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.28);
+}
+
+.admin-music-list {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-music-list .admin-payment-method-card {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.admin-help-text {
+    color: var(--purple-soft);
+    font-size: 13px;
 }
 
 .card-size-compact {

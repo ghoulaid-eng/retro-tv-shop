@@ -29,6 +29,10 @@ const ADMIN_RESOURCE_DEFAULTS = Object.freeze({
     designer: {
         productCardSize: 'cozy',
         staticEffect: true
+    },
+    music: {
+        enabled: true,
+        songs: []
     }
 });
 
@@ -139,6 +143,38 @@ function normalizeAdminResource(name, value) {
     const serialized = JSON.stringify(value);
     if (serialized.length > 100_000) throw new AdminValidationError('Admin resource is too large.');
     const parsed = JSON.parse(serialized);
+    if (name === 'music') {
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object' || !Array.isArray(parsed.songs)) {
+            throw new AdminValidationError('Music must include a songs array.');
+        }
+        if (parsed.songs.length > 100) {
+            throw new AdminValidationError('Music can include at most 100 songs.');
+        }
+        const songs = parsed.songs.map((song, index) => {
+            const title = cleanText(song?.title, 160);
+            const artist = cleanText(song?.artist, 160);
+            const url = cleanText(song?.url, 2048);
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(url);
+            } catch {
+                throw new AdminValidationError(`Song ${index + 1} needs a valid audio URL.`);
+            }
+            if (!title || parsedUrl.protocol !== 'https:') {
+                throw new AdminValidationError(`Song ${index + 1} needs a title and an HTTPS audio URL.`);
+            }
+            return {
+                id: cleanText(song?.id, 120) || `song-${crypto.randomUUID()}`,
+                title,
+                artist,
+                url: parsedUrl.toString()
+            };
+        });
+        if (new Set(songs.map(song => song.id)).size !== songs.length) {
+            throw new AdminValidationError('Song IDs must be unique.');
+        }
+        return { enabled: parsed.enabled !== false, songs };
+    }
     if (name === 'discounts' && !Array.isArray(parsed)) throw new AdminValidationError('Discounts must be an array.');
     if (name === 'paymentMethods' && !Array.isArray(parsed)) throw new AdminValidationError('Payment methods must be an array.');
     if (!['discounts', 'paymentMethods'].includes(name) && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')) {

@@ -680,6 +680,19 @@
                             <small>© 2026 Sip of GhoulAid. All rights reserved.</small>
                             <small>Spooky fast shipping 🦇 • No refunds or exchanges 🧪</small>
                         </footer>
+                        <aside id="musicPlayer" class="music-player hidden" aria-label="Store music player">
+                            <div class="music-player-copy">
+                                <span class="music-player-label">NOW PLAYING</span>
+                                <strong id="musicTrackTitle">No track selected</strong>
+                                <small id="musicTrackArtist"></small>
+                            </div>
+                            <div class="music-player-controls">
+                                <button type="button" id="musicPrevious" class="click-item" aria-label="Previous song">⏮</button>
+                                <button type="button" id="musicPlayPause" class="click-item" aria-label="Play music">▶</button>
+                                <button type="button" id="musicNext" class="click-item" aria-label="Next song">⏭</button>
+                            </div>
+                            <audio id="musicAudio" preload="metadata"></audio>
+                        </aside>
                         <nav class="tv-footer-nav" aria-label="Persistent channel navigation">
                             <button type="button" class="footer-home-btn" data-channel-target="home">← HOME</button>
                             <span id="channelIndicator">CH 01 · HOME</span>
@@ -693,7 +706,7 @@
                     <button class="control-btn control-btn-power click-item" id="powerBtn" aria-label="Toggle TV power">
                         <span class="power-icon" aria-hidden="true"></span>
                     </button>
-                    <button class="control-btn click-item" id="volumeBtn" aria-label="Adjust TV volume">🔊</button>
+                    <button class="control-btn click-item" id="volumeBtn" aria-label="Mute store music" aria-pressed="false">🔊</button>
                 </div>
             </div>
         </div>

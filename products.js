@@ -110,6 +110,11 @@
                 productCardSize: 'cozy',
                 staticEffect: true
             })
+        },
+        music: {
+            storageKey: 'sip-of-ghoulaid-music',
+            eventName: 'sip-of-ghoulaid-music-updated',
+            getDefault: async () => ({ enabled: true, songs: [] })
         }
     };
 
@@ -502,6 +507,19 @@
         };
     }
 
+    function normalizeMusic(music) {
+        const songs = Array.isArray(music?.songs) ? music.songs : [];
+        return {
+            enabled: normalizeBoolean(music?.enabled, true),
+            songs: songs.slice(0, 100).map(song => ({
+                id: normalizeText(song?.id, createId('song')),
+                title: normalizeText(song?.title),
+                artist: normalizeText(song?.artist),
+                url: normalizeText(song?.url)
+            })).filter(song => song.title && song.url)
+        };
+    }
+
     function getEmptyValue(resourceName) {
         if (resourceName === 'products' || resourceName === 'orders' || resourceName === 'discounts') {
             return [];
@@ -526,7 +544,8 @@
         marketing: normalizeMarketing,
         settings: normalizeSettings,
         appCenter: normalizeAppCenter,
-        designer: normalizeDesigner
+        designer: normalizeDesigner,
+        music: normalizeMusic
     };
 
     async function loadDefaultProducts() {
@@ -629,6 +648,7 @@
         normalizeSettings,
         normalizeAppCenter,
         normalizeDesigner,
+        normalizeMusic,
         getResource,
         saveResource,
         resetResource,
@@ -658,7 +678,9 @@
         getAppCenter: () => getResource('appCenter'),
         saveAppCenter: value => saveResource('appCenter', value),
         getDesigner: () => getResource('designer'),
-        saveDesigner: value => saveResource('designer', value)
+        saveDesigner: value => saveResource('designer', value),
+        getMusic: () => getResource('music'),
+        saveMusic: value => saveResource('music', value)
     };
 
     window.ShopData = shopData;

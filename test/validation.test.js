@@ -18,6 +18,7 @@ const {
     validateRefund,
     validateSupport
 } = require('../backend/order-operations');
+const { AdminValidationError, normalizeAdminResource } = require('../backend/admin');
 
 test('public capabilities never expose secrets and require complete checkout configuration', () => {
     const config = readConfig({
@@ -197,6 +198,20 @@ test('waitlist validation normalizes email and rejects invalid signups', () => {
     });
     assert.throws(() => validateWaitlist({ email: 'not-an-email' }), ValidationError);
     assert.throws(() => validateWaitlist(null), ValidationError);
+});
+
+test('music admin resource accepts HTTPS audio and rejects unsafe URLs', () => {
+    const music = normalizeAdminResource('music', {
+        enabled: true,
+        songs: [{ title: ' Ghoul Radio ', artist: ' The Crypt ', url: 'https://media.example.com/song.mp3' }]
+    });
+    assert.equal(music.songs[0].title, 'Ghoul Radio');
+    assert.equal(music.songs[0].artist, 'The Crypt');
+    assert.match(music.songs[0].id, /^song-/);
+    assert.throws(() => normalizeAdminResource('music', {
+        enabled: true,
+        songs: [{ title: 'Unsafe', url: 'javascript:alert(1)' }]
+    }), AdminValidationError);
 });
 
 test('stored decimal prices convert to integer cents without float arithmetic', () => {
