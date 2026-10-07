@@ -5,7 +5,7 @@
     <base href="/">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sip of Ghoulaid Shop</title>
-    <link rel="stylesheet" href="styles.css?v=20261001-store-policies">
+    <link rel="stylesheet" href="styles.css?v=20261007-music-tv">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -38,6 +38,8 @@
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
                                 <option value="reviews">⭐ REVIEWS</option>
                                 <option value="about">ℹ️ ABOUT</option>
+                                <option value="wishlist">💜 WISHLIST</option>
+                                <option value="member-lounge">🛋️ MEMBER LOUNGE</option>
                             </select>
                         </nav>
                         <div id="statusLive" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -120,8 +122,41 @@
                                             <strong>⭐ Reviews</strong>
                                             <small>Share your experience</small>
                                         </button>
+                                        <button type="button" class="guide-card" data-channel-target="wishlist">
+                                            <span class="guide-number">CH 09</span>
+                                            <strong>💜 Wishlist</strong>
+                                            <small>Revisit your saved favorites</small>
+                                        </button>
+                                        <button type="button" class="guide-card" data-channel-target="member-lounge">
+                                            <span class="guide-number">CH 10</span>
+                                            <strong>🛋️ Member Lounge</strong>
+                                            <small>Updates, perks, and member shortcuts</small>
+                                        </button>
                                     </div>
                                 </div>
+                                <aside id="musicPlayer" class="music-player hidden" aria-label="Store music video player">
+                                    <span class="music-tv-antenna music-tv-antenna-left" aria-hidden="true"></span>
+                                    <span class="music-tv-antenna music-tv-antenna-right" aria-hidden="true"></span>
+                                    <span class="music-tv-antenna-cap" aria-hidden="true"></span>
+                                    <div class="music-tv-face">
+                                        <div class="music-tv-screen">
+                                            <video id="musicVideo" playsinline preload="metadata"></video>
+                                            <span class="music-tv-glare" aria-hidden="true"></span>
+                                        </div>
+                                        <div class="music-tv-side">
+                                            <button type="button" id="musicPlayPause" class="music-tv-knob music-tv-knob-large click-item" aria-label="Play video">▶</button>
+                                            <button type="button" id="musicNext" class="music-tv-knob music-tv-knob-small click-item" aria-label="Skip to next video">⏭</button>
+                                            <span class="music-tv-vents" aria-hidden="true"></span>
+                                        </div>
+                                    </div>
+                                    <div class="music-player-copy">
+                                        <span class="music-player-label">NOW PLAYING</span>
+                                        <strong id="musicTrackTitle">No video selected</strong>
+                                        <small id="musicTrackArtist"></small>
+                                    </div>
+                                    <span class="music-tv-foot music-tv-foot-left" aria-hidden="true"></span>
+                                    <span class="music-tv-foot music-tv-foot-right" aria-hidden="true"></span>
+                                </aside>
                             </section>
 
                             <!-- Shop Channel -->
@@ -236,11 +271,6 @@
 
                                     <div class="account-stack">
                                         <div class="account-panel">
-                                            <h3>Wishlist</h3>
-                                            <div id="wishlistList" class="account-saved-list"></div>
-                                        </div>
-
-                                        <div class="account-panel">
                                             <h3>Saved cart</h3>
                                             <p id="cartSummaryMessage">Your active account cart is saved automatically on this device.</p>
                                             <div class="account-button-row">
@@ -259,6 +289,65 @@
                                             </div>
                                             <p id="cartStatusMessage" class="admin-status" aria-live="polite"></p>
                                         </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="wishlist" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">WISHLIST VAULT</h1>
+                                <p class="channel-intro">Your saved favorites, kept safely in the crypt for your active account.</p>
+                                <div class="account-panel wishlist-channel-panel">
+                                    <div class="account-button-row">
+                                        <button type="button" class="table-action-btn click-item" data-channel-target="shop">Browse shop</button>
+                                        <button type="button" class="table-action-btn click-item" data-channel-target="account">Switch account</button>
+                                    </div>
+                                    <p id="wishlistStatusMessage" class="admin-status" aria-live="polite"></p>
+                                    <div id="wishlistList" class="account-saved-list"></div>
+                                </div>
+                            </section>
+
+                            <section id="member-lounge" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">MEMBER LOUNGE</h1>
+                                <div id="memberLoungeLocked" class="member-lounge-locked">
+                                    <span class="member-lounge-icon" aria-hidden="true">🔒</span>
+                                    <h2>Members only transmission</h2>
+                                    <p>Create or switch to an account to enter the lounge.</p>
+                                    <button type="button" class="submit-btn click-item" data-channel-target="account">Open account vault</button>
+                                </div>
+                                <div id="memberLoungeContent" class="member-lounge-content hidden">
+                                    <div class="member-lounge-welcome">
+                                        <span aria-hidden="true">🛋️</span>
+                                        <div>
+                                            <p class="music-player-label">MEMBER TRANSMISSION</p>
+                                            <h2 id="memberLoungeGreeting">Welcome to the lounge</h2>
+                                            <p>Your creepy-cute corner for shop news, member perks, and quick shortcuts.</p>
+                                        </div>
+                                    </div>
+                                    <div class="member-lounge-grid">
+                                        <article class="member-lounge-card">
+                                            <span aria-hidden="true">📡</span>
+                                            <h3>Latest update</h3>
+                                            <p>Mystery-box subscriptions are coming. Join the waitlist for the first launch signal.</p>
+                                            <button type="button" class="table-action-btn click-item" data-channel-target="waitlist">Open waitlist</button>
+                                        </article>
+                                        <article class="member-lounge-card">
+                                            <span aria-hidden="true">💜</span>
+                                            <h3>Your saved vault</h3>
+                                            <p>Jump back to the products you saved for later.</p>
+                                            <button type="button" class="table-action-btn click-item" data-channel-target="wishlist">View wishlist</button>
+                                        </article>
+                                        <article class="member-lounge-card">
+                                            <span aria-hidden="true">✨</span>
+                                            <h3>Member perk</h3>
+                                            <p>Keep your account active to save carts, shipping details, and custom-order contact info on this device.</p>
+                                            <button type="button" class="table-action-btn click-item" data-channel-target="custom-order">Start custom order</button>
+                                        </article>
+                                        <article class="member-lounge-card">
+                                            <span aria-hidden="true">🛍️</span>
+                                            <h3>Quick shop</h3>
+                                            <p>Return to the latest handmade drops and product transmissions.</p>
+                                            <button type="button" class="table-action-btn click-item" data-channel-target="shop">Browse shop</button>
+                                        </article>
                                     </div>
                                 </div>
                             </section>
@@ -680,19 +769,6 @@
                             <small>© 2026 Sip of GhoulAid. All rights reserved.</small>
                             <small>Spooky fast shipping 🦇 • No refunds or exchanges 🧪</small>
                         </footer>
-                        <aside id="musicPlayer" class="music-player hidden" aria-label="Store music player">
-                            <div class="music-player-copy">
-                                <span class="music-player-label">NOW PLAYING</span>
-                                <strong id="musicTrackTitle">No track selected</strong>
-                                <small id="musicTrackArtist"></small>
-                            </div>
-                            <div class="music-player-controls">
-                                <button type="button" id="musicPrevious" class="click-item" aria-label="Previous song">⏮</button>
-                                <button type="button" id="musicPlayPause" class="click-item" aria-label="Play music">▶</button>
-                                <button type="button" id="musicNext" class="click-item" aria-label="Next song">⏭</button>
-                            </div>
-                            <audio id="musicAudio" preload="metadata"></audio>
-                        </aside>
                         <nav class="tv-footer-nav" aria-label="Persistent channel navigation">
                             <button type="button" class="footer-home-btn" data-channel-target="home">← HOME</button>
                             <span id="channelIndicator">CH 01 · HOME</span>
@@ -718,6 +794,6 @@
     </audio>
 
     <script src="products.js?v=20260921-live-catalog"></script>
-    <script src="script.js?v=20261001-store-policies"></script>
+    <script src="script.js?v=20261007-music-tv"></script>
 </body>
 </html>

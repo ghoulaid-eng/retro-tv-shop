@@ -158,10 +158,10 @@ function normalizeAdminResource(name, value) {
             try {
                 parsedUrl = new URL(url);
             } catch {
-                throw new AdminValidationError(`Song ${index + 1} needs a valid audio URL.`);
+                throw new AdminValidationError(`Song ${index + 1} needs a valid video URL.`);
             }
             if (!title || parsedUrl.protocol !== 'https:') {
-                throw new AdminValidationError(`Song ${index + 1} needs a title and an HTTPS audio URL.`);
+                throw new AdminValidationError(`Song ${index + 1} needs a title and an HTTPS video URL.`);
             }
             return {
                 id: cleanText(song?.id, 120) || `song-${crypto.randomUUID()}`,
