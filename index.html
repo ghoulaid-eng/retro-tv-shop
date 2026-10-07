@@ -135,23 +135,28 @@
                                     </div>
                                 </div>
                                 <aside id="musicPlayer" class="music-player music-player-empty" aria-label="Store music video player">
-                                    <span class="music-tv-antenna music-tv-antenna-left" aria-hidden="true"></span>
-                                    <span class="music-tv-antenna music-tv-antenna-right" aria-hidden="true"></span>
-                                    <span class="music-tv-antenna-cap" aria-hidden="true"></span>
-                                    <div class="music-tv-face">
-                                        <div class="music-tv-screen">
-                                            <video id="musicVideo" playsinline preload="metadata" aria-label="No music video available"></video>
-                                            <div class="music-no-signal" aria-hidden="true">
-                                                <strong>NO SIGNAL</strong>
-                                                <span>CHANNEL -- • NO INPUT</span>
-                                                <small>VHS • SP • 00:14:27 • T-120</small>
-                                            </div>
-                                            <span class="music-tv-glare" aria-hidden="true"></span>
+                                    <div class="music-cassette">
+                                        <div class="music-cassette-warning" aria-hidden="true">
+                                            <span>INSERT THIS SIDE INTO RECORDER</span>
+                                            <span>▲ DO NOT TOUCH THE TAPE INSIDE ▲</span>
+                                            <span>VHS</span>
                                         </div>
-                                        <div class="music-tv-side">
-                                            <button type="button" id="musicPlayPause" class="music-tv-knob music-tv-knob-large click-item" aria-label="Play video">▶</button>
-                                            <button type="button" id="musicNext" class="music-tv-knob music-tv-knob-small click-item" aria-label="Skip to next video">⏭</button>
-                                            <span class="music-tv-vents" aria-hidden="true"></span>
+                                        <div class="music-cassette-window">
+                                            <div class="music-cassette-reel" aria-hidden="true"><span></span></div>
+                                            <div class="music-tv-screen">
+                                                <video id="musicVideo" playsinline preload="metadata" aria-label="No music video available"></video>
+                                                <div class="music-no-signal" aria-hidden="true">
+                                                    <strong>NO SIGNAL</strong>
+                                                    <span>CHANNEL -- • NO INPUT</span>
+                                                    <small>VHS • SP • 00:14:27 • T-120</small>
+                                                </div>
+                                                <span class="music-tv-glare" aria-hidden="true"></span>
+                                            </div>
+                                            <div class="music-cassette-reel" aria-hidden="true"><span></span></div>
+                                        </div>
+                                        <div class="music-cassette-controls">
+                                            <button type="button" id="musicPlayPause" class="click-item" aria-label="Play video">▶ PLAY</button>
+                                            <button type="button" id="musicNext" class="click-item" aria-label="Skip to next video">SKIP ⏭</button>
                                         </div>
                                     </div>
                                     <div class="music-player-copy">
@@ -159,8 +164,6 @@
                                         <strong id="musicTrackTitle">NO SIGNAL</strong>
                                         <small id="musicTrackArtist">Add a music video in the Admin Portal</small>
                                     </div>
-                                    <span class="music-tv-foot music-tv-foot-left" aria-hidden="true"></span>
-                                    <span class="music-tv-foot music-tv-foot-right" aria-hidden="true"></span>
                                 </aside>
                             </section>
 
