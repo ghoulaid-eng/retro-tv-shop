@@ -353,6 +353,46 @@ function playClickSound() {
         return;
     }
 
+    function renderMusicTrack() {
+        const song = musicSongs[musicSongIndex];
+        if (!song || !musicAudio) return;
+        if (musicAudio.src !== song.url) {
+            musicAudio.src = song.url;
+        }
+        setStatus(musicTrackTitle, song.title);
+        setStatus(musicTrackArtist, song.artist || 'Sip of Ghoulaid Radio');
+    }
+
+    async function playMusic() {
+        if (!musicAudio || !musicSongs.length) return;
+        renderMusicTrack();
+        try {
+            await musicAudio.play();
+        } catch {
+            setStatus(musicTrackArtist, 'Press play to start this track');
+        }
+    }
+
+    function changeMusicTrack(offset) {
+        if (!musicSongs.length) return;
+        const wasPlaying = !musicAudio.paused;
+        musicSongIndex = (musicSongIndex + offset + musicSongs.length) % musicSongs.length;
+        renderMusicTrack();
+        if (wasPlaying) playMusic();
+    }
+
+    async function loadMusicPlaylist() {
+        try {
+            const music = await commerceRequest('/api/music');
+            musicSongs = music.enabled && Array.isArray(music.songs) ? music.songs : [];
+            musicPlayer?.classList.toggle('hidden', !musicSongs.length);
+            if (musicSongs.length) renderMusicTrack();
+        } catch (error) {
+            console.warn('Store music is unavailable.', error);
+            musicPlayer?.classList.add('hidden');
+        }
+    }
+
     try {
         const now = context.currentTime;
         const osc = context.createOscillator();
