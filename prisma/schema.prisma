@@ -108,6 +108,7 @@ model Order {
   currency              String        @default("usd")
   subtotal              Decimal       @db.Decimal(12, 2)
   email                 String?
+  customerId            String?
   stripeCheckoutSession String?       @unique
   reservationExpiresAt  DateTime?
   fulfilledAt           DateTime?
@@ -132,10 +133,32 @@ model Order {
   timeline              OrderTimelineEvent[]
   supportNotes          OrderSupportNote[]
   emailDeliveries       TransactionalEmail[]
+  customer              CustomerProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
   @@index([status, reservationExpiresAt])
+  @@index([customerId, createdAt])
+}
+
+model CustomerProfile {
+  id                   String   @id
+  email                String   @unique
+  name                 String
+  username             String?
+  contactMethod        String?
+  contactInfo          String?
+  shippingFullName     String?
+  shippingAddressLine1 String?
+  shippingAddressLine2 String?
+  shippingCity         String?
+  shippingState        String?
+  shippingPostalCode   String?
+  shippingCountry      String?
+  stripeCustomerId     String?  @unique
+  orders               Order[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model OrderItem {

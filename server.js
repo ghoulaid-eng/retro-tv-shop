@@ -33,6 +33,11 @@ const {
     validateRefund,
     validateSupport
 } = require('./backend/order-operations');
+const {
+    CustomerValidationError,
+    validateCustomerProfile,
+    verifySupabaseCustomer
+} = require('./backend/customer');
 
 const config = readConfig();
 const prisma = config.databaseConfigured ? new PrismaClient() : null;
@@ -75,6 +80,12 @@ const writeLimiter = rateLimit({
 const adminLimiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: 180,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false
+});
+const customerLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 120,
     standardHeaders: 'draft-8',
     legacyHeaders: false
 });
@@ -152,6 +163,60 @@ async function requireAdmin(req, res, next) {
     } catch (error) {
         next(error);
     }
+}
+
+async function requireCustomer(req, res, next) {
+    try {
+        req.customer = await verifySupabaseCustomer(config, req.get('authorization'));
+        next();
+    } catch (error) {
+        next(error);
+    }
+}
+
+function serializeCustomerProfile(profile, customer) {
+    return {
+        id: customer.id,
+        email: customer.email,
+        name: profile?.name || '',
+        username: profile?.username || '',
+        contactMethod: profile?.contactMethod || '',
+        contactInfo: profile?.contactInfo || '',
+        shippingFullName: profile?.shippingFullName || '',
+        shippingAddressLine1: profile?.shippingAddressLine1 || '',
+        shippingAddressLine2: profile?.shippingAddressLine2 || '',
+        shippingCity: profile?.shippingCity || '',
+        shippingState: profile?.shippingState || '',
+        shippingPostalCode: profile?.shippingPostalCode || '',
+        shippingCountry: profile?.shippingCountry || ''
+    };
+}
+
+async function ensureCustomerProfile(customer) {
+    return prisma.customerProfile.upsert({
+        where: { id: customer.id },
+        update: { email: customer.email },
+        create: {
+            id: customer.id,
+            email: customer.email,
+            name: customer.email.split('@')[0]
+        }
+    });
+}
+
+async function ensureStripeCustomer(customer, profile) {
+    if (!stripe) throw new Error('Stripe is not configured.');
+    if (profile.stripeCustomerId) return profile.stripeCustomerId;
+    const stripeCustomer = await stripe.customers.create({
+        email: customer.email,
+        name: profile.name || undefined,
+        metadata: { supabaseUserId: customer.id }
+    }, { idempotencyKey: `customer-${customer.id}` });
+    await prisma.customerProfile.update({
+        where: { id: customer.id },
+        data: { stripeCustomerId: stripeCustomer.id }
+    });
+    return stripeCustomer.id;
 }
 
 async function recordAdminAudit(admin, action, resource, resourceId = null, metadata = null, client = prisma) {
@@ -269,7 +334,7 @@ async function releaseExpiredReservations() {
     await Promise.allSettled(expired.map(order => releaseOrder(order.id)));
 }
 
-async function reserveOrder(input) {
+async function reserveOrder(input, customerId = null) {
     const grouped = new Map();
     for (const item of input.items) {
         const key = `${item.productId}\u0000${item.variant || ''}`;
@@ -315,6 +380,7 @@ async function reserveOrder(input) {
         const order = await tx.order.create({
             data: {
                 email: input.email,
+                customerId,
                 subtotal: centsToDecimal(subtotalCents),
                 reservationExpiresAt: expiresAt,
                 items: {
@@ -550,6 +616,132 @@ app.use(express.json({ limit: '64kb', strict: true }));
 app.get('/api/commerce/config', (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json(getPublicConfig(config));
+});
+
+app.get('/api/customer/profile', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma) return unavailable(res, 'customer-profile', 'Customer profiles are not configured.');
+    try {
+        const profile = await prisma.customerProfile.findUnique({ where: { id: req.customer.id } });
+        res.set('Cache-Control', 'no-store');
+        res.json({ profile: serializeCustomerProfile(profile, req.customer) });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.put('/api/customer/profile', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma) return unavailable(res, 'customer-profile', 'Customer profiles are not configured.');
+    try {
+        const input = validateCustomerProfile(req.body);
+        const profile = await prisma.customerProfile.upsert({
+            where: { id: req.customer.id },
+            update: { ...input, email: req.customer.email },
+            create: { id: req.customer.id, email: req.customer.email, ...input }
+        });
+        res.json({ profile: serializeCustomerProfile(profile, req.customer) });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get('/api/customer/payment-methods', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma || !stripe) {
+        return unavailable(res, 'saved-payments', 'Secure saved payments are not configured.');
+    }
+    try {
+        const profile = await ensureCustomerProfile(req.customer);
+        if (!profile.stripeCustomerId) return res.json({ paymentMethods: [] });
+        const methods = await stripe.paymentMethods.list({
+            customer: profile.stripeCustomerId,
+            type: 'card',
+            limit: 20
+        });
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            paymentMethods: methods.data.map(method => ({
+                id: method.id,
+                brand: method.card?.brand || 'card',
+                last4: method.card?.last4 || '',
+                expMonth: method.card?.exp_month || null,
+                expYear: method.card?.exp_year || null
+            }))
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/customer/payment-methods/setup', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma || !stripe) {
+        return unavailable(res, 'saved-payments', 'Secure saved payments are not configured.');
+    }
+    try {
+        const profile = await ensureCustomerProfile(req.customer);
+        const stripeCustomerId = await ensureStripeCustomer(req.customer, profile);
+        const session = await stripe.checkout.sessions.create({
+            mode: 'setup',
+            customer: stripeCustomerId,
+            payment_method_types: ['card'],
+            success_url: `${config.publicUrl}/?channel=account&billing=saved`,
+            cancel_url: `${config.publicUrl}/?channel=account&billing=cancelled`,
+            metadata: { supabaseUserId: req.customer.id }
+        }, { idempotencyKey: `payment-setup-${req.customer.id}-${Date.now()}` });
+        res.status(201).json({ url: session.url });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/customer/billing-portal', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma || !stripe) {
+        return unavailable(res, 'saved-payments', 'Secure saved payments are not configured.');
+    }
+    try {
+        const profile = await ensureCustomerProfile(req.customer);
+        const stripeCustomerId = await ensureStripeCustomer(req.customer, profile);
+        const session = await stripe.billingPortal.sessions.create({
+            customer: stripeCustomerId,
+            return_url: `${config.publicUrl}/?channel=account`
+        });
+        res.status(201).json({ url: session.url });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get('/api/customer/orders', customerLimiter, requireCustomer, async (req, res, next) => {
+    if (!prisma) return unavailable(res, 'customer-orders', 'Customer orders are not configured.');
+    try {
+        const orders = await prisma.order.findMany({
+            where: { customerId: req.customer.id },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: {
+                id: true,
+                status: true,
+                subtotal: true,
+                shippingAmount: true,
+                taxAmount: true,
+                trackingCarrier: true,
+                trackingNumber: true,
+                trackingUrl: true,
+                createdAt: true,
+                items: { select: { name: true, variant: true, quantity: true } }
+            }
+        });
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            orders: orders.map(order => ({
+                ...order,
+                subtotal: Number(order.subtotal.toString()),
+                shippingAmount: Number(order.shippingAmount.toString()),
+                taxAmount: Number(order.taxAmount.toString()),
+                createdAt: order.createdAt.toISOString()
+            }))
+        });
+    } catch (error) {
+        next(error);
+    }
 });
 
 function adminOrderStatus(status) {
@@ -1226,7 +1418,17 @@ app.post('/api/commerce/checkout-sessions', writeLimiter, async (req, res, next)
     let checkoutSession;
     try {
         const input = validateCheckout(req.body);
-        reservation = await reserveOrder(input);
+        let customer = null;
+        let customerProfile = null;
+        if (req.get('authorization')) {
+            customer = await verifySupabaseCustomer(config, req.get('authorization'));
+            customerProfile = await ensureCustomerProfile(customer);
+            input.email = customer.email;
+        }
+        reservation = await reserveOrder(input, customer?.id || null);
+        const stripeCustomerId = customer
+            ? await ensureStripeCustomer(customer, customerProfile)
+            : null;
         checkoutSession = await stripe.checkout.sessions.create({
             mode: 'payment',
             line_items: reservation.lines.map(line => ({
@@ -1245,7 +1447,9 @@ app.post('/api/commerce/checkout-sessions', writeLimiter, async (req, res, next)
                     }
                 }
             })),
-            customer_email: input.email || undefined,
+            ...(stripeCustomerId
+                ? { customer: stripeCustomerId }
+                : { customer_email: input.email || undefined }),
             automatic_tax: { enabled: config.automaticTaxEnabled },
             shipping_address_collection: { allowed_countries: config.allowedCountries },
             shipping_options: buildCheckoutShippingOptions(
@@ -1256,7 +1460,10 @@ app.post('/api/commerce/checkout-sessions', writeLimiter, async (req, res, next)
             cancel_url: `${config.publicUrl}/?checkout=cancelled`,
             expires_at: Math.floor(reservation.expiresAt.getTime() / 1000),
             metadata: { orderId: reservation.order.id },
-            payment_intent_data: { metadata: { orderId: reservation.order.id } }
+            payment_intent_data: {
+                ...(stripeCustomerId ? { setup_future_usage: 'off_session' } : {}),
+                metadata: { orderId: reservation.order.id }
+            }
         }, { idempotencyKey: `checkout-${reservation.order.id}` });
         const stateUpdate = await prisma.order.updateMany({
             where: { id: reservation.order.id, status: 'PENDING_CHECKOUT' },
@@ -1318,7 +1525,10 @@ app.use('/api', (req, res) => {
 });
 app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
-    if (error instanceof ValidationError || error instanceof AdminValidationError || error instanceof OrderOperationError) {
+    if (error instanceof ValidationError
+        || error instanceof AdminValidationError
+        || error instanceof OrderOperationError
+        || error instanceof CustomerValidationError) {
         return res.status(error.statusCode).json({
             error: error.code || 'VALIDATION_ERROR',
             message: error.message,

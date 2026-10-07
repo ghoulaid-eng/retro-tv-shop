@@ -1669,7 +1669,27 @@ input[type="checkbox"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    width: min(680px, 100%);
+    margin: 12px auto 18px;
+    padding: 9px 12px;
+    gap: 12px;
+}
+
+.account-banner h3 {
+    margin: 0 0 2px;
+    font-size: 17px;
+}
+
+.account-banner p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.account-banner .table-action-btn {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    font-size: 12px;
 }
 
 .account-grid {

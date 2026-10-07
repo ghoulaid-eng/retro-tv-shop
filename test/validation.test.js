@@ -19,6 +19,11 @@ const {
     validateSupport
 } = require('../backend/order-operations');
 const { AdminValidationError, normalizeAdminResource } = require('../backend/admin');
+const {
+    CustomerValidationError,
+    validateCustomerProfile,
+    verifySupabaseCustomer
+} = require('../backend/customer');
 
 test('public capabilities never expose secrets and require complete checkout configuration', () => {
     const config = readConfig({
@@ -36,6 +41,7 @@ test('public capabilities never expose secrets and require complete checkout con
         customOrdersAvailable: true,
         checkoutAvailable: true,
         orderEmailsAvailable: false,
+        customerAuthAvailable: false,
         adminAuthAvailable: false,
         supabaseUrl: '',
         supabaseAnonKey: '',
@@ -59,11 +65,84 @@ test('public configuration exposes only browser-safe Supabase Auth settings', ()
     const publicConfig = getPublicConfig(config);
 
     assert.equal(publicConfig.adminAuthAvailable, true);
+    assert.equal(publicConfig.customerAuthAvailable, true);
     assert.equal(publicConfig.supabaseUrl, 'https://project.supabase.co');
     assert.equal(publicConfig.supabaseAnonKey, 'sb_publishable_browser_key');
     assert.equal(JSON.stringify(publicConfig).includes('sb_secret_server_key'), false);
     assert.equal(JSON.stringify(publicConfig).includes('database-secret'), false);
     assert.deepEqual(config.adminEmails, ['owner@example.com', 'operations@example.com']);
+});
+
+test('customer authentication works without exposing or requiring the service-role key', () => {
+    const config = readConfig({
+        DATABASE_URL: 'postgresql://database-secret',
+        SUPABASE_URL: 'https://project.supabase.co',
+        SUPABASE_ANON_KEY: 'sb_publishable_browser_key'
+    });
+    const publicConfig = getPublicConfig(config);
+
+    assert.equal(config.customerAuthConfigured, true);
+    assert.equal(config.adminAuthConfigured, false);
+    assert.equal(publicConfig.customerAuthAvailable, true);
+    assert.equal(publicConfig.supabaseAnonKey, 'sb_publishable_browser_key');
+});
+
+test('customer bearer tokens are verified against Supabase Auth', async () => {
+    const config = readConfig({
+        DATABASE_URL: 'postgresql://database-secret',
+        SUPABASE_URL: 'https://project.supabase.co',
+        SUPABASE_ANON_KEY: 'sb_publishable_browser_key'
+    });
+    const fetchImpl = async (url, options) => {
+        assert.equal(url, 'https://project.supabase.co/auth/v1/user');
+        assert.equal(options.headers.apikey, 'sb_publishable_browser_key');
+        assert.equal(options.headers.Authorization, 'Bearer customer-token');
+        return {
+            ok: true,
+            json: async () => ({ id: 'customer-id', email: 'Ghoul@Example.com' })
+        };
+    };
+
+    assert.deepEqual(
+        await verifySupabaseCustomer(config, 'Bearer customer-token', fetchImpl),
+        { id: 'customer-id', email: 'ghoul@example.com' }
+    );
+    await assert.rejects(
+        () => verifySupabaseCustomer(config, '', fetchImpl),
+        error => error instanceof CustomerValidationError && error.statusCode === 401
+    );
+});
+
+test('customer profiles require a name and complete shipping address', () => {
+    assert.throws(
+        () => validateCustomerProfile({ name: 'Ghoul', shippingCity: 'Salem' }),
+        error => error instanceof CustomerValidationError
+            && error.message === 'Complete all required shipping fields before saving.'
+    );
+    assert.deepEqual(validateCustomerProfile({
+        name: ' Ghoul ',
+        username: ' spooky ',
+        contactMethod: 'email',
+        contactInfo: 'ghoul@example.com',
+        shippingFullName: 'Ghoul Friend',
+        shippingAddressLine1: '13 Haunted Road',
+        shippingCity: 'Salem',
+        shippingState: 'MA',
+        shippingPostalCode: '01970',
+        shippingCountry: 'US'
+    }), {
+        name: 'Ghoul',
+        username: 'spooky',
+        contactMethod: 'email',
+        contactInfo: 'ghoul@example.com',
+        shippingFullName: 'Ghoul Friend',
+        shippingAddressLine1: '13 Haunted Road',
+        shippingAddressLine2: null,
+        shippingCity: 'Salem',
+        shippingState: 'MA',
+        shippingPostalCode: '01970',
+        shippingCountry: 'US'
+    });
 });
 
 test('order operations configuration exposes capability but never the Resend key', () => {

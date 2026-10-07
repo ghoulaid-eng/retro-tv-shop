@@ -21,6 +21,11 @@ function readConfig(env = process.env) {
     const freeShippingThresholdCents = Number.parseInt(env.FREE_SHIPPING_THRESHOLD_CENTS || '5000', 10);
     const adminEmails = splitList(env.ADMIN_EMAIL_ALLOWLIST).map(email => email.toLowerCase());
     const supabaseUrl = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
+    const customerAuthConfigured = Boolean(
+        supabaseUrl
+        && env.SUPABASE_ANON_KEY
+        && env.DATABASE_URL
+    );
 
     return {
         port: Number.parseInt(env.PORT || '3000', 10),
@@ -42,12 +47,11 @@ function readConfig(env = process.env) {
         supabaseServiceRoleKey: String(env.SUPABASE_SERVICE_ROLE_KEY || ''),
         supabaseStorageBucket: String(env.SUPABASE_STORAGE_BUCKET || 'product-media'),
         adminEmails,
+        customerAuthConfigured,
         adminAuthConfigured: Boolean(
-            supabaseUrl
-            && env.SUPABASE_ANON_KEY
+            customerAuthConfigured
             && env.SUPABASE_SERVICE_ROLE_KEY
             && adminEmails.length
-            && env.DATABASE_URL
         ),
         allowedCountries: allowedCountries.length ? allowedCountries : ['US'],
         shippingRateIds,
@@ -78,9 +82,10 @@ function getPublicConfig(config) {
         customOrdersAvailable: config.databaseConfigured,
         checkoutAvailable,
         orderEmailsAvailable: config.emailConfigured,
+        customerAuthAvailable: config.customerAuthConfigured,
         adminAuthAvailable: config.adminAuthConfigured,
-        supabaseUrl: config.adminAuthConfigured ? config.supabaseUrl : '',
-        supabaseAnonKey: config.adminAuthConfigured ? config.supabaseAnonKey : '',
+        supabaseUrl: config.customerAuthConfigured ? config.supabaseUrl : '',
+        supabaseAnonKey: config.customerAuthConfigured ? config.supabaseAnonKey : '',
         shippingCountries: checkoutAvailable ? config.allowedCountries : [],
         automaticTaxEnabled: checkoutAvailable && config.automaticTaxEnabled,
         freeShippingThresholdCents: config.freeShippingThresholdCents,
