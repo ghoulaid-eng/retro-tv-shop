@@ -53,6 +53,17 @@ function validateCheckout(body) {
     return { items, email };
 }
 
+function validateWaitlist(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        throw new ValidationError('A waitlist signup is required.');
+    }
+    const email = requiredText(body.email, 'email', 254).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new ValidationError('email must be a valid email address.');
+    }
+    return { email };
+}
+
 function validateCustomOrder(body) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
         throw new ValidationError('A JSON custom-order request is required.');
@@ -120,4 +131,10 @@ function decimalToCents(value) {
     return (Number(whole) * 100) + Number(fraction.padEnd(2, '0'));
 }
 
-module.exports = { ValidationError, decimalToCents, validateCheckout, validateCustomOrder };
+module.exports = {
+    ValidationError,
+    decimalToCents,
+    validateCheckout,
+    validateCustomOrder,
+    validateWaitlist
+};

@@ -164,6 +164,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const marketingFeaturedTitle = document.getElementById('marketingFeaturedTitle');
     const marketingFeaturedMessage = document.getElementById('marketingFeaturedMessage');
     const marketingStatus = document.getElementById('marketingStatus');
+    const musicForm = document.getElementById('musicForm');
+    const musicEnabled = document.getElementById('musicEnabled');
+    const musicTitle = document.getElementById('musicTitle');
+    const musicArtist = document.getElementById('musicArtist');
+    const musicUrl = document.getElementById('musicUrl');
+    const musicList = document.getElementById('musicList');
+    const musicStatus = document.getElementById('musicStatus');
+    const waitlistCount = document.getElementById('waitlistCount');
+    const waitlistTableBody = document.getElementById('waitlistTableBody');
+    const emptyWaitlistState = document.getElementById('emptyWaitlistState');
     const settingsForm = document.getElementById('settingsForm');
     const settingsShopName = document.getElementById('settingsShopName');
     const settingsHomeHeadline = document.getElementById('settingsHomeHeadline');
@@ -208,6 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let settings = {};
     let appCenter = {};
     let designer = {};
+    let music = { enabled: true, songs: [] };
+    let waitlistEntries = [];
     let productImagesDraft = [];
     let productVideosDraft = [];
     let handleManuallyEdited = false;
@@ -1226,6 +1238,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyDesignerPreview();
     }
 
+    async function saveMusic(nextMusic) {
+        music = productionAdmin
+            ? await adminRequest('/api/admin/resources/music', {
+                method: 'PUT',
+                body: JSON.stringify(nextMusic)
+            })
+            : window.ShopData.saveMusic(nextMusic);
+        renderMusic();
+    }
+
+    function renderMusic() {
+        musicEnabled.checked = music.enabled !== false;
+        musicList.innerHTML = '';
+        if (!music.songs?.length) {
+            musicList.innerHTML = '<p class="empty-products-message">No songs added yet.</p>';
+            return;
+        }
+        music.songs.forEach(song => {
+            const card = document.createElement('div');
+            card.className = 'admin-payment-method-card';
+            const copy = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = song.title;
+            const artist = document.createElement('p');
+            artist.textContent = song.artist || 'No artist listed';
+            copy.append(title, artist);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'table-action-btn table-action-btn-danger click-item';
+            remove.textContent = 'Remove';
+            remove.addEventListener('click', async () => {
+                await saveMusic({ ...music, songs: music.songs.filter(item => item.id !== song.id) });
+                setStatus(musicStatus, `${song.title} removed.`);
+            });
+            card.append(copy, remove);
+            musicList.appendChild(card);
+        });
+        bindClickSound(musicList);
+    }
+
+    function renderWaitlist() {
+        waitlistTableBody.innerHTML = '';
+        waitlistCount.textContent = String(waitlistEntries.length);
+        emptyWaitlistState.classList.toggle('hidden', waitlistEntries.length > 0);
+        waitlistEntries.forEach(entry => {
+            const row = document.createElement('tr');
+            const email = document.createElement('td');
+            email.textContent = entry.email;
+            const joined = document.createElement('td');
+            joined.textContent = new Date(entry.createdAt).toLocaleString();
+            row.append(email, joined);
+            waitlistTableBody.appendChild(row);
+        });
+    }
+
     paymentMethodsForm.addEventListener('submit', async event => {
         event.preventDefault();
         await savePaymentMethodsWithLatest(currentPaymentMethods => currentPaymentMethods.map(method => {
@@ -1431,6 +1498,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus(marketingStatus, 'Marketing broadcast saved.');
     });
 
+    musicForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+            await saveMusic({
+                enabled: musicEnabled.checked,
+                songs: [...(music.songs || []), {
+                    id: window.ShopData.createId('song'),
+                    title: musicTitle.value,
+                    artist: musicArtist.value,
+                    url: musicUrl.value
+                }]
+            });
+            musicForm.reset();
+            musicEnabled.checked = music.enabled !== false;
+            setStatus(musicStatus, 'Song added to the storefront playlist.');
+        } catch (error) {
+            setStatus(musicStatus, error.message);
+        }
+    });
+
+    musicEnabled.addEventListener('change', async () => {
+        try {
+            await saveMusic({ ...music, enabled: musicEnabled.checked });
+            setStatus(musicStatus, musicEnabled.checked ? 'Music player enabled.' : 'Music player hidden.');
+        } catch (error) {
+            musicEnabled.checked = music.enabled !== false;
+            setStatus(musicStatus, error.message);
+        }
+    });
+
     settingsForm.addEventListener('submit', event => {
         event.preventDefault();
         window.ShopData.saveSettings({
@@ -1490,9 +1587,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (productionAdmin) {
-            ({ products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer } = productionBootstrap);
+            ({ products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer, music, waitlistEntries } = productionBootstrap);
         } else {
-            [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer] = await Promise.all([
+            [products, orders, paymentMethods, discounts, marketing, settings, appCenter, designer, music] = await Promise.all([
             window.ShopData.getProducts(),
             window.ShopData.getOrders(),
             window.ShopData.getPaymentMethods(),
@@ -1500,7 +1597,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.ShopData.getMarketing(),
             window.ShopData.getSettings(),
             window.ShopData.getAppCenter(),
-            window.ShopData.getDesigner()
+            window.ShopData.getDesigner(),
+            window.ShopData.getMusic()
             ]);
         }
 
@@ -1513,6 +1611,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadSettingsForm();
         loadAppCenterForm();
         loadDesignerForm();
+        renderMusic();
+        renderWaitlist();
         resetProductForm();
         bindClickSound();
         activateSection('dashboard');

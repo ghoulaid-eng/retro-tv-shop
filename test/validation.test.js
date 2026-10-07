@@ -3,7 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { getPublicConfig, readConfig } = require('../backend/config');
-const { ValidationError, decimalToCents, validateCheckout, validateCustomOrder } = require('../backend/validation');
+const {
+    ValidationError,
+    decimalToCents,
+    validateCheckout,
+    validateCustomOrder,
+    validateWaitlist
+} = require('../backend/validation');
 const { buildCheckoutShippingOptions } = require('../backend/shipping');
 const {
     OrderOperationError,
@@ -12,6 +18,7 @@ const {
     validateRefund,
     validateSupport
 } = require('../backend/order-operations');
+const { AdminValidationError, normalizeAdminResource } = require('../backend/admin');
 
 test('public capabilities never expose secrets and require complete checkout configuration', () => {
     const config = readConfig({
@@ -183,6 +190,28 @@ test('custom-order validation normalizes allowed fields', () => {
     assert.equal(order.fullName, 'Ghoul Friend');
     assert.deepEqual(order.scents, ['vanilla']);
     assert.equal(order.contactMethod, 'email');
+});
+
+test('waitlist validation normalizes email and rejects invalid signups', () => {
+    assert.deepEqual(validateWaitlist({ email: '  Ghoul@Example.COM ' }), {
+        email: 'ghoul@example.com'
+    });
+    assert.throws(() => validateWaitlist({ email: 'not-an-email' }), ValidationError);
+    assert.throws(() => validateWaitlist(null), ValidationError);
+});
+
+test('music admin resource accepts HTTPS audio and rejects unsafe URLs', () => {
+    const music = normalizeAdminResource('music', {
+        enabled: true,
+        songs: [{ title: ' Ghoul Radio ', artist: ' The Crypt ', url: 'https://media.example.com/song.mp3' }]
+    });
+    assert.equal(music.songs[0].title, 'Ghoul Radio');
+    assert.equal(music.songs[0].artist, 'The Crypt');
+    assert.match(music.songs[0].id, /^song-/);
+    assert.throws(() => normalizeAdminResource('music', {
+        enabled: true,
+        songs: [{ title: 'Unsafe', url: 'javascript:alert(1)' }]
+    }), AdminValidationError);
 });
 
 test('stored decimal prices convert to integer cents without float arithmetic', () => {
