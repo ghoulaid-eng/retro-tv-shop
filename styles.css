@@ -1825,6 +1825,38 @@ input[type="checkbox"] {
     color: #ffadad;
 }
 
+.waitlist-panel {
+    width: min(680px, 100%);
+    margin: 24px auto;
+    padding: clamp(24px, 5vw, 48px);
+    border: 2px solid var(--mint);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at top, rgba(221, 160, 221, 0.18), transparent 52%),
+        linear-gradient(145deg, rgba(0, 255, 136, 0.08), rgba(8, 8, 18, 0.94));
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.16);
+    text-align: center;
+}
+
+.waitlist-signal {
+    margin-bottom: 10px;
+    font-size: clamp(56px, 10vw, 86px);
+    filter: drop-shadow(0 0 16px rgba(221, 160, 221, 0.55));
+}
+
+.waitlist-form {
+    margin-top: 28px;
+    text-align: left;
+}
+
+.waitlist-consent {
+    margin: 12px auto 0;
+    color: var(--purple-soft);
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
+}
+
 @keyframes successPulse {
     0% {
         opacity: 0;

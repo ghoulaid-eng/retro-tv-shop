@@ -32,6 +32,7 @@
                             <select id="channelSelector" class="channel-selector" aria-label="Channel selector">
                                 <option value="home">📺 HOME</option>
                                 <option value="shop">🛍️ SHOP</option>
+                                <option value="waitlist">📦 MYSTERY BOX WAITLIST</option>
                                 <option value="account">👤 ACCOUNT</option>
                                 <option value="summon">🔮 SUMMON US</option>
                                 <option value="custom-order">✨ CUSTOM ORDER</option>
@@ -99,10 +100,10 @@
                                             <strong>✨ Custom Order</strong>
                                             <small>Summon something unique</small>
                                         </button>
-                                        <button type="button" class="guide-card" data-channel-target="account">
+                                        <button type="button" class="guide-card" data-channel-target="waitlist">
                                             <span class="guide-number">CH 05</span>
-                                            <strong>💚 Saved Drops</strong>
-                                            <small>Open your wishlist</small>
+                                            <strong>📦 Mystery Box Waitlist</strong>
+                                            <small>Get first access to monthly boxes</small>
                                         </button>
                                         <button type="button" class="guide-card" data-channel-target="summon">
                                             <span class="guide-number">CH 06</span>
@@ -308,6 +309,25 @@
                                         </div>
                                         <button type="submit" class="submit-btn click-item">Send support request</button>
                                         <p id="orderSupportStatus" class="form-status" role="status"></p>
+                                    </form>
+                                </div>
+                            </section>
+
+                            <!-- Monthly Mystery Box Waitlist Channel -->
+                            <section id="waitlist" class="channel" aria-hidden="true" hidden>
+                                <h1 class="channel-title">MONTHLY MYSTERY BOX WAITLIST</h1>
+                                <div class="waitlist-panel">
+                                    <div class="waitlist-signal" aria-hidden="true">📦</div>
+                                    <p class="channel-intro">A fresh transmission of creepy-cute surprises, handmade chaos, and limited monthly drops is coming.</p>
+                                    <p>Join the waitlist to be among the first to know when Sip of Ghoulaid mystery-box subscriptions open. Joining the waitlist does not start a subscription or charge you.</p>
+                                    <form id="waitlistForm" class="waitlist-form">
+                                        <div class="form-group">
+                                            <label for="waitlistEmail">Email address</label>
+                                            <input id="waitlistEmail" name="email" type="email" maxlength="254" required autocomplete="email" placeholder="you@example.com">
+                                        </div>
+                                        <button type="submit" class="submit-btn click-item">Join the Mystery Box Waitlist</button>
+                                        <p class="waitlist-consent">We will only use this email for mystery-box availability and related subscription updates. You can ask us to remove it at any time.</p>
+                                        <p id="waitlistStatus" class="form-status" role="status" aria-live="polite"></p>
                                     </form>
                                 </div>
                             </section>

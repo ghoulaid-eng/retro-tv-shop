@@ -3,7 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { getPublicConfig, readConfig } = require('../backend/config');
-const { ValidationError, decimalToCents, validateCheckout, validateCustomOrder } = require('../backend/validation');
+const {
+    ValidationError,
+    decimalToCents,
+    validateCheckout,
+    validateCustomOrder,
+    validateWaitlist
+} = require('../backend/validation');
 const { buildCheckoutShippingOptions } = require('../backend/shipping');
 const {
     OrderOperationError,
@@ -183,6 +189,14 @@ test('custom-order validation normalizes allowed fields', () => {
     assert.equal(order.fullName, 'Ghoul Friend');
     assert.deepEqual(order.scents, ['vanilla']);
     assert.equal(order.contactMethod, 'email');
+});
+
+test('waitlist validation normalizes email and rejects invalid signups', () => {
+    assert.deepEqual(validateWaitlist({ email: '  Ghoul@Example.COM ' }), {
+        email: 'ghoul@example.com'
+    });
+    assert.throws(() => validateWaitlist({ email: 'not-an-email' }), ValidationError);
+    assert.throws(() => validateWaitlist(null), ValidationError);
 });
 
 test('stored decimal prices convert to integer cents without float arithmetic', () => {

@@ -254,6 +254,16 @@ model CustomOrderRequest {
   @@index([status, createdAt])
 }
 
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("monthly-mystery-box")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 model AdminResource {
   key       String   @id
   value     Json

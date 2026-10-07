@@ -13,7 +13,8 @@ const {
     ValidationError,
     decimalToCents,
     validateCheckout,
-    validateCustomOrder
+    validateCustomOrder,
+    validateWaitlist
 } = require('./backend/validation');
 const {
     ADMIN_RESOURCE_DEFAULTS,
@@ -1170,6 +1171,25 @@ app.post('/api/custom-orders', writeLimiter, async (req, res, next) => {
             select: { id: true, status: true, createdAt: true }
         });
         res.status(201).json({ request, persistence: 'hosted' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/waitlist', writeLimiter, async (req, res, next) => {
+    if (!prisma) {
+        return unavailable(res, 'waitlist', 'Hosted waitlist storage is not configured.');
+    }
+    try {
+        const { email } = validateWaitlist(req.body);
+        await prisma.waitlistEntry.upsert({
+            where: { email },
+            update: {},
+            create: { email }
+        });
+        res.status(201).json({
+            message: 'Signal received! You are on the monthly mystery-box waitlist.'
+        });
     } catch (error) {
         next(error);
     }

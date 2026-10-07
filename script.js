@@ -68,6 +68,8 @@ const reviewStatus = document.getElementById('reviewStatus');
 const reviewsList = document.getElementById('reviewsList');
 const orderSupportForm = document.getElementById('orderSupportForm');
 const orderSupportStatus = document.getElementById('orderSupportStatus');
+const waitlistForm = document.getElementById('waitlistForm');
+const waitlistStatus = document.getElementById('waitlistStatus');
 const productDetailContent = document.getElementById('productDetailContent');
 const productDetailBack = document.getElementById('productDetailBack');
 const policyContent = document.getElementById('policyContent');
@@ -104,6 +106,7 @@ const CHANNEL_NUMBERS = {
     'product-detail': '02',
     account: '03',
     'custom-order': '04',
+    waitlist: '05',
     summon: '06',
     about: '07',
     reviews: '08',
@@ -122,7 +125,7 @@ const POLICY_CONTENT = {
                 heading: 'Information We Collect',
                 paragraphs: ['When you place an order, we receive:'],
                 bullets: ['Your name', 'Shipping address', 'Email address', 'Phone number, if provided', 'Order details'],
-                after: ['If you message us, we collect your name, email, and message content.', 'We do not collect or store payment-card information. Payments are processed securely by Stripe or the applicable payment provider.']
+                after: ['If you message us, we collect your name, email, and message content. If you join the monthly mystery-box waitlist, we collect your email address to send availability and related subscription updates.', 'We do not collect or store payment-card information. Payments are processed securely by Stripe or the applicable payment provider.']
             },
             {
                 heading: 'How We Use Your Information',
@@ -2493,6 +2496,31 @@ if (checkoutButton) {
                 ? 'Secure hosted checkout is unavailable. No order or payment was created.'
                 : `Checkout could not start: ${error.message}`);
             checkoutButton.disabled = false;
+        }
+    });
+}
+
+if (waitlistForm) {
+    waitlistForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submitButton = waitlistForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        setStatus(waitlistStatus, 'Tuning the signal...');
+        waitlistStatus?.classList.remove('error', 'success');
+        try {
+            const formData = new FormData(waitlistForm);
+            const result = await commerceRequest('/api/waitlist', {
+                method: 'POST',
+                body: JSON.stringify({ email: formData.get('email') })
+            });
+            waitlistForm.reset();
+            setStatus(waitlistStatus, result.message);
+            waitlistStatus?.classList.add('success');
+        } catch (error) {
+            setStatus(waitlistStatus, `Waitlist signup failed: ${error.message}`);
+            waitlistStatus?.classList.add('error');
+        } finally {
+            submitButton.disabled = false;
         }
     });
 }
