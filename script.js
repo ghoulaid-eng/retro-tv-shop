@@ -23,10 +23,14 @@ const shopAccountSummary = document.getElementById('shopAccountSummary');
 const accountGreeting = document.getElementById('accountGreeting');
 const accountSummary = document.getElementById('accountSummary');
 const accountStatusMessage = document.getElementById('accountStatusMessage');
-const savedAccountSelect = document.getElementById('savedAccountSelect');
-const switchAccountButton = document.getElementById('switchAccountButton');
-const createAccountModeButton = document.getElementById('createAccountModeButton');
+const customerAuthPanel = document.getElementById('customerAuthPanel');
+const customerAuthForm = document.getElementById('customerAuthForm');
+const customerAuthEmailInput = document.getElementById('customerAuthEmail');
+const customerAuthPasswordInput = document.getElementById('customerAuthPassword');
+const customerCreateAccountButton = document.getElementById('customerCreateAccount');
+const customerMagicLinkButton = document.getElementById('customerMagicLink');
 const signOutButton = document.getElementById('signOutButton');
+const accountProfilePanel = document.getElementById('accountProfilePanel');
 const accountProfileForm = document.getElementById('accountProfileForm');
 const accountNameInput = document.getElementById('accountName');
 const accountUsernameInput = document.getElementById('accountUsername');
@@ -42,11 +46,19 @@ const shippingStateInput = document.getElementById('shippingState');
 const shippingPostalCodeInput = document.getElementById('shippingPostalCode');
 const shippingCountryInput = document.getElementById('shippingCountry');
 const shippingStatusMessage = document.getElementById('shippingStatusMessage');
+const shippingProfilePanel = document.getElementById('shippingProfilePanel');
+const savedPaymentsPanel = document.getElementById('savedPaymentsPanel');
+const savedPaymentMethods = document.getElementById('savedPaymentMethods');
+const savedPaymentsStatus = document.getElementById('savedPaymentsStatus');
+const addPaymentMethodButton = document.getElementById('addPaymentMethodButton');
+const managePaymentMethodsButton = document.getElementById('managePaymentMethodsButton');
+const accountCartPanel = document.getElementById('accountCartPanel');
 const wishlistList = document.getElementById('wishlistList');
 const wishlistStatusMessage = document.getElementById('wishlistStatusMessage');
 const memberLoungeLocked = document.getElementById('memberLoungeLocked');
 const memberLoungeContent = document.getElementById('memberLoungeContent');
 const memberLoungeGreeting = document.getElementById('memberLoungeGreeting');
+const memberRecentOrders = document.getElementById('memberRecentOrders');
 const cartList = document.getElementById('cartList');
 const cartSummaryMessage = document.getElementById('cartSummaryMessage');
 const cartStatusMessage = document.getElementById('cartStatusMessage');
@@ -109,6 +121,9 @@ let commerceCapabilities = {
 let catalogSource = 'browser-local';
 let musicSongs = [];
 let musicSongIndex = 0;
+let customerSupabaseClient = null;
+let customerSession = null;
+let customerProfile = null;
 const MAX_CART_LINE_QUANTITY = 10;
 const MAX_CART_LINES = 50;
 const REVIEWS_STORAGE_KEY = 'sip-of-ghoulaid-reviews';
@@ -290,11 +305,159 @@ async function commerceRequest(path, options = {}) {
             error.code = payload.error;
             throw error;
         }
+
         return payload;
     } finally {
         clearTimeout(timeout);
     }
 }
+
+async function customerRequest(path, options = {}) {
+            const accessToken = customerSession?.access_token;
+            if (!accessToken) {
+                throw new Error('Sign in to continue.');
+            }
+            return commerceRequest(path, {
+                ...options,
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    ...(options.headers || {})
+                }
+            });
+        }
+
+        function getCustomerDisplayName() {
+            return customerProfile?.name || customerSession?.user?.email?.split('@')[0] || 'Ghoul';
+        }
+
+        async function loadRecentOrders() {
+                if (!memberRecentOrders || !customerSession) {
+                    return;
+                }
+                memberRecentOrders.replaceChildren();
+                try {
+                    const { orders } = await customerRequest('/api/customer/orders');
+                    if (!orders.length) {
+                        const empty = document.createElement('p');
+                        empty.textContent = 'No completed checkouts are linked to this account yet.';
+                        memberRecentOrders.appendChild(empty);
+                        return;
+                    }
+                    orders.forEach(order => {
+                        const item = document.createElement('div');
+                        item.className = 'account-list-item';
+                        const date = new Date(order.createdAt).toLocaleDateString();
+                        const total = formatMoney(
+                            Number(order.subtotal || 0)
+                            + Number(order.shippingAmount || 0)
+                            + Number(order.taxAmount || 0)
+                        );
+                        item.textContent = `${date} · ${total} · ${order.status || 'processing'}`;
+                        memberRecentOrders.appendChild(item);
+                    });
+                } catch (error) {
+                    const message = document.createElement('p');
+                    message.textContent = error.message;
+                    memberRecentOrders.appendChild(message);
+                }
+            }
+
+        async function loadSavedPaymentMethods() {
+            if (!savedPaymentMethods || !savedPaymentsStatus || !customerSession) {
+                return;
+            }
+            savedPaymentMethods.innerHTML = '';
+            savedPaymentsStatus.textContent = 'Checking your Stripe wallet...';
+            try {
+                const { paymentMethods } = await customerRequest('/api/customer/payment-methods');
+                if (!paymentMethods.length) {
+                    savedPaymentsStatus.textContent = 'No saved payment methods yet. Card details stay securely with Stripe.';
+                    return;
+                }
+                savedPaymentsStatus.textContent = '';
+                paymentMethods.forEach(method => {
+                    const item = document.createElement('li');
+                    item.className = 'account-list-item';
+                    item.textContent = `${String(method.brand || 'card').toUpperCase()} ending in ${method.last4} · expires ${String(method.expMonth).padStart(2, '0')}/${method.expYear}`;
+                    savedPaymentMethods.appendChild(item);
+                });
+            } catch (error) {
+                savedPaymentsStatus.textContent = error.message;
+            }
+        }
+
+        async function loadCustomerProfile() {
+            const { profile } = await customerRequest('/api/customer/profile');
+            customerProfile = profile;
+            currentUserState = customerSession
+                ? { userId: customerSession.user.id, email: customerSession.user.email }
+                : {};
+            savedUsers = customerSession
+                ? [{
+                    id: customerSession.user.id,
+                    email: customerSession.user.email,
+                    name: profile?.name || '',
+                    username: profile?.username || ''
+                }]
+                : [];
+            renderAccountState();
+            await Promise.all([loadSavedPaymentMethods(), loadRecentOrders()]);
+        }
+
+        async function applyCustomerSession(session) {
+            customerSession = session || null;
+            customerProfile = null;
+            if (!customerSession) {
+                currentUserState = {};
+                savedUsers = [];
+                renderAccountState();
+                return;
+            }
+            try {
+                await loadCustomerProfile();
+            } catch (error) {
+                accountStatusMessage.textContent = error.message;
+                renderAccountState();
+            }
+        }
+
+        async function initializeCustomerAuth() {
+            if (!commerceCapabilities.customerAuthAvailable) {
+                customerAuthPanel?.classList.remove('hidden');
+                customerAuthForm?.querySelectorAll('input, button').forEach(control => {
+                    control.disabled = true;
+                });
+                accountStatusMessage.textContent = 'Customer accounts are temporarily unavailable.';
+                renderAccountState();
+                return;
+            }
+            if (!window.supabase?.createClient) {
+                throw new Error('The secure account service could not be loaded.');
+            }
+            customerSupabaseClient = window.supabase.createClient(
+                commerceCapabilities.supabaseUrl,
+                commerceCapabilities.supabaseAnonKey,
+                {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: true
+                    }
+                }
+            );
+            const { data, error } = await customerSupabaseClient.auth.getSession();
+            if (error) {
+                throw error;
+            }
+            await applyCustomerSession(data.session);
+            customerSupabaseClient.auth.onAuthStateChange((_event, session) => {
+                window.setTimeout(() => {
+                    applyCustomerSession(session).catch(error => {
+                        accountStatusMessage.textContent = error.message;
+                    });
+                }, 0);
+            });
+        }
 
 function getCartVariantQuantity(productId, variant = '') {
     const activeUser = getActiveUser();
@@ -608,12 +771,6 @@ function renderSavedListMessage(target, message) {
     emptyState.className = 'empty-products-message';
     emptyState.textContent = message;
     target.appendChild(emptyState);
-}
-
-async function saveUsersWithLatest(applyChange) {
-    const latestUsers = await window.ShopData.getUsers();
-    const nextUsers = applyChange(latestUsers);
-    window.ShopData.saveUsers(nextUsers);
 }
 
 async function saveWishlistsWithLatest(applyChange) {
@@ -1891,42 +2048,20 @@ function fillOrderProfileFromAccount() {
     }
 
     if (fullNameInput) {
-        fullNameInput.value = activeUser.name || activeUser.shippingFullName || '';
+        fullNameInput.value = customerProfile?.name || customerProfile?.shippingFullName || '';
     }
 
     if (usernameInput) {
-        usernameInput.value = activeUser.username || '';
+        usernameInput.value = customerProfile?.username || '';
     }
 
     if (contactMethodInput) {
-        contactMethodInput.value = activeUser.contactMethod || '';
+        contactMethodInput.value = customerProfile?.contactMethod || '';
     }
 
     if (contactInfoInput) {
-        contactInfoInput.value = activeUser.contactInfo || activeUser.email || '';
+        contactInfoInput.value = customerProfile?.contactInfo || customerSession?.user?.email || '';
     }
-}
-
-function renderSavedAccounts() {
-    if (!savedAccountSelect) {
-        return;
-    }
-
-    const activeUser = getActiveUser();
-    savedAccountSelect.replaceChildren();
-
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = savedUsers.length ? 'Choose an account...' : 'No saved accounts yet';
-    savedAccountSelect.appendChild(placeholder);
-
-    savedUsers.forEach(user => {
-        const option = document.createElement('option');
-        option.value = user.id;
-        option.textContent = `${getUserDisplayName(user)}${user.email ? ` • ${user.email}` : ''}`;
-        option.selected = Boolean(activeUser && activeUser.id === user.id);
-        savedAccountSelect.appendChild(option);
-    });
 }
 
 function renderShopAccountBanner() {
@@ -1934,14 +2069,14 @@ function renderShopAccountBanner() {
 
     if (!activeUser) {
         setStatus(shopAccountGreeting, 'Browsing as guest');
-        setStatus(shopAccountSummary, 'Create a local account to save wishlists, carts, and shipping details on this device.');
+        setStatus(shopAccountSummary, 'Create a secure account to save wishlists, carts, and private shipping details.');
         return;
     }
 
     const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
     const cartItemCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
     setStatus(shopAccountGreeting, `Browsing as ${getUserDisplayName(activeUser)}`);
-    setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) saved on this device.`);
+    setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) in your vault.`);
 }
 
 function renderMemberLounge() {
@@ -1953,34 +2088,11 @@ function renderMemberLounge() {
     }
 }
 
-function loadAccountForms() {
-    const activeUser = getActiveUser();
-
-    if (!activeUser) {
-        accountProfileForm?.reset();
-        shippingProfileForm?.reset();
-        return;
-    }
-
-    accountNameInput.value = activeUser.name || '';
-    accountUsernameInput.value = activeUser.username || '';
-    accountEmailInput.value = activeUser.email || '';
-    accountContactMethodInput.value = activeUser.contactMethod || '';
-    accountContactInfoInput.value = activeUser.contactInfo || '';
-    shippingFullNameInput.value = activeUser.shippingFullName || activeUser.name || '';
-    shippingAddressLine1Input.value = activeUser.shippingAddressLine1 || '';
-    shippingAddressLine2Input.value = activeUser.shippingAddressLine2 || '';
-    shippingCityInput.value = activeUser.shippingCity || '';
-    shippingStateInput.value = activeUser.shippingState || '';
-    shippingPostalCodeInput.value = activeUser.shippingPostalCode || '';
-    shippingCountryInput.value = activeUser.shippingCountry || '';
-}
-
 function renderWishlist() {
     const activeUser = getActiveUser();
 
     if (!activeUser) {
-        renderSavedListMessage(wishlistList, 'Create or switch to an account to save wishlist items.');
+        renderSavedListMessage(wishlistList, 'Sign in to save wishlist items.');
         return;
     }
 
@@ -2210,22 +2322,56 @@ function renderCart() {
 }
 
 function renderAccountState() {
+    if (customerSession) {
+        currentUserState = {
+            userId: customerSession.user.id,
+            email: customerSession.user.email
+        };
+        savedUsers = [{
+            id: customerSession.user.id,
+            email: customerSession.user.email,
+            name: customerProfile?.name || '',
+            username: customerProfile?.username || ''
+        }];
+    }
     const activeUser = getActiveUser();
+    const signedIn = Boolean(customerSession && activeUser);
 
-    if (!activeUser) {
+    customerAuthPanel?.classList.toggle('hidden', signedIn);
+    accountProfilePanel?.classList.toggle('hidden', !signedIn);
+    shippingProfilePanel?.classList.toggle('hidden', !signedIn);
+    savedPaymentsPanel?.classList.toggle('hidden', !signedIn);
+    accountCartPanel?.classList.toggle('hidden', !signedIn);
+    signOutButton?.classList.toggle('hidden', !signedIn);
+    [accountProfilePanel, shippingProfilePanel, savedPaymentsPanel, accountCartPanel].forEach(panel => {
+        panel?.setAttribute('aria-hidden', String(!signedIn));
+    });
+
+    if (!signedIn) {
         setStatus(accountGreeting, 'No account active');
-        setStatus(accountSummary, 'Create an account or switch to one saved on this device.');
+        setStatus(accountSummary, 'Sign in or create a secure account to open your private vault.');
     } else {
         const wishlistCount = getWishlistEntry(activeUser.id).productIds.length;
         const cartCount = getCartEntry(activeUser.id).items.reduce((total, item) => total + item.quantity, 0);
-        setStatus(accountGreeting, `Welcome back, ${getUserDisplayName(activeUser)}`);
-        setStatus(accountSummary, `${wishlistCount} wishlist item(s), ${cartCount} saved cart item(s), and shipping details stored on this device.`);
+        setStatus(accountGreeting, `Welcome back, ${getCustomerDisplayName()}`);
+        setStatus(accountSummary, `${wishlistCount} wishlist item(s), ${cartCount} saved cart item(s), and private shipping details protected in your account.`);
+
+        accountNameInput.value = customerProfile?.name || '';
+        accountUsernameInput.value = customerProfile?.username || '';
+        accountEmailInput.value = customerSession.user.email || '';
+        accountContactMethodInput.value = customerProfile?.contactMethod || '';
+        accountContactInfoInput.value = customerProfile?.contactInfo || '';
+        shippingFullNameInput.value = customerProfile?.shippingFullName || '';
+        shippingAddressLine1Input.value = customerProfile?.shippingAddressLine1 || '';
+        shippingAddressLine2Input.value = customerProfile?.shippingAddressLine2 || '';
+        shippingCityInput.value = customerProfile?.shippingCity || '';
+        shippingStateInput.value = customerProfile?.shippingState || '';
+        shippingPostalCodeInput.value = customerProfile?.shippingPostalCode || '';
+        shippingCountryInput.value = customerProfile?.shippingCountry || 'US';
     }
 
-    renderSavedAccounts();
     renderShopAccountBanner();
     renderMemberLounge();
-    loadAccountForms();
     fillOrderProfileFromAccount();
     renderWishlist();
     renderCart();
@@ -2234,7 +2380,7 @@ function renderAccountState() {
 
 async function initializeShopData() {
     await loadCommerceCapabilities();
-    const [localProducts, discounts, marketing, settings, appCenter, designer, paymentMethods, users, currentUser, storedWishlists, storedCarts] = await Promise.all([
+    const [localProducts, discounts, marketing, settings, appCenter, designer, paymentMethods, storedWishlists, storedCarts] = await Promise.all([
         window.ShopData.getProducts(),
         window.ShopData.getDiscounts(),
         window.ShopData.getMarketing(),
@@ -2242,14 +2388,12 @@ async function initializeShopData() {
         window.ShopData.getAppCenter(),
         window.ShopData.getDesigner(),
         window.ShopData.getPaymentMethods(),
-        window.ShopData.getUsers(),
-        window.ShopData.getCurrentUser(),
         window.ShopData.getWishlists(),
         window.ShopData.getCarts()
     ]);
 
-    savedUsers = users;
-    currentUserState = currentUser;
+    savedUsers = [];
+    currentUserState = {};
     wishlists = storedWishlists;
     carts = storedCarts;
 
@@ -2273,6 +2417,11 @@ async function initializeShopData() {
     renderFeaturedBroadcast(marketing, appCenter.marketingEnabled);
     renderDiscounts(discounts, appCenter.discountsEnabled);
     renderAccountState();
+    try {
+        await initializeCustomerAuth();
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
 
     window.ShopData.subscribe('products', nextProducts => {
         if (catalogSource === 'browser-local') {
@@ -2282,14 +2431,6 @@ async function initializeShopData() {
     window.ShopData.subscribe('settings', applySettings);
     window.ShopData.subscribe('designer', applyDesigner);
     window.ShopData.subscribe('paymentMethods', renderPaymentMethods);
-    window.ShopData.subscribe('users', nextUsers => {
-        savedUsers = nextUsers;
-        renderAccountState();
-    });
-    window.ShopData.subscribe('currentUser', nextCurrentUser => {
-        currentUserState = nextCurrentUser;
-        renderAccountState();
-    });
     window.ShopData.subscribe('wishlists', nextWishlists => {
         wishlists = nextWishlists;
         renderAccountState();
@@ -2376,116 +2517,152 @@ if (openAccountFromShopButton) {
     });
 }
 
-if (accountProfileForm) {
-    accountProfileForm.addEventListener('submit', async event => {
-        event.preventDefault();
-
-        const activeUser = getActiveUser();
-        const nextName = accountNameInput.value.trim();
-        const nextUsername = accountUsernameInput.value.trim();
-        const nextEmail = accountEmailInput.value.trim();
-
-        if (!nextName || !nextUsername || !nextEmail) {
-            setStatus(accountStatusMessage, 'Name, username, and email are required.');
-            return;
-        }
-
-        const latestUsers = await window.ShopData.getUsers();
-        const duplicateUser = latestUsers.find(user => user.id !== activeUser?.id && (
-            user.username.toLowerCase() === nextUsername.toLowerCase() ||
-            user.email.toLowerCase() === nextEmail.toLowerCase()
-        ));
-
-        if (duplicateUser) {
-            setStatus(accountStatusMessage, 'That username or email is already saved on this device.');
-            return;
-        }
-
-        if (activeUser) {
-            await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
-                ...user,
-                name: nextName,
-                username: nextUsername,
-                email: nextEmail,
-                contactMethod: accountContactMethodInput.value,
-                contactInfo: accountContactInfoInput.value.trim(),
-                updatedAt: new Date().toISOString()
-            } : user));
-            setStatus(accountStatusMessage, `Updated account for ${nextName}.`);
-            return;
-        }
-
-        const newUser = {
-            id: window.ShopData.createId('user'),
-            name: nextName,
-            username: nextUsername,
-            email: nextEmail,
-            contactMethod: accountContactMethodInput.value,
-            contactInfo: accountContactInfoInput.value.trim(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        await saveUsersWithLatest(currentUsers => [...currentUsers, newUser]);
-        window.ShopData.saveCurrentUser({ userId: newUser.id, updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, `Created local account for ${nextName}.`);
-    });
-}
-
-if (shippingProfileForm) {
-    shippingProfileForm.addEventListener('submit', async event => {
-        event.preventDefault();
-
-        const activeUser = ensureActiveUser('Create or switch to an account before saving shipping details.');
-        if (!activeUser) {
-            return;
-        }
-
-        await saveUsersWithLatest(currentUsers => currentUsers.map(user => user.id === activeUser.id ? {
-            ...user,
+function getCustomerProfilePayload(includeShippingForm = true) {
+    const shipping = includeShippingForm
+        ? {
             shippingFullName: shippingFullNameInput.value.trim(),
             shippingAddressLine1: shippingAddressLine1Input.value.trim(),
             shippingAddressLine2: shippingAddressLine2Input.value.trim(),
             shippingCity: shippingCityInput.value.trim(),
             shippingState: shippingStateInput.value.trim(),
             shippingPostalCode: shippingPostalCodeInput.value.trim(),
-            shippingCountry: shippingCountryInput.value.trim(),
-            updatedAt: new Date().toISOString()
-        } : user));
-
-        setStatus(shippingStatusMessage, 'Shipping details saved to your account.');
-    });
-}
-
-if (switchAccountButton) {
-    switchAccountButton.addEventListener('click', () => {
-        if (!savedAccountSelect?.value) {
-            setStatus(accountStatusMessage, 'Choose an account to switch.');
-            return;
+            shippingCountry: shippingCountryInput.value.trim()
         }
-
-        window.ShopData.saveCurrentUser({ userId: savedAccountSelect.value, updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, 'Switched local account.');
-    });
+        : {
+            shippingFullName: customerProfile?.shippingFullName || '',
+            shippingAddressLine1: customerProfile?.shippingAddressLine1 || '',
+            shippingAddressLine2: customerProfile?.shippingAddressLine2 || '',
+            shippingCity: customerProfile?.shippingCity || '',
+            shippingState: customerProfile?.shippingState || '',
+            shippingPostalCode: customerProfile?.shippingPostalCode || '',
+            shippingCountry: customerProfile?.shippingCountry || ''
+        };
+    return {
+        name: accountNameInput.value.trim(),
+        username: accountUsernameInput.value.trim(),
+        contactMethod: accountContactMethodInput.value,
+        contactInfo: accountContactInfoInput.value.trim(),
+        ...shipping
+    };
 }
 
-if (createAccountModeButton) {
-    createAccountModeButton.addEventListener('click', () => {
-        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
-        accountProfileForm?.reset();
-        shippingProfileForm?.reset();
-        setStatus(accountStatusMessage, 'Enter account details to create a new local account.');
-        setStatus(shippingStatusMessage, '');
-        setStatus(cartStatusMessage, '');
-    });
-}
+customerAuthForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    setStatus(accountStatusMessage, 'Signing in securely...');
+    try {
+        const { error } = await customerSupabaseClient.auth.signInWithPassword({
+            email: customerAuthEmailInput.value.trim(),
+            password: customerAuthPasswordInput.value
+        });
+        if (error) throw error;
+        customerAuthForm.reset();
+        setStatus(accountStatusMessage, 'Signed in securely.');
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
+});
 
-if (signOutButton) {
-    signOutButton.addEventListener('click', () => {
-        window.ShopData.saveCurrentUser({ userId: '', updatedAt: new Date().toISOString() });
-        setStatus(accountStatusMessage, 'Signed out on this device.');
-    });
-}
+customerCreateAccountButton?.addEventListener('click', async () => {
+    setStatus(accountStatusMessage, 'Creating your secure account...');
+    try {
+        const { data, error } = await customerSupabaseClient.auth.signUp({
+            email: customerAuthEmailInput.value.trim(),
+            password: customerAuthPasswordInput.value,
+            options: { emailRedirectTo: `${window.location.origin}/?channel=account` }
+        });
+        if (error) throw error;
+        setStatus(accountStatusMessage, data.session
+            ? 'Account created. Your secure vault is ready.'
+            : 'Account created. Check your email to verify it, then sign in.');
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
+});
+
+customerMagicLinkButton?.addEventListener('click', async () => {
+    const email = customerAuthEmailInput.value.trim();
+    if (!email) {
+        setStatus(accountStatusMessage, 'Enter your email address first.');
+        return;
+    }
+    setStatus(accountStatusMessage, 'Sending your secure sign-in link...');
+    try {
+        const { error } = await customerSupabaseClient.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: `${window.location.origin}/?channel=account` }
+        });
+        if (error) throw error;
+        setStatus(accountStatusMessage, 'Magic link sent. Check your email.');
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
+});
+
+accountProfileForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+        const { profile } = await customerRequest('/api/customer/profile', {
+            method: 'PUT',
+            body: JSON.stringify(getCustomerProfilePayload(false))
+        });
+        customerProfile = profile;
+        renderAccountState();
+        setStatus(accountStatusMessage, 'Private profile saved securely.');
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
+});
+
+shippingProfileForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+        const { profile } = await customerRequest('/api/customer/profile', {
+            method: 'PUT',
+            body: JSON.stringify(getCustomerProfilePayload())
+        });
+        customerProfile = profile;
+        renderAccountState();
+        setStatus(shippingStatusMessage, 'Private shipping details saved securely.');
+    } catch (error) {
+        setStatus(shippingStatusMessage, error.message);
+    }
+});
+
+signOutButton?.addEventListener('click', async () => {
+    try {
+        const { error } = await customerSupabaseClient.auth.signOut();
+        if (error) throw error;
+        setStatus(accountStatusMessage, 'Signed out securely.');
+    } catch (error) {
+        setStatus(accountStatusMessage, error.message);
+    }
+});
+
+addPaymentMethodButton?.addEventListener('click', async () => {
+    try {
+        setStatus(savedPaymentsStatus, 'Opening secure Stripe setup...');
+        const { url } = await customerRequest('/api/customer/payment-methods/setup', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        window.location.assign(url);
+    } catch (error) {
+        setStatus(savedPaymentsStatus, error.message);
+    }
+});
+
+managePaymentMethodsButton?.addEventListener('click', async () => {
+    try {
+        setStatus(savedPaymentsStatus, 'Opening Stripe billing portal...');
+        const { url } = await customerRequest('/api/customer/billing-portal', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        window.location.assign(url);
+    } catch (error) {
+        setStatus(savedPaymentsStatus, error.message);
+    }
+});
 
 if (moveWishlistToCartButton) {
     moveWishlistToCartButton.addEventListener('click', async () => {
@@ -2547,7 +2724,7 @@ if (clearCartButton) {
 
 if (checkoutButton) {
     checkoutButton.addEventListener('click', async () => {
-        const activeUser = ensureActiveUser('Create or switch to an account before checking out.');
+        const activeUser = ensureActiveUser('Sign in before checking out.');
         if (!activeUser) return;
         const cart = getCartEntry(activeUser.id);
         if (!cart.items.length) {
@@ -2567,12 +2744,9 @@ if (checkoutButton) {
         checkoutButton.disabled = true;
         setStatus(cartStatusMessage, 'Validating stock, shipping rules, and opening secure Stripe Checkout…');
         try {
-            const result = await commerceRequest('/api/commerce/checkout-sessions', {
+            const result = await customerRequest('/api/commerce/checkout-sessions', {
                 method: 'POST',
-                body: JSON.stringify({
-                    items: cart.items,
-                    email: activeUser.email || undefined
-                })
+                body: JSON.stringify({ items: cart.items })
             });
             if (!result.url || !result.url.startsWith('https://checkout.stripe.com/')) {
                 throw new Error('The checkout service returned an invalid redirect.');

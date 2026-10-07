@@ -177,103 +177,123 @@
 
                             <section id="account" class="channel" aria-hidden="true" hidden>
                                 <h1 class="channel-title">ACCOUNT VAULT</h1>
-                                <p class="channel-intro">Create a local account on this device to save your spooky wishlist, saved cart, and shipping details.</p>
+                                <p class="channel-intro">Sign in securely to access your private profile, shipping details, saved payments, wishlist, and recent orders.</p>
 
                                 <div class="account-grid">
                                     <div class="account-stack">
                                         <div class="account-panel">
                                             <h3 id="accountGreeting">No account active</h3>
-                                            <p id="accountSummary">Create an account or switch to one saved on this device.</p>
+                                            <p id="accountSummary">Sign in or create a secure customer account.</p>
                                             <p id="accountStatusMessage" class="admin-status" aria-live="polite"></p>
                                         </div>
 
-                                        <div class="account-panel">
-                                            <h3>Switch local account</h3>
+                                        <div class="account-panel" id="customerAuthPanel">
+                                            <h3>Secure customer sign in</h3>
+                                            <form id="customerAuthForm" class="admin-simple-form">
                                             <div class="form-group">
-                                                <label for="savedAccountSelect">Saved accounts on this device</label>
-                                                <select id="savedAccountSelect">
-                                                    <option value="">Choose an account...</option>
-                                                </select>
+                                                <label for="customerAuthEmail">Email</label>
+                                                <input id="customerAuthEmail" type="email" autocomplete="email" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="customerAuthPassword">Password</label>
+                                                <input id="customerAuthPassword" type="password" minlength="8" autocomplete="current-password" required>
                                             </div>
                                             <div class="account-button-row">
-                                                <button type="button" class="table-action-btn click-item" id="switchAccountButton">Use selected account</button>
-                                                <button type="button" class="table-action-btn click-item" id="createAccountModeButton">Create new account</button>
-                                                <button type="button" class="table-action-btn table-action-btn-danger click-item" id="signOutButton">Sign out</button>
+                                                <button type="submit" class="submit-btn click-item">Sign in</button>
+                                                <button type="button" class="table-action-btn click-item" id="customerCreateAccount">Create account</button>
+                                                <button type="button" class="table-action-btn click-item" id="customerMagicLink">Email me a magic link</button>
                                             </div>
+                                            </form>
+                                            <p class="admin-help-text">Your password is handled by Supabase Auth and is never stored by this shop.</p>
                                         </div>
 
-                                        <div class="account-panel">
+                                        <div class="account-panel hidden" id="accountProfilePanel" aria-hidden="true">
+                                            <div class="account-button-row account-panel-heading">
                                             <h3>Account profile</h3>
+                                            <button type="button" class="table-action-btn table-action-btn-danger click-item" id="signOutButton">Sign out</button>
+                                            </div>
                                             <form id="accountProfileForm" class="admin-simple-form">
                                                 <div class="form-group">
-                                                    <label for="accountName">Name</label>
-                                                    <input type="text" id="accountName" placeholder="Your name" required>
+                                                <label for="accountName">Name</label>
+                                                <input type="text" id="accountName" placeholder="Your name" required>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label for="accountUsername">Username</label>
-                                                    <input type="text" id="accountUsername" placeholder="@ghoul-next-door" required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="accountEmail">Email</label>
-                                                    <input type="email" id="accountEmail" placeholder="you@example.com" required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="accountContactMethod">Preferred Contact Method</label>
-                                                    <select id="accountContactMethod">
-                                                        <option value="">Choose contact method...</option>
-                                                        <option value="email">📧 Email</option>
-                                                        <option value="phone">📱 Phone</option>
-                                                        <option value="instagram">📷 Instagram DM</option>
-                                                        <option value="discord">💬 Discord</option>
-                                                    </select>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="accountContactInfo">Contact Details</label>
-                                                    <input type="text" id="accountContactInfo" placeholder="Email, phone, or handle">
-                                                </div>
-                                                <button type="submit" class="submit-btn click-item">Save account</button>
+                                                <label for="accountUsername">Username</label>
+                                                <input type="text" id="accountUsername" placeholder="@ghoul-next-door">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="accountEmail">Verified email</label>
+                                                <input type="email" id="accountEmail" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="accountContactMethod">Preferred Contact Method</label>
+                                                <select id="accountContactMethod">
+                                                    <option value="">Choose contact method...</option>
+                                                    <option value="email">📧 Email</option>
+                                                    <option value="phone">📱 Phone</option>
+                                                    <option value="instagram">📷 Instagram DM</option>
+                                                    <option value="discord">💬 Discord</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="accountContactInfo">Contact Details</label>
+                                                <input type="text" id="accountContactInfo" placeholder="Email, phone, or handle">
+                                            </div>
+                                            <button type="submit" class="submit-btn click-item">Save profile</button>
                                             </form>
                                         </div>
 
-                                        <div class="account-panel">
-                                            <h3>Shipping details</h3>
+                                        <div class="account-panel hidden" id="shippingProfilePanel" aria-hidden="true">
+                                            <h3>Private shipping details</h3>
+                                            <p class="admin-help-text">Encrypted in transit and available only to your authenticated account and the shop server.</p>
                                             <form id="shippingProfileForm" class="admin-simple-form">
-                                                <div class="form-group">
-                                                    <label for="shippingFullName">Full Name</label>
-                                                    <input type="text" id="shippingFullName" placeholder="Full shipping name">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingAddressLine1">Address Line 1</label>
-                                                    <input type="text" id="shippingAddressLine1" placeholder="123 Haunted Hollow Rd">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingAddressLine2">Address Line 2</label>
-                                                    <input type="text" id="shippingAddressLine2" placeholder="Apartment, suite, etc.">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingCity">City</label>
-                                                    <input type="text" id="shippingCity" placeholder="Salem">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingState">State / Region</label>
-                                                    <input type="text" id="shippingState" placeholder="Massachusetts">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingPostalCode">Postal Code</label>
-                                                    <input type="text" id="shippingPostalCode" placeholder="01970">
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="shippingCountry">Country</label>
-                                                    <input type="text" id="shippingCountry" placeholder="United States">
-                                                </div>
-                                                <button type="submit" class="submit-btn click-item">Save shipping details</button>
+                                            <div class="form-group">
+                                                <label for="shippingFullName">Full Name</label>
+                                                <input type="text" id="shippingFullName" placeholder="Full shipping name">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingAddressLine1">Address Line 1</label>
+                                                <input type="text" id="shippingAddressLine1" placeholder="123 Haunted Hollow Rd">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingAddressLine2">Address Line 2</label>
+                                                <input type="text" id="shippingAddressLine2" placeholder="Apartment, suite, etc.">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingCity">City</label>
+                                                <input type="text" id="shippingCity" placeholder="Salem">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingState">State / Region</label>
+                                                <input type="text" id="shippingState" placeholder="Massachusetts">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingPostalCode">Postal Code</label>
+                                                <input type="text" id="shippingPostalCode" placeholder="01970">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="shippingCountry">Country</label>
+                                                <input type="text" id="shippingCountry" placeholder="United States">
+                                            </div>
+                                            <button type="submit" class="submit-btn click-item">Save shipping details</button>
                                             </form>
                                             <p id="shippingStatusMessage" class="admin-status" aria-live="polite"></p>
                                         </div>
                                     </div>
 
                                     <div class="account-stack">
-                                        <div class="account-panel">
+                                        <div class="account-panel hidden" id="savedPaymentsPanel" aria-hidden="true">
+                                            <h3>Saved payment details</h3>
+                                            <p class="admin-help-text">Card numbers are stored and protected by Stripe. Sip of Ghoulaid only receives the card brand, last four digits, and expiration.</p>
+                                            <div id="savedPaymentMethods" class="account-saved-list"></div>
+                                            <div class="account-button-row">
+                                            <button type="button" class="table-action-btn click-item" id="addPaymentMethodButton">Add payment method securely</button>
+                                            <button type="button" class="table-action-btn click-item" id="managePaymentMethodsButton">Manage in Stripe</button>
+                                            </div>
+                                            <p id="savedPaymentsStatus" class="admin-status" aria-live="polite"></p>
+                                        </div>
+
+                                        <div class="account-panel hidden" id="accountCartPanel" aria-hidden="true">
                                             <h3>Saved cart</h3>
                                             <p id="cartSummaryMessage">Your active account cart is saved automatically on this device.</p>
                                             <div class="account-button-row">
@@ -342,7 +362,9 @@
                                         <article class="member-lounge-card">
                                             <span aria-hidden="true">📦</span>
                                             <h3>Recent orders</h3>
-                                            <p>Completed checkout confirmations are sent securely by email. Visit order support for tracking or help with a recent order.</p>
+                                            <div id="memberRecentOrders" class="account-list" aria-live="polite">
+                                                <p>Loading your private order history...</p>
+                                            </div>
                                             <button type="button" class="table-action-btn click-item" data-channel-target="summon">Open order support</button>
                                         </article>
                                         <article class="member-lounge-card">
@@ -796,7 +818,8 @@
         <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
     </audio>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js" integrity="sha384-lDkWTkrzxBtYvBtgQmPcLBhTbJdqB11igYtWVcCIVXO0Lv4+XuKKdd4razodiyzk" crossorigin="anonymous"></script>
     <script src="products.js?v=20260921-live-catalog"></script>
-    <script src="script.js?v=20261007-music-tv"></script>
+    <script src="script.js?v=20261007-secure-customer"></script>
 </body>
 </html>
