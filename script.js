@@ -43,6 +43,10 @@ const shippingPostalCodeInput = document.getElementById('shippingPostalCode');
 const shippingCountryInput = document.getElementById('shippingCountry');
 const shippingStatusMessage = document.getElementById('shippingStatusMessage');
 const wishlistList = document.getElementById('wishlistList');
+const wishlistStatusMessage = document.getElementById('wishlistStatusMessage');
+const memberLoungeLocked = document.getElementById('memberLoungeLocked');
+const memberLoungeContent = document.getElementById('memberLoungeContent');
+const memberLoungeGreeting = document.getElementById('memberLoungeGreeting');
 const cartList = document.getElementById('cartList');
 const cartSummaryMessage = document.getElementById('cartSummaryMessage');
 const cartStatusMessage = document.getElementById('cartStatusMessage');
@@ -74,10 +78,9 @@ const productDetailContent = document.getElementById('productDetailContent');
 const productDetailBack = document.getElementById('productDetailBack');
 const policyContent = document.getElementById('policyContent');
 const musicPlayer = document.getElementById('musicPlayer');
-const musicAudio = document.getElementById('musicAudio');
+const musicVideo = document.getElementById('musicVideo');
 const musicTrackTitle = document.getElementById('musicTrackTitle');
 const musicTrackArtist = document.getElementById('musicTrackArtist');
-const musicPreviousButton = document.getElementById('musicPrevious');
 const musicPlayPauseButton = document.getElementById('musicPlayPause');
 const musicNextButton = document.getElementById('musicNext');
 
@@ -119,7 +122,9 @@ const CHANNEL_NUMBERS = {
     summon: '06',
     about: '07',
     reviews: '08',
-    policies: '09'
+    wishlist: '09',
+    'member-lounge': '10',
+    policies: '--'
 };
 const POLICY_CONTENT = {
     privacy: {
@@ -348,46 +353,6 @@ function playClickSound() {
         return;
     }
 
-    function renderMusicTrack() {
-        const song = musicSongs[musicSongIndex];
-        if (!song || !musicAudio) return;
-        if (musicAudio.src !== song.url) {
-            musicAudio.src = song.url;
-        }
-        setStatus(musicTrackTitle, song.title);
-        setStatus(musicTrackArtist, song.artist || 'Sip of Ghoulaid Radio');
-    }
-
-    async function playMusic() {
-        if (!musicAudio || !musicSongs.length) return;
-        renderMusicTrack();
-        try {
-            await musicAudio.play();
-        } catch {
-            setStatus(musicTrackArtist, 'Press play to start this track');
-        }
-    }
-
-    function changeMusicTrack(offset) {
-        if (!musicSongs.length) return;
-        const wasPlaying = !musicAudio.paused;
-        musicSongIndex = (musicSongIndex + offset + musicSongs.length) % musicSongs.length;
-        renderMusicTrack();
-        if (wasPlaying) playMusic();
-    }
-
-    async function loadMusicPlaylist() {
-        try {
-            const music = await commerceRequest('/api/music');
-            musicSongs = music.enabled && Array.isArray(music.songs) ? music.songs : [];
-            musicPlayer?.classList.toggle('hidden', !musicSongs.length);
-            if (musicSongs.length) renderMusicTrack();
-        } catch (error) {
-            console.warn('Store music is unavailable.', error);
-            musicPlayer?.classList.add('hidden');
-        }
-    }
-
     try {
         const now = context.currentTime;
         const osc = context.createOscillator();
@@ -403,6 +368,66 @@ function playClickSound() {
         osc.stop(now + 0.1);
     } catch (error) {
         console.log('Audio context error:', error);
+    }
+}
+
+function renderMusicTrack() {
+    const song = musicSongs[musicSongIndex];
+    if (!song || !musicVideo) return;
+    musicPlayer?.classList.remove('music-player-empty');
+    if (musicVideo.src !== song.url) {
+        musicVideo.src = song.url;
+        musicVideo.load();
+    }
+    musicVideo.setAttribute('aria-label', `${song.title}${song.artist ? ` by ${song.artist}` : ''}`);
+    setStatus(musicTrackTitle, song.title);
+    setStatus(musicTrackArtist, song.artist || 'Unknown band / artist');
+}
+
+function renderEmptyMusicPlayer(title, message) {
+    musicPlayer?.classList.remove('hidden');
+    musicPlayer?.classList.add('music-player-empty');
+    if (musicVideo) {
+        musicVideo.pause();
+        musicVideo.removeAttribute('src');
+        musicVideo.load();
+        musicVideo.setAttribute('aria-label', title);
+    }
+    setStatus(musicTrackTitle, title);
+    setStatus(musicTrackArtist, message);
+}
+
+async function playMusic() {
+    if (!musicVideo || !musicSongs.length) return;
+    renderMusicTrack();
+    try {
+        await musicVideo.play();
+    } catch {
+        setStatus(musicTrackArtist, 'Press play to start this video');
+    }
+}
+
+function changeMusicTrack(offset) {
+    if (!musicSongs.length || !musicVideo) return;
+    const wasPlaying = !musicVideo.paused;
+    musicSongIndex = (musicSongIndex + offset + musicSongs.length) % musicSongs.length;
+    renderMusicTrack();
+    if (wasPlaying) playMusic();
+}
+
+async function loadMusicPlaylist() {
+    try {
+        const music = await commerceRequest('/api/music');
+        musicSongs = music.enabled && Array.isArray(music.songs) ? music.songs : [];
+        if (musicSongs.length) {
+            musicPlayer?.classList.remove('hidden');
+            renderMusicTrack();
+        } else {
+            renderEmptyMusicPlayer('NO SIGNAL', 'Add a music video in the Admin Portal');
+        }
+    } catch (error) {
+        console.warn('Store music videos are unavailable.', error);
+        renderEmptyMusicPlayer('SIGNAL LOST', 'Music videos are temporarily unavailable');
     }
 }
 
@@ -1919,6 +1944,15 @@ function renderShopAccountBanner() {
     setStatus(shopAccountSummary, `${wishlistCount} wishlist item(s) • ${cartItemCount} cart item(s) saved on this device.`);
 }
 
+function renderMemberLounge() {
+    const activeUser = getActiveUser();
+    memberLoungeLocked?.classList.toggle('hidden', Boolean(activeUser));
+    memberLoungeContent?.classList.toggle('hidden', !activeUser);
+    if (activeUser) {
+        setStatus(memberLoungeGreeting, `Welcome, ${getUserDisplayName(activeUser)}`);
+    }
+}
+
 function loadAccountForms() {
     const activeUser = getActiveUser();
 
@@ -2021,7 +2055,7 @@ function renderWishlist() {
                     { userId: activeUser.id, items, updatedAt: new Date().toISOString() }
                 ];
             });
-            setStatus(cartStatusMessage, `${product.name} added to your cart.`);
+            setStatus(wishlistStatusMessage, `${product.name} added to your cart.`);
         });
         actions.appendChild(moveButton);
 
@@ -2039,7 +2073,7 @@ function renderWishlist() {
                     { userId: activeUser.id, productIds: nextIds, updatedAt: new Date().toISOString() }
                 ];
             });
-            setStatus(accountStatusMessage, `${product.name} removed from your wishlist.`);
+            setStatus(wishlistStatusMessage, `${product.name} removed from your wishlist.`);
         });
         actions.appendChild(removeButton);
 
@@ -2190,6 +2224,7 @@ function renderAccountState() {
 
     renderSavedAccounts();
     renderShopAccountBanner();
+    renderMemberLounge();
     loadAccountForms();
     fillOrderProfileFromAccount();
     renderWishlist();
@@ -2696,7 +2731,7 @@ if (volumeBtn) {
     volumeBtn.addEventListener('click', () => {
         const muted = volumeLevel !== 0;
         volumeLevel = muted ? 0 : 100;
-        if (musicAudio) musicAudio.muted = muted;
+        if (musicVideo) musicVideo.muted = muted;
         volumeBtn.textContent = muted ? '🔇' : '🔊';
         volumeBtn.setAttribute('aria-pressed', String(muted));
         volumeBtn.setAttribute('aria-label', muted ? 'Unmute store music' : 'Mute store music');
@@ -2710,23 +2745,29 @@ if (volumeBtn) {
 }
 
 musicPlayPauseButton?.addEventListener('click', () => {
-    if (musicAudio?.paused) {
+    if (musicVideo?.paused) {
         playMusic();
     } else {
-        musicAudio.pause();
+        musicVideo.pause();
     }
 });
-musicPreviousButton?.addEventListener('click', () => changeMusicTrack(-1));
 musicNextButton?.addEventListener('click', () => changeMusicTrack(1));
-musicAudio?.addEventListener('play', () => {
+musicVideo?.addEventListener('click', () => {
+    if (musicVideo.paused) {
+        playMusic();
+    } else {
+        musicVideo.pause();
+    }
+});
+musicVideo?.addEventListener('play', () => {
     musicPlayPauseButton.textContent = '⏸';
-    musicPlayPauseButton.setAttribute('aria-label', 'Pause music');
+    musicPlayPauseButton.setAttribute('aria-label', 'Pause video');
 });
-musicAudio?.addEventListener('pause', () => {
+musicVideo?.addEventListener('pause', () => {
     musicPlayPauseButton.textContent = '▶';
-    musicPlayPauseButton.setAttribute('aria-label', 'Play music');
+    musicPlayPauseButton.setAttribute('aria-label', 'Play video');
 });
-musicAudio?.addEventListener('ended', () => {
+musicVideo?.addEventListener('ended', () => {
     changeMusicTrack(1);
     playMusic();
 });
