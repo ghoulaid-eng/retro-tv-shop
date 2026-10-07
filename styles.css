@@ -2014,21 +2014,91 @@ input[type="checkbox"] {
     aspect-ratio: 16 / 10;
 }
 
-.music-player-empty .music-tv-screen::after {
-    content: "NO SIGNAL";
+.music-no-signal {
     position: absolute;
     inset: 0;
-    display: grid;
-    place-items: center;
+    display: none;
+    align-content: center;
+    justify-items: center;
+    overflow: hidden;
     background:
-        repeating-radial-gradient(circle at 30% 30%, #2a2630 0 1px, #111016 1px 3px),
-        #111016;
-    color: rgba(255, 255, 255, 0.72);
-    font-family: 'Press Start 2P', monospace;
-    font-size: clamp(9px, 2vw, 14px);
-    letter-spacing: 1px;
-    text-shadow: 2px 2px #5e3d6f;
+        linear-gradient(to bottom, transparent 0 40%, rgba(3, 3, 7, 0.9) 40% 100%),
+        linear-gradient(
+            90deg,
+            #eedb33 0 14%,
+            #ec43ac 14% 28%,
+            #2bc9eb 28% 42%,
+            #46cf72 42% 56%,
+            #f3df2d 56% 70%,
+            #e44c53 70% 84%,
+            #5063d8 84%
+        );
+    color: #f5f3ee;
+    font-family: 'VT323', monospace;
+    text-align: center;
+    text-shadow:
+        3px 0 rgba(236, 67, 172, 0.75),
+        -3px 0 rgba(43, 201, 235, 0.75);
     z-index: 1;
+}
+
+.music-player-empty .music-no-signal {
+    display: grid;
+}
+
+.music-no-signal::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 255, 255, 0.16) 2px 3px),
+        repeating-linear-gradient(167deg, transparent 0 11px, rgba(255, 255, 255, 0.18) 11px 13px),
+        repeating-radial-gradient(circle at 22% 44%, transparent 0 2px, rgba(0, 0, 0, 0.34) 2px 4px);
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    animation: musicSignalNoise 320ms steps(2, end) infinite;
+}
+
+.music-no-signal strong,
+.music-no-signal span,
+.music-no-signal small {
+    position: relative;
+    z-index: 1;
+}
+
+.music-no-signal strong {
+    font-size: clamp(26px, 8vw, 48px);
+    line-height: 0.9;
+    letter-spacing: 4px;
+}
+
+.music-no-signal span {
+    margin-top: 8px;
+    font-size: clamp(12px, 3vw, 18px);
+    letter-spacing: 1px;
+}
+
+.music-no-signal small {
+    position: absolute;
+    right: 10px;
+    bottom: 6px;
+    left: 10px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+    font-size: clamp(9px, 2.4vw, 14px);
+    letter-spacing: 1px;
+}
+
+@keyframes musicSignalNoise {
+    0% {
+        transform: translate(0, 0);
+    }
+    35% {
+        transform: translate(-2px, 1px);
+    }
+    70% {
+        transform: translate(2px, -1px);
+    }
 }
 
 .music-tv-screen video {
