@@ -374,6 +374,7 @@ function playClickSound() {
 function renderMusicTrack() {
     const song = musicSongs[musicSongIndex];
     if (!song || !musicVideo) return;
+    musicPlayer?.classList.remove('music-player-empty');
     if (musicVideo.src !== song.url) {
         musicVideo.src = song.url;
         musicVideo.load();
@@ -381,6 +382,19 @@ function renderMusicTrack() {
     musicVideo.setAttribute('aria-label', `${song.title}${song.artist ? ` by ${song.artist}` : ''}`);
     setStatus(musicTrackTitle, song.title);
     setStatus(musicTrackArtist, song.artist || 'Unknown band / artist');
+}
+
+function renderEmptyMusicPlayer(title, message) {
+    musicPlayer?.classList.remove('hidden');
+    musicPlayer?.classList.add('music-player-empty');
+    if (musicVideo) {
+        musicVideo.pause();
+        musicVideo.removeAttribute('src');
+        musicVideo.load();
+        musicVideo.setAttribute('aria-label', title);
+    }
+    setStatus(musicTrackTitle, title);
+    setStatus(musicTrackArtist, message);
 }
 
 async function playMusic() {
@@ -405,11 +419,15 @@ async function loadMusicPlaylist() {
     try {
         const music = await commerceRequest('/api/music');
         musicSongs = music.enabled && Array.isArray(music.songs) ? music.songs : [];
-        musicPlayer?.classList.toggle('hidden', !musicSongs.length);
-        if (musicSongs.length) renderMusicTrack();
+        if (musicSongs.length) {
+            musicPlayer?.classList.remove('hidden');
+            renderMusicTrack();
+        } else {
+            renderEmptyMusicPlayer('NO SIGNAL', 'Add a music video in the Admin Portal');
+        }
     } catch (error) {
         console.warn('Store music videos are unavailable.', error);
-        musicPlayer?.classList.add('hidden');
+        renderEmptyMusicPlayer('SIGNAL LOST', 'Music videos are temporarily unavailable');
     }
 }
 

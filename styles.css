@@ -2014,6 +2014,23 @@ input[type="checkbox"] {
     aspect-ratio: 16 / 10;
 }
 
+.music-player-empty .music-tv-screen::after {
+    content: "NO SIGNAL";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background:
+        repeating-radial-gradient(circle at 30% 30%, #2a2630 0 1px, #111016 1px 3px),
+        #111016;
+    color: rgba(255, 255, 255, 0.72);
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(9px, 2vw, 14px);
+    letter-spacing: 1px;
+    text-shadow: 2px 2px #5e3d6f;
+    z-index: 1;
+}
+
 .music-tv-screen video {
     display: block;
     width: 100%;

@@ -130,17 +130,17 @@
                                         <button type="button" class="guide-card" data-channel-target="member-lounge">
                                             <span class="guide-number">CH 10</span>
                                             <strong>🛋️ Member Lounge</strong>
-                                            <small>Updates, perks, and member shortcuts</small>
+                                            <small>Updates, recent orders, and shortcuts</small>
                                         </button>
                                     </div>
                                 </div>
-                                <aside id="musicPlayer" class="music-player hidden" aria-label="Store music video player">
+                                <aside id="musicPlayer" class="music-player music-player-empty" aria-label="Store music video player">
                                     <span class="music-tv-antenna music-tv-antenna-left" aria-hidden="true"></span>
                                     <span class="music-tv-antenna music-tv-antenna-right" aria-hidden="true"></span>
                                     <span class="music-tv-antenna-cap" aria-hidden="true"></span>
                                     <div class="music-tv-face">
                                         <div class="music-tv-screen">
-                                            <video id="musicVideo" playsinline preload="metadata"></video>
+                                            <video id="musicVideo" playsinline preload="metadata" aria-label="No music video available"></video>
                                             <span class="music-tv-glare" aria-hidden="true"></span>
                                         </div>
                                         <div class="music-tv-side">
@@ -151,8 +151,8 @@
                                     </div>
                                     <div class="music-player-copy">
                                         <span class="music-player-label">NOW PLAYING</span>
-                                        <strong id="musicTrackTitle">No video selected</strong>
-                                        <small id="musicTrackArtist"></small>
+                                        <strong id="musicTrackTitle">NO SIGNAL</strong>
+                                        <small id="musicTrackArtist">Add a music video in the Admin Portal</small>
                                     </div>
                                     <span class="music-tv-foot music-tv-foot-left" aria-hidden="true"></span>
                                     <span class="music-tv-foot music-tv-foot-right" aria-hidden="true"></span>
@@ -320,7 +320,7 @@
                                         <div>
                                             <p class="music-player-label">MEMBER TRANSMISSION</p>
                                             <h2 id="memberLoungeGreeting">Welcome to the lounge</h2>
-                                            <p>Your creepy-cute corner for shop news, member perks, and quick shortcuts.</p>
+                                            <p>Your creepy-cute corner for shop news, recent-order help, and quick shortcuts.</p>
                                         </div>
                                     </div>
                                     <div class="member-lounge-grid">
@@ -337,10 +337,10 @@
                                             <button type="button" class="table-action-btn click-item" data-channel-target="wishlist">View wishlist</button>
                                         </article>
                                         <article class="member-lounge-card">
-                                            <span aria-hidden="true">✨</span>
-                                            <h3>Member perk</h3>
-                                            <p>Keep your account active to save carts, shipping details, and custom-order contact info on this device.</p>
-                                            <button type="button" class="table-action-btn click-item" data-channel-target="custom-order">Start custom order</button>
+                                            <span aria-hidden="true">📦</span>
+                                            <h3>Recent orders</h3>
+                                            <p>Completed checkout confirmations are sent securely by email. Visit order support for tracking or help with a recent order.</p>
+                                            <button type="button" class="table-action-btn click-item" data-channel-target="summon">Open order support</button>
                                         </article>
                                         <article class="member-lounge-card">
                                             <span aria-hidden="true">🛍️</span>
