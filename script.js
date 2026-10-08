@@ -29,6 +29,7 @@ const customerAuthEmailInput = document.getElementById('customerAuthEmail');
 const customerAuthPasswordInput = document.getElementById('customerAuthPassword');
 const customerCreateAccountButton = document.getElementById('customerCreateAccount');
 const customerMagicLinkButton = document.getElementById('customerMagicLink');
+const customerAuthStatus = document.getElementById('customerAuthStatus');
 const signOutButton = document.getElementById('signOutButton');
 const accountProfilePanel = document.getElementById('accountProfilePanel');
 const accountProfileForm = document.getElementById('accountProfileForm');
@@ -2546,9 +2547,38 @@ function getCustomerProfilePayload(includeShippingForm = true) {
     };
 }
 
+function setCustomerAuthStatus(message, isError = false) {
+    setStatus(customerAuthStatus, message);
+    customerAuthStatus?.classList.toggle('error', isError);
+    customerAuthStatus?.classList.toggle('success', Boolean(message) && !isError);
+    setStatus(accountStatusMessage, message);
+}
+
+function validateCustomerCredentials({ requirePassword = true } = {}) {
+    const email = customerAuthEmailInput.value.trim();
+    if (!email || !customerAuthEmailInput.checkValidity()) {
+        setCustomerAuthStatus('Enter a valid email address to continue.', true);
+        customerAuthEmailInput.focus();
+        customerAuthEmailInput.reportValidity();
+        return false;
+    }
+    if (requirePassword && !customerAuthPasswordInput.checkValidity()) {
+        setCustomerAuthStatus('Enter a password with at least 8 characters.', true);
+        customerAuthPasswordInput.focus();
+        customerAuthPasswordInput.reportValidity();
+        return false;
+    }
+    if (!customerSupabaseClient) {
+        setCustomerAuthStatus('Secure customer accounts are temporarily unavailable. Please try again shortly.', true);
+        return false;
+    }
+    return true;
+}
+
 customerAuthForm?.addEventListener('submit', async event => {
     event.preventDefault();
-    setStatus(accountStatusMessage, 'Signing in securely...');
+    if (!validateCustomerCredentials()) return;
+    setCustomerAuthStatus('Signing in securely...');
     try {
         const { error } = await customerSupabaseClient.auth.signInWithPassword({
             email: customerAuthEmailInput.value.trim(),
@@ -2556,14 +2586,16 @@ customerAuthForm?.addEventListener('submit', async event => {
         });
         if (error) throw error;
         customerAuthForm.reset();
-        setStatus(accountStatusMessage, 'Signed in securely.');
+        setCustomerAuthStatus('Signed in securely.');
     } catch (error) {
-        setStatus(accountStatusMessage, error.message);
+        setCustomerAuthStatus(error.message, true);
     }
 });
 
 customerCreateAccountButton?.addEventListener('click', async () => {
-    setStatus(accountStatusMessage, 'Creating your secure account...');
+    if (!validateCustomerCredentials()) return;
+    setCustomerAuthStatus('Creating your secure account...');
+    customerCreateAccountButton.disabled = true;
     try {
         const { data, error } = await customerSupabaseClient.auth.signUp({
             email: customerAuthEmailInput.value.trim(),
@@ -2571,30 +2603,29 @@ customerCreateAccountButton?.addEventListener('click', async () => {
             options: { emailRedirectTo: `${window.location.origin}/?channel=account` }
         });
         if (error) throw error;
-        setStatus(accountStatusMessage, data.session
+        setCustomerAuthStatus(data.session
             ? 'Account created. Your secure vault is ready.'
             : 'Account created. Check your email to verify it, then sign in.');
     } catch (error) {
-        setStatus(accountStatusMessage, error.message);
+        setCustomerAuthStatus(error.message, true);
+    } finally {
+        customerCreateAccountButton.disabled = false;
     }
 });
 
 customerMagicLinkButton?.addEventListener('click', async () => {
+    if (!validateCustomerCredentials({ requirePassword: false })) return;
     const email = customerAuthEmailInput.value.trim();
-    if (!email) {
-        setStatus(accountStatusMessage, 'Enter your email address first.');
-        return;
-    }
-    setStatus(accountStatusMessage, 'Sending your secure sign-in link...');
+    setCustomerAuthStatus('Sending your secure sign-in link...');
     try {
         const { error } = await customerSupabaseClient.auth.signInWithOtp({
             email,
             options: { emailRedirectTo: `${window.location.origin}/?channel=account` }
         });
         if (error) throw error;
-        setStatus(accountStatusMessage, 'Magic link sent. Check your email.');
+        setCustomerAuthStatus('Magic link sent. Check your email.');
     } catch (error) {
-        setStatus(accountStatusMessage, error.message);
+        setCustomerAuthStatus(error.message, true);
     }
 });
 
