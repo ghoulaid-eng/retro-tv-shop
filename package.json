@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
-    "express": "^5.1.0",
+    "express": "^5.3.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
     "stripe": "^18.5.0"
