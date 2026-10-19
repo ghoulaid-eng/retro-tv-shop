@@ -12,6 +12,11 @@ const {
 } = require('../backend/validation');
 const { buildCheckoutShippingOptions } = require('../backend/shipping');
 const {
+    checkoutReleaseAction,
+    paidOrderDisposition,
+    sendNotificationWithoutFailingOperation
+} = require('../backend/payment-safety');
+const {
     OrderOperationError,
     orderEmailContent,
     validateFulfillment,
@@ -143,6 +148,46 @@ test('customer profiles require a name and complete shipping address', () => {
         shippingPostalCode: '01970',
         shippingCountry: 'US'
     });
+});
+
+test('checkout inventory is released only after Stripe confirms expiration', () => {
+    assert.equal(checkoutReleaseAction({ status: 'open', payment_status: 'unpaid' }), 'expire');
+    assert.equal(checkoutReleaseAction({ status: 'expired', payment_status: 'unpaid' }), 'release');
+    assert.equal(checkoutReleaseAction({ status: 'complete', payment_status: 'unpaid' }), 'hold');
+    assert.equal(checkoutReleaseAction({ status: 'complete', payment_status: 'paid' }), 'hold');
+});
+
+test('late paid checkouts require review without consuming or fulfilling inventory', () => {
+    assert.deepEqual(paidOrderDisposition({
+        stripeCheckoutSession: 'cs_live_expected',
+        releasedAt: new Date()
+    }, {
+        id: 'cs_live_expected'
+    }), {
+        consumeInventory: false,
+        markFulfilled: false,
+        status: 'NEEDS_REVIEW'
+    });
+    assert.throws(() => paidOrderDisposition({
+        stripeCheckoutSession: 'cs_live_expected',
+        releasedAt: null
+    }, {
+        id: 'cs_live_other'
+    }), /does not match/);
+});
+
+test('notification failure cannot turn a completed payment operation into a retryable error', async () => {
+    let reportedError = '';
+    const sent = await sendNotificationWithoutFailingOperation(
+        async () => {
+            throw new Error('mail provider unavailable');
+        },
+        error => {
+            reportedError = error.message;
+        }
+    );
+    assert.equal(sent, false);
+    assert.equal(reportedError, 'mail provider unavailable');
 });
 
 test('order operations configuration exposes capability but never the Resend key', () => {

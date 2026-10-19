@@ -10,6 +10,11 @@ const { PrismaClient, Prisma } = require('@prisma/client');
 const { getPublicConfig, readConfig } = require('./backend/config');
 const { buildCheckoutShippingOptions } = require('./backend/shipping');
 const {
+    checkoutReleaseAction,
+    paidOrderDisposition,
+    sendNotificationWithoutFailingOperation
+} = require('./backend/payment-safety');
+const {
     ValidationError,
     decimalToCents,
     validateCheckout,
@@ -316,6 +321,18 @@ async function releaseOrder(orderId, nextStatus = 'EXPIRED') {
     });
 }
 
+async function expireCheckoutBeforeRelease(order) {
+    if (!order.stripeCheckoutSession) return true;
+    if (!stripe) return false;
+
+    const session = await stripe.checkout.sessions.retrieve(order.stripeCheckoutSession);
+    const action = checkoutReleaseAction(session);
+    if (action === 'hold') return false;
+    if (action === 'release') return true;
+    const expiredSession = await stripe.checkout.sessions.expire(session.id);
+    return checkoutReleaseAction(expiredSession) === 'release';
+}
+
 async function releaseExpiredReservations() {
     if (!prisma) return;
     // Stripe events can arrive after the session timestamp; the grace period
@@ -328,10 +345,14 @@ async function releaseExpiredReservations() {
             fulfilledAt: null,
             releasedAt: null
         },
-        select: { id: true },
+        select: { id: true, stripeCheckoutSession: true },
         take: 100
     });
-    await Promise.allSettled(expired.map(order => releaseOrder(order.id)));
+    await Promise.allSettled(expired.map(async order => {
+        if (await expireCheckoutBeforeRelease(order)) {
+            await releaseOrder(order.id);
+        }
+    }));
 }
 
 async function reserveOrder(input, customerId = null) {
@@ -416,22 +437,19 @@ async function completePaidOrder(event, session) {
     const needsReview = await withSerializableRetry(async tx => {
         const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
         if (!order) throw new Error('Linked order was not found.');
-        if (order.fulfilledAt || order.status === 'PAID') {
+        const disposition = paidOrderDisposition(order, session);
+        if (order.fulfilledAt || ['PAID', 'NEEDS_REVIEW'].includes(order.status)) {
             await tx.webhookEvent.update({
                 where: { id: event.id },
                 data: { processedAt: new Date(), error: null }
             });
             return false;
         }
-        const reservationWasReleased = Boolean(order.releasedAt);
+        const reservationWasReleased = !disposition.consumeInventory;
 
-        for (const item of order.items) {
-            const result = reservationWasReleased
-                ? await tx.inventory.updateMany({
-                    where: { variantId: item.variantId },
-                    data: { quantity: { decrement: item.quantity } }
-                })
-                : await tx.inventory.updateMany({
+        if (!reservationWasReleased) {
+            for (const item of order.items) {
+                const result = await tx.inventory.updateMany({
                     where: {
                         variantId: item.variantId,
                         reserved: { gte: item.quantity },
@@ -442,7 +460,8 @@ async function completePaidOrder(event, session) {
                         quantity: { decrement: item.quantity }
                     }
                 });
-            if (result.count !== 1) throw new Error('Reserved inventory is inconsistent.');
+                if (result.count !== 1) throw new Error('Reserved inventory is inconsistent.');
+            }
         }
         const paymentIntent = typeof session.payment_intent === 'string'
             ? session.payment_intent
@@ -462,8 +481,8 @@ async function completePaidOrder(event, session) {
         await tx.order.update({
             where: { id: orderId },
             data: {
-                status: reservationWasReleased ? 'NEEDS_REVIEW' : 'PAID',
-                fulfilledAt: new Date(),
+                status: disposition.status,
+                fulfilledAt: disposition.markFulfilled ? new Date() : null,
                 shippingMethod: typeof session.shipping_cost?.shipping_rate === 'object'
                     ? session.shipping_cost.shipping_rate.display_name || null
                     : null,
@@ -1171,6 +1190,13 @@ app.post('/api/admin/orders/:id/cancel', adminLimiter, requireAdmin, async (req,
             throw new OrderOperationError('Canceled, shipped, delivered, or refunded orders cannot be canceled.', 409, 'INVALID_ORDER_STATE');
         }
         if (!existing.payments.some(payment => payment.status === 'PAID')) {
+            if (!await expireCheckoutBeforeRelease(existing)) {
+                throw new OrderOperationError(
+                    'This checkout is complete or payment is still processing and cannot be canceled safely.',
+                    409,
+                    'CHECKOUT_NOT_CANCELABLE'
+                );
+            }
             await releaseOrder(existing.id, 'CANCELED');
         }
         const order = await prisma.$transaction(async tx => {
@@ -1256,8 +1282,16 @@ app.post('/api/admin/orders/:id/refund', adminLimiter, requireAdmin, async (req,
             return updated;
         });
         claimedPaymentId = null;
-        await deliverOrderEmail(order, 'refunded', { reason: input.reason, amount: `$${amount.toFixed(2)}` });
-        res.json({ success: true, refundId: refund.id, amount, fullyRefunded });
+        const notificationSent = await sendNotificationWithoutFailingOperation(
+            () => deliverOrderEmail(order, 'refunded', {
+                reason: input.reason,
+                amount: `$${amount.toFixed(2)}`
+            }),
+            emailError => {
+                console.error(`Refund confirmation email failed for ${existing.id}:`, emailError.message);
+            }
+        );
+        res.json({ success: true, refundId: refund.id, amount, fullyRefunded, notificationSent });
     } catch (error) {
         if (claimedPaymentId) {
             await prisma.payment.updateMany({
